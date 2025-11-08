@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" autoUpload="Always" serverName="reasonv(intern-s1) H100" remoteFilesAllowedToDisappearOnAutoupload="false" confirmBeforeUploading="false">
+    <option name="confirmBeforeUploading" value="false" />
+    <serverData>
+      <paths name="Intern-S1 GB200">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/apex-gen/tianang/projects/Intern-S1" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="Intern-S1 node002">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/Projects/Intern-S1" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="ltianang@parcc:22 agent">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/vast/projects/xia6/apex-gen/tianang/projects/Intern-S1" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="reasonv(intern-s1) H100">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/projects/Intern-S1" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
+  </component>
+</project>
