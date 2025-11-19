@@ -1,3 +1,7 @@
+'''
+可以选择把数据保存成LlamaFactory需要的Alpaca格式，或者是Megatron需要的GPT格式
+'''
+
 import json
 from huggingface_hub import hf_hub_download
 from tdc.single_pred import ADME, Tox, HTS, Develop, CRISPROutcome, Yields

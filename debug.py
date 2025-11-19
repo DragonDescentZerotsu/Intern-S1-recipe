@@ -1,53 +1,26 @@
-from transformers import AutoTokenizer, AutoModelForCausalLM
-import torch
+from rdkit import Chem
+from rdkit.Chem import Draw
+# import selfies as sf
+from rdkit.Chem import rdDepictor
+from rdkit.Chem.Draw import MolDrawOptions
 
-model_name = "internlm/Intern-S1-mini-FP8"
+# 使用从 OPSIN 获得的 SMILES
+smiles = "Cc1cc(NS(=O)(=O)c2ccc(N)cc2)no1"
+# smiles = "[C][=O][N]"
+# C[N+](C)(C)CCCC[C@@H](C(=O)[O-])[NH3+]
+# smiles = sf.decoder(smiles)
+print(smiles)
+# 创建分子对象
+mol = Chem.MolFromSmiles(smiles)
 
-# 1. 加载
-tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-model = AutoModelForCausalLM.from_pretrained(
-    model_name,
-    trust_remote_code=True,
-    torch_dtype="auto",
-    device_map="auto",
-)
+rdDepictor.SetPreferCoordGen(True)
+rdDepictor.Compute2DCoords(mol)
 
-seqs = [
-    "ACDEFGHIKLMNPQRSTACDEFGHIKLMNPQRST",   # 34 aa
-    "ACDEFGHIKLMNPQRST"                    # 17 aa
-]
+opts = MolDrawOptions()
+# opts.reduceOverlap = True
 
-# 想看的几个 FASTA 子词
-target_tokens = ["AC", "DE", "FG", "HI"]
-
-# 拿到整张 embedding 表
-emb_table = model.get_input_embeddings().weight  # (vocab_size, hidden_size)
-
-for seq in seqs:
-    print("\nseq:", seq)
-    # 2. 先 tokenize
-    tokens = tokenizer.tokenize(seq)
-    print("tokens:", tokens)
-
-    # 3. 转成 id（必须整体转，这样 auto-detect 的逻辑才生效）
-    token_ids = tokenizer.convert_tokens_to_ids(tokens)
-    print("token_ids:", token_ids)
-
-    # 4. 针对每一个想看的 token，去这条序列里找
-    for tt in target_tokens:
-        positions = [i for i, t in enumerate(tokens) if t == tt]
-        if not positions:
-            print(f"  token '{tt}' not found in this seq.")
-            continue
-
-        # 这条序列里可能出现多次，我们就都打印一下
-        for pos in positions:
-            tok_id = token_ids[pos]
-            emb = emb_table[tok_id].detach().cpu()
-
-            print(f"\n  token '{tt}' at position {pos}:")
-            print("    id:", tok_id)
-            print("    shape:", emb.shape)
-            # 打印前 100 维，够看分布了
-            print("    first 100 dims:", emb[:10])
-            print("    L2 norm:", float(emb.norm()))
+# 绘制分子结构
+img = Draw.MolToImage(mol, size=(2000, 2000))
+# display(img)
+# img.show()
+img.save("mol.png")

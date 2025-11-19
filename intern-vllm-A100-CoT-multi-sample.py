@@ -6,7 +6,7 @@ import os, multiprocessing as mp
 # mp.set_start_method("spawn", force=True)
 
 # 选择显卡
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
+# os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
 
 from transformers import AutoTokenizer, AutoProcessor
 from vllm import LLM, SamplingParams
@@ -126,9 +126,9 @@ def main():
     logger.info(f"Logging initialized. Log file: {log_file}")
 
     # ---------------- 配置区 ----------------
-    MODEL_NAME = "internlm/Intern-S1-mini-FP8"         # 也可用 "internlm/Intern-S1-mini-FP8"
-    LORA_PATH = "checkpoints/Intern-S1-mini/lora/sft/checkpoint-180000"  # 可为空字符串禁用 LoRA
-    USE_LORA = False
+    MODEL_NAME = "/data2/tianang/projects/Intern-S1/checkpoints/Intern-S1-mini/full/sft-ChemCoT/checkpoint-19904"         # 也可用 "internlm/Intern-S1-mini-FP8"
+    LORA_PATH = "checkpoints/Intern-S1-mini/lora/sft-ChemCoT/checkpoint-19904"  # 可为空字符串禁用 LoRA
+    USE_LORA = True
 
     # 采样与打分
     N_SAMPLES = 16           # 每题采样次数

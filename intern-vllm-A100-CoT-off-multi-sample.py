@@ -1,12 +1,18 @@
+'''
+使用示例：
+CUDA_VISIBLE_DEVICES=1 python intern-vllm-A100-CoT-off-multi-sample.py --task-groups ADME
+'''
+
+
 import os, multiprocessing as mp
 # ---------------- vLLM & CUDA 环境 ----------------
-os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
-os.environ.setdefault("VLLM_USE_V1", "1")
-os.environ.setdefault("VLLM_ATTENTION_BACKEND", "TORCH_SDPA")
-mp.set_start_method("spawn", force=True)
+# os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
+# os.environ.setdefault("VLLM_USE_V1", "1")
+# os.environ.setdefault("VLLM_ATTENTION_BACKEND", "TORCH_SDPA")
+# mp.set_start_method("spawn", force=True)
 
 # 选择显卡
-# os.environ.setdefault("CUDA_VISIBLE_DEVICES", "3")
+# os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
 
 from transformers import AutoTokenizer, AutoProcessor
 from vllm import LLM, SamplingParams
@@ -29,6 +35,13 @@ from pathlib import Path
 import logging
 from datetime import datetime
 import argparse
+
+current_dir = Path(__file__).parent.resolve()
+# import pydevd_pycharm
+
+# pydevd_pycharm.settrace('127.0.0.1', port=5678,
+#                         stdoutToServer=True, stderrToServer=True,
+#                         suspend=True)   # 第一次连上就停在这里
 
 # ====== 解析工具：从模型文本中剥离最终选项并映射到 0/1 ======
 def extract_answer(response:str):
@@ -155,7 +168,7 @@ def main():
         '--task-groups',
         nargs='+',
         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'all'],
-        default=['Tox', 'Develop'],
+        default=['ADME'],
         help='选择要运行的任务组 (可以选择多个)'
     )
 
@@ -174,27 +187,32 @@ def main():
     else:
         TASK_GROUP_NAMEs = args.task_groups
 
+    DEBUG = True # TODO
+
     # ---------------- 配置 Logging ----------------
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    log_file = f'experiment_log_{timestamp}.log'
+    log_file = current_dir / 'logs' /f'experiment_log_{timestamp}.log'
 
     # 配置 logging：同时输出到控制台和文件
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
-            # logging.FileHandler(log_file, encoding='utf-8'),
+            logging.FileHandler(str(log_file), encoding='utf-8'),  # TODO: remember to turn on when you need (Debug)
             logging.StreamHandler()  # 同时输出到控制台
-        ]
+        ] if not DEBUG else [logging.StreamHandler()]
     )
     logger = logging.getLogger(__name__)
     logger.info(f"Logging initialized. Log file: {log_file}")
     logger.info(f"Selected task groups: {TASK_GROUP_NAMEs}")
 
     # ---------------- 配置区 ----------------
-    MODEL_NAME = "internlm/Intern-S1-mini"         # 也可用 "internlm/Intern-S1-mini-FP8"
-    LORA_PATH = "checkpoints/Intern-S1-mini/lora/sft/checkpoint-180000"  # 可为空字符串禁用 LoRA
-    USE_LORA = False
+    MODEL_NAME = "/data2/tianang/projects/Intern-S1/checkpoints/Intern-S1-mini/full/sft-ChemCoT/checkpoint-19904"         # 也可用 "internlm/Intern-S1-mini-FP8"
+                                                   # "jiosephlee/TDC_All_jiosephlee_Intern-S1-mini-lm_5ep_8e-05lr_64bs_ps_txgemma_v3_fps-no_attn_sdpa"
+                                                    #"/data2/tianang/projects/Intern-S1/checkpoints/Intern-S1-mini/full/sft-ChemCoT/checkpoint-19904" H100
+                                                    # "/data1/tianang/Projects/Intern-S1/checkpoints/Intern-S1-mini/full/sft-ChemCoT/checkpoint-19904" Node002
+    LORA_PATH = "checkpoints/Intern-S1-mini/lora/sft-ChemCoT/checkpoint-19904"  # 可为空字符串禁用 LoRA
+    USE_LORA = False # TODO
 
     # 采样与打分
     N_SAMPLES = args.n_samples  # 每题采样次数，从命令行参数获取
@@ -203,9 +221,11 @@ def main():
     TOP_P = 1.0
     TOP_K = 50
     # 可选：是否在题干中插入“先思考再回答，最后把最终选项写在 Answer: 后”
-    INJECT_STEPS_BEFORE_ANSWER = False  # 要不要开 thinking
+    INJECT_STEPS_BEFORE_ANSWER = True
     ENABLE_THINKING = INJECT_STEPS_BEFORE_ANSWER
     MAX_TOKENS = 1024 * 4 if INJECT_STEPS_BEFORE_ANSWER else 8 # 保证能"想完话"
+
+    FEW_SHOT = False # TODO
 
     # ---------------- 模型 & tokenizer ----------------
     # processor 仅在部分模型需要（比如多模态），此处保留可选
@@ -216,6 +236,13 @@ def main():
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
 
+    if 'Intern-S1-mini' in MODEL_NAME:
+        TENSOR_PARALLELE_SIZE = 1
+    elif 'Intern-S1-FP8' in MODEL_NAME:
+        TENSOR_PARALLELE_SIZE = 4  # 适配 H100
+    elif 'Intern-S1' in MODEL_NAME:
+        TENSOR_PARALLELE_SIZE = 8  # 适配 A100
+
     llm = LLM(
         model=MODEL_NAME,
         enforce_eager=True,
@@ -223,7 +250,7 @@ def main():
         max_num_batched_tokens=1024 * 24,
         quantization="fp8" if 'FP8' in MODEL_NAME else None,  # "fp8",          # 触发 FP8 W8A8 路径（或自动识别 FP8 检查点）
         dtype="bfloat16",
-        tensor_parallel_size=1 if 'Intern-S1-mini' in MODEL_NAME else 8,
+        tensor_parallel_size=TENSOR_PARALLELE_SIZE,  # 1 if 'Intern-S1-mini' in MODEL_NAME else 8,
         trust_remote_code=True,
         gpu_memory_utilization=0.92,
         max_num_seqs=256,
@@ -291,9 +318,22 @@ def main():
             )
         elif TASK_GROUP_NAME == 'ADME':
             TASK_NAMEs = [
-                'PAMPA_NCATS', 'HIA_Hou', 'Bioavailability_Ma', 'BBB_Martins', 'Pgp_Broccatelli',
-                'CYP1A2_Veith', 'CYP2C19_Veith', 'CYP2C9_Veith', 'CYP2D6_Veith', 'CYP3A4_Veith',
-                'CYP2C9_Substrate_CarbonMangels', 'CYP2D6_Substrate_CarbonMangels', 'CYP3A4_Substrate_CarbonMangels',
+                # 'PAMPA_NCATS',
+                # 'HIA_Hou',
+                # 'Bioavailability_Ma',
+                # 'BBB_Martins',
+                # 'Pgp_Broccatelli',
+
+                'CYP1A2_Veith',
+                # 'CYP2C19_Veith',
+
+                # 'CYP2C9_Veith',
+                # 'CYP2D6_Veith',
+                # 'CYP3A4_Veith',
+
+                # 'CYP2C9_Substrate_CarbonMangels',
+                # 'CYP2D6_Substrate_CarbonMangels',
+                # 'CYP3A4_Substrate_CarbonMangels',
             ]
         elif TASK_GROUP_NAME == 'HTS':
             TASK_NAMEs = [
@@ -415,13 +455,28 @@ def main():
                     )
 
                 if INJECT_STEPS_BEFORE_ANSWER:  # TODO: 新增的
-                    user_text = user_text.replace(
-                        'Answer:',
-                        'Please think step by step and then put ONLY your final choice ((A) or (B)) after "Answer:"'
-                    )
+                    if FEW_SHOT:
+                        few_shot_examples = [
+                            '<think>\ninput_structure:\nC[C@@H]([C@@H](C)O)N1CCN(c2ccccc2Cl)CC1\ncore_ring_identification:\npiperazine ring (N1CCNCC1) connected to a benzene ring (c2ccccc2Cl)\nscaffold_analysis:\nMurcko scaffold retains benzene ring connected to piperazine (Cl and other substituents removed)\nmatching_analysis:\nGiven scaffold (1-phenylpiperazine) matches the core rings after side-chain removal\noutput:\nYes\n</think>\nAnswer: \n{\n    ‘Output Scaffold’: c1ccc(N2CCNCC2)cc1,\n}',
+                            '<think>\ninput_structure:\nCCOP(=O)(OCC)[C@H]1NC(=O)NC1=O\ncore_ring_identification:\nimidazolidine-2,4-dione ring (5-membered with two carbonyl groups and two nitrogens)\nscaffold_analysis:\nO=C1CNC(=O)N1 corresponds to imidazolidine-2,4-dione, the core ring system\nmatching_analysis:\nAfter removing the diethoxyphosphoryl side chain, the remaining structure matches the provided Murcko scaffold\noutput:\nYes\n</think>\nAnswer: \n{\n    ‘Output Scaffold’: O=C1CNC(=O)N1,\n}',
+                            "<think>\ninput_structure:\nCc1sc(NC(=O)c2ccco2)c(C#N)c1C\ncore_ring_identification:\nthiophene (s-containing 5-membered ring) and furan (o-containing 5-membered ring)\nscaffold_analysis:\nMurcko scaffold contains fused thiophene and furan linked via amide bond (O=C-N)\nmatching_analysis:\nOriginal molecule's core rings (thiophene + furan) and connecting amide bond match the provided Murcko scaffold structure\noutput:\nYes\n</think>\nAnswer: \n{\n    ‘Output Scaffold’: O=C(Nc1cccs1)c1ccco1,\n}",
+                        ]
+
+                        few_shot_prompt = '\n'.join([f'\nexample{i+1}:\n{ex}' for i, ex in enumerate(few_shot_examples)])
+
+                        user_text = user_text.replace(
+                            'Answer:',
+                            f'Here are some structured reasoning examples for your reference: {few_shot_prompt}.\n Please follow the structured reasoning examples to think step by step and then put ONLY your final choice ((A) or (B)) after "Answer:"'
+                        )
+                    else:
+                        user_text = user_text.replace(
+                            'Answer:',
+                            'Please think step by step and then put ONLY your final choice ((A) or (B)) after "Answer:"'
+                        )
 
                 base_prompts.append(to_prompt_user_block(tokenizer, user_text, ENABLE_THINKING))
-                # break # TODO: for debug
+                if DEBUG:
+                    break # TODO: for debug
 
             # --------- 生成 ---------
             if USE_LORA:
@@ -437,10 +492,24 @@ def main():
 
             for i, out in enumerate(tqdm(outputs, desc=f"[{TASK_GROUP_NAME}/{TASK_NAME}] Parsing outputs ...")):
                 cnt_a = cnt_b = cnt_none = 0
+
+                if DEBUG:
+                    prompt = base_prompts[i] # TODO: debug
+                    gt_label = test_labels[i] # TODO: debug
+                    print('=' * 80)  # TODO: debug
+                    print('=' * 80)  # TODO: debug
+                    print(f'\nPrompt {i+1}:\n{prompt}') # TODO: debug
+                    print(f'\n\nGT lable: {gt_label}') # TODO: debug
+
                 for j, cand in enumerate(out.outputs):
                     txt = (cand.text or "").strip()
 
-                    # print(txt) # TODO: debug
+                    if DEBUG:
+                        print('=' * 80)  # TODO: debug
+                        print(f'\nReasoning {j+1}:\n{txt}') # TODO: debug
+                        print(f'\nGT lable {j+1}: {gt_label}')  # TODO: debug
+                        print('=' * 80)  # TODO: debug
+                        continue # TODO: debug
 
                     ans_txt, fmt_ok = extract_answer(txt)
                     pred = parse_answer(ans_txt, fmt_ok, ENABLE_THINKING)
@@ -482,11 +551,11 @@ def main():
             y_true = [int(test_labels[i]) for i in valid_idx]
             y_score = [float(p_scores[i]) for i in valid_idx]
 
-            print(f'\n{"="*80}')
-            print(f'[{TASK_GROUP_NAME}/{TASK_NAME}] EVALUATION RESULTS (MC sampling, None dropped)')
-            print(f'{"="*80}')
-            print(f'Items with defined p-hat: {len(valid_idx)}/{len(p_scores)} (dropped={failed_items})')
-            print(f'Parse counts across all samples: A={total_cnt_a}, B={total_cnt_b}, None={total_cnt_none}')
+            logger.info(f'\n{"="*80}')
+            logger.info(f'[{TASK_GROUP_NAME}/{TASK_NAME}] EVALUATION RESULTS (MC sampling, None dropped)')
+            logger.info(f'{"="*80}')
+            logger.info(f'Items with defined p-hat: {len(valid_idx)}/{len(p_scores)} (dropped={failed_items})')
+            logger.info(f'Parse counts across all samples: A={total_cnt_a}, B={total_cnt_b}, None={total_cnt_none}')
 
             # --------- 打印解析失败的样本 ---------
             if len(failed_parses) > 0:
@@ -510,8 +579,8 @@ def main():
             # --------- 计算 AUROC 并保存到对应列表 ---------
             if len(valid_idx) > 0 and len(set(y_true)) > 1:
                 auroc = roc_auc_score(y_true, y_score)
-                print(f'AUROC: {auroc:.4f}')
-                print(f'{"="*80}\n')
+                logger.info(f'AUROC: {auroc:.4f}')
+                logger.info(f'{"="*80}\n')
                 if TASK_GROUP_NAME == 'Tox':
                     if TASK_NAME.startswith('herg_central'):
                         herg_central_AUROCS.append(auroc)

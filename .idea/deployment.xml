@@ -24,6 +24,13 @@
           </mappings>
         </serverdata>
       </paths>
+      <paths name="ltianang@parcc:22 agent (2)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/vast/projects/xia6/apex-gen/tianang/projects/Intern-S1" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
       <paths name="reasonv(intern-s1) H100">
         <serverdata>
           <mappings>
