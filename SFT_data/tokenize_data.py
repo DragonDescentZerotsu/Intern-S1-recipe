@@ -2,10 +2,20 @@
 import os
 from datasets import load_dataset
 from transformers import AutoTokenizer
+<<<<<<< HEAD
 
 MODEL_NAME = "internlm/Intern-S1-mini-FP8"
 INPUT_JSON = "SFT_data/TDC_SFT_data_all_tasks.json"   # 顶层数组JSON
 OUT_DIR    = "SFT_data/TDC_SFT_data_all_tasks.arrow"
+=======
+from pathlib import Path
+
+current_dir = Path(__file__).parent.resolve()
+
+MODEL_NAME = "internlm/Intern-S1-mini-FP8"
+INPUT_JSON = current_dir/"SFT_data"/"TDC_SFT_data_all_tasks.json"   # 顶层数组JSON
+OUT_DIR    = current_dir/"SFT_data"/"TDC_SFT_data_all_tasks.arrow"
+>>>>>>> 14496c5f75f86b8064c818c7b9b05f570038301f
 MAX_LEN    = None
 enable_thinking = False
 
@@ -68,7 +78,11 @@ def main():
 
     # try_out = build_ids_and_labels(try_dict, tokenizer, add_eos=True, max_len=MAX_LEN)
 
+<<<<<<< HEAD
     raw = load_dataset("json", data_files=INPUT_JSON, split="train")  # 顶层数组JSON可直接读
+=======
+    raw = load_dataset("json", data_files=str(INPUT_JSON), split="train")  # 顶层数组JSON可直接读
+>>>>>>> 14496c5f75f86b8064c818c7b9b05f570038301f
     ds_tok = raw.map(
         lambda ex: build_ids_and_labels(ex, tokenizer, add_eos=False, max_len=MAX_LEN),
         remove_columns=raw.column_names,
@@ -76,7 +90,11 @@ def main():
         desc="Tokenizing with chat template",
     )
     print("Saveing tokenized dataset")
+<<<<<<< HEAD
     ds_tok.save_to_disk(OUT_DIR)  # Arrow落盘
+=======
+    ds_tok.save_to_disk(str(OUT_DIR))  # Arrow落盘
+>>>>>>> 14496c5f75f86b8064c818c7b9b05f570038301f
     print("Saved tokenized dataset to:", OUT_DIR)
 
 if __name__ == "__main__":

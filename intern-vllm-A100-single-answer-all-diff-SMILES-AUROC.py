@@ -1,5 +1,5 @@
-# import os
-# os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '3'
 
 from transformers import AutoProcessor, AutoTokenizer
 from vllm import LLM, SamplingParams

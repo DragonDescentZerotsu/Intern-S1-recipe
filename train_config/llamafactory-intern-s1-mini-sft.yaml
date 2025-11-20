@@ -30,7 +30,7 @@ dataloader_num_workers: 8
 enable_thinking: true  # false for TDC
 
 ### output
-output_dir: checkpoints/Intern-S1-mini/lora/sft-ChemCoT
+output_dir: checkpoints/Intern-S1-mini/full/sft-ChemCoT
 logging_steps: 100
 save_steps: 19904
 plot_loss: true
@@ -42,12 +42,12 @@ report_to: none  # choices: [none, wandb, tensorboard, swanlab, mlflow]
 per_device_train_batch_size: 1 # 4
 gradient_accumulation_steps: 1
 learning_rate: 1.0e-5
-num_train_epochs: 1.0
+num_train_epochs: 2.0
 lr_scheduler_type: cosine
 warmup_ratio: 0.1
 bf16: true
 ddp_timeout: 180000000
-resume_from_checkpoint: null
+resume_from_checkpoint: /vast/projects/xia6/apex-gen/tianang/projects/Intern-S1/checkpoints/Intern-S1-mini/full/sft-ChemCoT
 
 ### eval
 # val_size: 0.1

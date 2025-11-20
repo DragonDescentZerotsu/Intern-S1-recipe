@@ -1,6 +1,6 @@
 # 选择显卡
 import os
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "3")
+# os.environ.setdefault("CUDA_VISIBLE_DEVICES", "3")
 
 from pathlib import Path
 from accelerate import init_empty_weights
@@ -11,8 +11,8 @@ from tqdm import tqdm
 
 current_dir = Path(__file__).parent.resolve()
 
-ckpt = "internlm/Intern-S1-mini"  # 你也可以固定到特定 commit id 以锁定版本
-# ckpt = "internlm/Intern-S1"
+# ckpt = "internlm/Intern-S1-mini"  # 你也可以固定到特定 commit id 以锁定版本
+ckpt = "internlm/Intern-S1"
 # ckpt = "internlm/Intern-S1-mini-FP8"
 full = AutoModelForCausalLM.from_pretrained(
     ckpt, trust_remote_code=True, torch_dtype=torch.bfloat16
@@ -33,7 +33,7 @@ with init_empty_weights():
 print('clm:')
 print(clm)
 # exit(1)
-name2param_src = dict(lm_base.named_parameters())
+# name2param_src = dict(lm_base.named_parameters())
 
 with torch.no_grad():
     clm.model = lm_base  # 整个decoder子树都是真实的了
@@ -48,8 +48,8 @@ with torch.no_grad():
 # 4) 保存纯文本模型
 print('saving model...')
 # clm.save_pretrained(current_dir.parent/"checkpoints"/"megatron"/"hf_version"/"intern_s1_mini_text_llm")
-clm.save_pretrained(current_dir.parent/"checkpoints"/"megatron"/"hf_version"/"intern_s1_mini_text_llm_bf16")
-# clm.save_pretrained(current_dir.parent/"checkpoints"/"megatron"/"hf_version"/"intern_s1_text_llm")
+# clm.save_pretrained(current_dir.parent/"checkpoints"/"megatron"/"hf_version"/"intern_s1_mini_text_llm_bf16")
+clm.save_pretrained(current_dir.parent/"checkpoints"/"megatron"/"hf_version"/"intern_s1_text_llm")
 # clm.save_pretrained(current_dir.parent/"checkpoints"/"megatron"/"hf_version"/"intern_s1_mini_FP8_text_llm")
 print('saved')
 # 5) 保存 Intern-S1 自己的 tokenizer（含新增 tokens）

@@ -171,7 +171,9 @@ def main():
             provider.moe_num_experts = 128
             provider.moe_router_topk = 8
             provider.sequence_parallel = True
-            
+            provider.moe_token_dispatcher_type = "alltoall"
+            provider.moe_expert_capacity_factor = 1  # 1.0~1.25 看你数据偏不偏
+            provider.moe_token_drop_policy = "probs"  # 跟 NeMo 文档默认一致 :contentReference[oaicite:10]{index=10}
         provider.finalize()
         provider.initialize_model_parallel(seed=0)
         # megatron_model = bridge.load_megatron_model(
@@ -198,6 +200,13 @@ def main():
         provider.pipeline_dtype = torch.bfloat16
         provider.expert_model_parallel_size = ep
         provider.expert_tensor_parallel_size = etp
+        if MoE_model:
+            provider.moe_num_experts = 128
+            provider.moe_router_topk = 8
+            provider.sequence_parallel = True
+            provider.moe_token_dispatcher_type = "alltoall"
+            provider.moe_expert_capacity_factor = 1  # 1.0~1.25 看你数据偏不偏
+            provider.moe_token_drop_policy = "probs"  # 跟 NeMo 文档默认一致 :contentReference[oaicite:10]{index=10}
         provider.finalize()  # 让 Bridge 按照 A22B 架构构建 Megatron Core 模型
         provider.initialize_model_parallel(seed=0)
         megatron_model = provider.provide_distributed_model(wrap_with_ddp=False)
@@ -236,7 +245,7 @@ def main():
     )
 
     lora_config = LoRA(
-        target_modules=["linear_qkv", "linear_proj", "linear_fc1", "linear_fc2"],
+        target_modules=["linear_qkv", "linear_proj"] if MoE_model else ["linear_qkv", "linear_proj", "linear_fc1", "linear_fc2"],
         dim=16,       # LoRA rank r
         alpha=32,    # LoRA alpha
         dropout=0.05
@@ -244,9 +253,9 @@ def main():
 
     train_cfg = TrainingConfig(micro_batch_size=1,
                                global_batch_size=2,  # TODO: 至少需要和 DP 的数量相同
-                               train_iters=5,
-                               eval_iters=1,
-                               eval_interval=5,
+                               train_iters=100,
+                               eval_iters=10,
+                               eval_interval=10,
                                )
     optim_cfg = OptimizerConfig(
             optimizer="adam",
@@ -325,8 +334,6 @@ def main():
         # ... other config parameters
     )
     config.model.seq_length = seq_length  # TODO: 注意这里要和 dataset 的长度一样
-    if MoE_model:
-
 
 
     destroy_global_state()  # 防止 Rerun state 出错

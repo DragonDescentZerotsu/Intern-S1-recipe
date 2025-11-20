@@ -15,7 +15,7 @@ os.environ.setdefault("VLLM_ATTENTION_BACKEND", "TORCH_SDPA")
 mp.set_start_method("spawn", force=True)
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '4'
 
 from transformers import AutoProcessor, AutoTokenizer
 from vllm import LLM, SamplingParams
@@ -76,15 +76,17 @@ def main():
                                lora_int_id=1,
                                lora_path=LORA_PATH) # 你的 LoRA 目录
 
-    TASK_GROUP_NAMEs = ['ADME', 'Tox'] # 'ADME'/'Tox'/'HTS'/'Develop'/'PPI'/'TCREpitopeBinding'/'TrialOutcome'/'PeptideMHC'
+    TASK_GROUP_NAMEs = ['Develop', 'PPI', 'TCREpitopeBinding', 'PeptideMHC'] # 'ADME'/'Tox'/'HTS'/'Develop'/'PPI'/'TCREpitopeBinding'/'TrialOutcome'/'PeptideMHC'
 
     AUTO_FASTA = True
     if not AUTO_FASTA:
         FASTA_WRAP_TOKEN_PAIR = {'start':'<FASTA>',
                                  'end':'</FASTA>'}
     else:
-        FASTA_WRAP_TOKEN_PAIR = {'start':'',
-                                 'end':''}
+        FASTA_WRAP_TOKEN_PAIR = {'start':'<FASTA_AUTO_DETECT>',
+                                 'end':'</FASTA_AUTO_DETECT>'}
+
+    print(f'FASTA Wrap tokens: {FASTA_WRAP_TOKEN_PAIR["start"]} {FASTA_WRAP_TOKEN_PAIR["end"]}')
     # Tox
     ToxCast_AUROCS = []
     herg_central_AUROCS = []
@@ -308,33 +310,33 @@ def main():
                 if TASK_NAME == 'SAbDab_Chen':
                     smi = ast.literal_eval(smi)
                     user_text = tdc_prompts_json[TASK_NAME.replace('-', '_')].replace(
-                        '{Antibody heavy chain sequence}', f'<FASTA>{smi[0]}</FASTA>'
+                        '{Antibody heavy chain sequence}', f'{FASTA_WRAP_TOKEN_PAIR["start"]}{smi[0]}{FASTA_WRAP_TOKEN_PAIR["end"]}'
                     ).replace(
-                        '{Antibody light chain sequence}', f'<FASTA>{smi[1]}</FASTA>'
+                        '{Antibody light chain sequence}', f'{FASTA_WRAP_TOKEN_PAIR["start"]}{smi[1]}{FASTA_WRAP_TOKEN_PAIR["end"]}'
                     )
                     # print(user_text)
                     # exit(1)
                 elif TASK_NAME == 'HuRI':
                     user_text = tdc_prompts_json[TASK_NAME.replace('-', '_')].replace(
-                        '{Protein1 amino acid sequence}', f'<FASTA>{smi[0]}</FASTA>'
+                        '{Protein1 amino acid sequence}', f'{FASTA_WRAP_TOKEN_PAIR["start"]}{smi[0]}{FASTA_WRAP_TOKEN_PAIR["end"]}'
                     ).replace(
-                        '{Protein2 amino acid sequence}', f'<FASTA>{smi[1]}</FASTA>'
+                        '{Protein2 amino acid sequence}', f'{FASTA_WRAP_TOKEN_PAIR["start"]}{smi[1]}{FASTA_WRAP_TOKEN_PAIR["end"]}'
                     )
                     # print(user_text)
                     # exit(1)
                 elif TASK_NAME == 'Weber':
                     user_text = tdc_prompts_json['weber'].replace(
-                        '{Epitope amino acid sequence}', f'<FASTA>{smi[0]}</FASTA>'
+                        '{Epitope amino acid sequence}', f'{FASTA_WRAP_TOKEN_PAIR["start"]}{smi[0]}{FASTA_WRAP_TOKEN_PAIR["end"]}'
                     ).replace(
-                        '{TCR amino acid sequence}', f'<FASTA>{smi[1]}</FASTA>'
+                        '{TCR amino acid sequence}', f'{FASTA_WRAP_TOKEN_PAIR["start"]}{smi[1]}{FASTA_WRAP_TOKEN_PAIR["end"]}'
                     )
                     # print(user_text)
                     # exit(1)
                 elif TASK_NAME in ['MHC1_IEDB-IMGT_Nielsen', 'MHC2_IEDB_Jensen']:
                     user_text = tdc_prompts_json[TASK_NAME.replace('-', '_')].replace(
-                        '{Peptide amino acid sequence}', f'<FASTA>{smi[0]}</FASTA>'
+                        '{Peptide amino acid sequence}', f'{FASTA_WRAP_TOKEN_PAIR["start"]}{smi[0]}{FASTA_WRAP_TOKEN_PAIR["end"]}'
                     ).replace(
-                        '{Possible MHC pseudosequences}', f'<FASTA>{smi[1]}</FASTA>'
+                        '{Possible MHC pseudosequences}', f'{FASTA_WRAP_TOKEN_PAIR["start"]}{smi[1]}{FASTA_WRAP_TOKEN_PAIR["end"]}'
                     )
                     # print(user_text)
                     # exit(1)

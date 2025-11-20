@@ -18,6 +18,7 @@ from accelerate.utils import TERecipeKwargs, get_active_deepspeed_plugin  # ✅ 
 from tqdm import tqdm
 from peft import LoraConfig, get_peft_model
 import deepspeed
+import copy
 
 current_dir = Path(__file__).parent.resolve()
 
@@ -132,14 +133,14 @@ def main():
     # model（权重用 bf16；计算由 Accelerate 以 FP8/TE 管理）[
 
     if ZERO_STAGE == 3:
-        ds_plugin = get_active_deepspeed_plugin(accelerator.state)
-        ds_cfg = copy.deepcopy(ds_plugin.deepspeed_config)
+        # ds_plugin = get_active_deepspeed_plugin(accelerator.state)
+        # ds_cfg = copy.deepcopy(ds_plugin.deepspeed_config)
 
         # 2) 确保 batch 相关是整数（不要是 "auto"）
-        ds_cfg["train_micro_batch_size_per_gpu"] = int(BATCH_SIZE)
-        ds_cfg["gradient_accumulation_steps"] = int(GRAD_ACCUM)
-        with deepspeed.zero.Init(config_dict_or_path=ds_plugin.deepspeed_config):  # ★ 官方推荐写法
-            print('Preparing base model in zero stage 3...')
+        # ds_cfg["train_micro_batch_size_per_gpu"] = int(BATCH_SIZE)
+        # ds_cfg["gradient_accumulation_steps"] = int(GRAD_ACCUM)
+        with deepspeed.zero.Init():  # ★ 官方推荐写法
+            accelerator.print('Preparing base model in zero stage 3...')
             base_model = AutoModelForCausalLM.from_pretrained(
                 MODEL_NAME,
                 torch_dtype=torch.bfloat16,  # 权重 dtype
@@ -150,14 +151,14 @@ def main():
             base_model.gradient_checkpointing_enable()
 
             # LoRA 需在 prepare() 之前包裹
-            print('Preparing LoRA...')
+            accelerator.print('Preparing LoRA...')
             lora_cfg = LoraConfig(
                 r=16, lora_alpha=32, lora_dropout=0.05, bias="none",
                 task_type="CAUSAL_LM",
                 target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
             )
             model = get_peft_model(base_model, lora_cfg)
-            print('LoRA prepared.')
+            accelerator.print('LoRA prepared.')
     else:
         # === base model (bf16 weights; compute由Accelerate以FP8管理) ===
         base_model = AutoModelForCausalLM.from_pretrained(
@@ -169,7 +170,7 @@ def main():
         base_model.gradient_checkpointing_enable()  # 与 LoRA 兼容
 
         # === LoRA：仅此处为新增/改动 ===
-        print('Preparing LoRA...')
+        accelerator.print('Preparing LoRA...')
         lora_cfg = LoraConfig(
             r=16,
             lora_alpha=32,
@@ -179,15 +180,15 @@ def main():
             target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
         )
         model = get_peft_model(base_model, lora_cfg)
-        print('LoRA prepared.')
+        accelerator.print('LoRA prepared.')
 
     # 先 prepare，再据此计算 scheduler 的总步数
     optimizer = torch.optim.AdamW((p for p in model.parameters() if p.requires_grad), lr=LR, betas=(0.9, 0.999), weight_decay=0.0)
 
     # 让 Accelerate 接管模型/优化器/数据
-    print('Preparing accelerator model...')
+    accelerator.print('Preparing accelerator model...')
     model, optimizer, dl = accelerator.prepare(model, optimizer, dl)
-    print('Accelerator model prepared.')
+    accelerator.print('Accelerator model prepared.')
 
     # ✅ 准确计算总更新步数（分布式场景下 len(dl) 已变化）
     num_update_steps_per_epoch = math.ceil(len(dl) / 1)  # 因为我们把累积步交给 Accelerator 了
