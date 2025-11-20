@@ -168,7 +168,7 @@ def main():
         '--task-groups',
         nargs='+',
         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'all'],
-        default=['ADME'],
+        default=['PPI'],
         help='选择要运行的任务组 (可以选择多个)'
     )
 
@@ -207,7 +207,7 @@ def main():
     logger.info(f"Selected task groups: {TASK_GROUP_NAMEs}")
 
     # ---------------- 配置区 ----------------
-    MODEL_NAME = "/data2/tianang/projects/Intern-S1/checkpoints/Intern-S1-mini/full/sft-ChemCoT/checkpoint-19904"         # 也可用 "internlm/Intern-S1-mini-FP8"
+    MODEL_NAME = "internlm/Intern-S1-FP8"         # 也可用 "internlm/Intern-S1-mini-FP8"
                                                    # "jiosephlee/TDC_All_jiosephlee_Intern-S1-mini-lm_5ep_8e-05lr_64bs_ps_txgemma_v3_fps-no_attn_sdpa"
                                                     #"/data2/tianang/projects/Intern-S1/checkpoints/Intern-S1-mini/full/sft-ChemCoT/checkpoint-19904" H100
                                                     # "/data1/tianang/Projects/Intern-S1/checkpoints/Intern-S1-mini/full/sft-ChemCoT/checkpoint-19904" Node002
@@ -223,7 +223,7 @@ def main():
     # 可选：是否在题干中插入“先思考再回答，最后把最终选项写在 Answer: 后”
     INJECT_STEPS_BEFORE_ANSWER = True
     ENABLE_THINKING = INJECT_STEPS_BEFORE_ANSWER
-    MAX_TOKENS = 1024 * 4 if INJECT_STEPS_BEFORE_ANSWER else 8 # 保证能"想完话"
+    MAX_TOKENS = 1024 * 10 if INJECT_STEPS_BEFORE_ANSWER else 8 # 保证能"想完话"
 
     FEW_SHOT = False # TODO
 
