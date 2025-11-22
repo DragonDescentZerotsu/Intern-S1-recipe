@@ -1,0 +1,57 @@
+### model
+model_name_or_path: internlm/Intern-S1
+infer_dtype: bfloat16
+#image_max_pixels: 262144
+#video_max_pixels: 16384
+trust_remote_code: true
+
+### method
+stage: sft
+do_train: true
+finetuning_type: lora # lora
+lora_target: all
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.05
+freeze_vision_tower: true
+freeze_multi_modal_projector: true
+freeze_language_model: false
+deepspeed: train_config/ds_z3_config.json
+flash_attn: fa2
+
+### dataset
+dataset_dir: SFT_data/SFT_data
+dataset: TDC_SFT_data_all_tasks
+template: intern_s1
+cutoff_len: 32000
+max_samples: null
+overwrite_cache: true
+preprocessing_num_workers: 64
+dataloader_num_workers: 8
+enable_thinking: false
+
+### output
+output_dir: checkpoints/Intern-S1/lora/sft
+logging_steps: 100
+save_steps: 10000
+plot_loss: true
+overwrite_output_dir: true
+save_only_model: false
+report_to: none  # choices: [none, wandb, tensorboard, swanlab, mlflow]
+
+### train
+per_device_train_batch_size: 1 # 4
+gradient_accumulation_steps: 1
+learning_rate: 1.0e-5
+num_train_epochs: 1.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+bf16: true
+ddp_timeout: 180000000
+resume_from_checkpoint: null
+
+### eval
+# val_size: 0.1
+# per_device_eval_batch_size: 1
+# eval_strategy: steps
+# eval_steps: 500

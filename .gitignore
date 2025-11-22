@@ -1,0 +1,20 @@
+
+# excluding training datasets
+/SFT_data/*
+!/SFT_data/*.py
+!/SFT_data/*.md
+
+# excluding TDC downloaded data
+data/
+
+# excluding running logs
+/logs/*
+
+# excluding Homework
+/CIS_5300_HW
+
+# excluding checkpoints
+/checkpoints
+
+# excluding PyCharm cache
+__pycache__/
