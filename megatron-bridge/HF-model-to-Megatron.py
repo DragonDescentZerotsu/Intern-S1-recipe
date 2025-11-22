@@ -10,8 +10,9 @@ import torch
 
 current_dir = Path(__file__).parent.resolve()
 
-# ckpt = "internlm/Intern-S1-mini"  # 你也可以固定到特定 commit id 以锁定版本
-ckpt = "internlm/Intern-S1"
+ckpt = "internlm/Intern-S1-mini"  # 你也可以固定到特定 commit id 以锁定版本
+# ckpt = "internlm/Intern-S1"
+# ckpt = "internlm/Intern-S1-mini-FP8"
 full = AutoModelForCausalLM.from_pretrained(
     ckpt, trust_remote_code=True, torch_dtype=torch.bfloat16
 )
@@ -24,16 +25,21 @@ print('full model:')
 print(full)
 print('lm_base:')
 print(lm_base)
+# exit(1)
 # 3) 构建一个“标准的”CausalLM，并把基座权重 + lm_head 一起灌进去
 clm = AutoModelForCausalLM.from_config(text_cfg)   # 得到 Qwen3-MoE ForCausalLM
+print('clm:')
+print(clm)
+# exit(1)
 missing, unexpected = clm.model.load_state_dict(lm_base.state_dict(), strict=False)
 # 把头也拷过来（Intern-S1 的 lm_head 在外层）
 with torch.no_grad():
     clm.lm_head.weight.copy_(full.lm_head.weight)  # tied或untied都覆盖到
 
 # 4) 保存纯文本模型
-# clm.save_pretrained(current_dir.parent/"checkpoints"/"megatron"/"hf_version"/"intern_s1_mini_text_llm")
-clm.save_pretrained(current_dir.parent/"checkpoints"/"megatron"/"hf_version"/"intern_s1_text_llm")
+clm.save_pretrained(current_dir.parent/"checkpoints"/"megatron"/"hf_version"/"intern_s1_mini_text_llm")
+# clm.save_pretrained(current_dir.parent/"checkpoints"/"megatron"/"hf_version"/"intern_s1_text_llm")
+# clm.save_pretrained(current_dir.parent/"checkpoints"/"megatron"/"hf_version"/"intern_s1_mini_FP8_text_llm")
 
 # 5) 保存 Intern-S1 自己的 tokenizer（含新增 tokens）
 tok = AutoTokenizer.from_pretrained(ckpt, trust_remote_code=True, use_fast=True)

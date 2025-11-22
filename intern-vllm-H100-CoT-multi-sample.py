@@ -96,7 +96,7 @@ def main():
     fig_save_path = current_dir / 'figs'
     fig_save_path.mkdir(exist_ok=True)
 
-    model_name = "internlm/Intern-S1-mini"
+    model_name = "internlm/Intern-S1-mini-FP8"
     processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=True)
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     # model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", torch_dtype="auto", trust_remote_code=True)
@@ -108,7 +108,7 @@ def main():
         # tokenizer_mode="slow",
         max_model_len=1024*8,
         max_num_batched_tokens=1024*8,  # 限制每轮处理 token 上限，减少瞬时显存
-        # quantization="fp8", #"fp8",          # 触发 FP8 W8A8 路径（或自动识别 FP8 检查点）
+        quantization="fp8", #"fp8",          # 触发 FP8 W8A8 路径（或自动识别 FP8 检查点）
         dtype="bfloat16",            # 非 FP8 运算与累加精度（与 FP8 内核配套）
         tensor_parallel_size=4 if model_name=="internlm/Intern-S1-FP8" else 1,      # Tensor Parallel（按你的卡数调整）
         # kv_cache_dtype="fp8_e5m2",   # H100 上常用的 KV Cache 精度

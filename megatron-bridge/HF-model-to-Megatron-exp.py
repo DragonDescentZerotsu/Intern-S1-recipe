@@ -1,6 +1,6 @@
 # 选择显卡
 import os
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "3")
+# os.environ.setdefault("CUDA_VISIBLE_DEVICES", "3")
 
 from pathlib import Path
 from accelerate import init_empty_weights
@@ -33,7 +33,7 @@ with init_empty_weights():
 print('clm:')
 print(clm)
 # exit(1)
-name2param_src = dict(lm_base.named_parameters())
+# name2param_src = dict(lm_base.named_parameters())
 
 with torch.no_grad():
     clm.model = lm_base  # 整个decoder子树都是真实的了
@@ -48,6 +48,7 @@ with torch.no_grad():
 # 4) 保存纯文本模型
 print('saving model...')
 # clm.save_pretrained(current_dir.parent/"checkpoints"/"megatron"/"hf_version"/"intern_s1_mini_text_llm")
+# clm.save_pretrained(current_dir.parent/"checkpoints"/"megatron"/"hf_version"/"intern_s1_mini_text_llm_bf16")
 clm.save_pretrained(current_dir.parent/"checkpoints"/"megatron"/"hf_version"/"intern_s1_text_llm")
 # clm.save_pretrained(current_dir.parent/"checkpoints"/"megatron"/"hf_version"/"intern_s1_mini_FP8_text_llm")
 print('saved')

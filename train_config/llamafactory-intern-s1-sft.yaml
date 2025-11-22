@@ -3,6 +3,11 @@ model_name_or_path: internlm/Intern-S1
 infer_dtype: bfloat16
 #image_max_pixels: 262144
 #video_max_pixels: 16384
+<<<<<<< HEAD
+=======
+#quantization_bit: 4  # choices: [8 (bnb/hqq/eetq), 4 (bnb/hqq), 3 (hqq), 2 (hqq)]
+#quantization_method: bnb  # choices: [bnb, hqq, eetq]
+>>>>>>> 90bfe00c0d6049e0720b1d1d18e15442c13465f2
 trust_remote_code: true
 
 ### method
@@ -18,6 +23,14 @@ freeze_multi_modal_projector: true
 freeze_language_model: false
 deepspeed: train_config/ds_z3_config.json
 flash_attn: fa2
+<<<<<<< HEAD
+=======
+# ✅ 新增：开启 Liger Kernel
+#enable_liger_kernel: true   # LLaMA-Factory 原生支持的开关
+
+# ❌ 建议先别开（多卡+ZeRO-3 下不稳）
+#use_unsloth: false
+>>>>>>> 90bfe00c0d6049e0720b1d1d18e15442c13465f2
 
 ### dataset
 dataset_dir: SFT_data/SFT_data
@@ -26,14 +39,24 @@ template: intern_s1
 cutoff_len: 32000
 max_samples: null
 overwrite_cache: true
+<<<<<<< HEAD
 preprocessing_num_workers: 64
 dataloader_num_workers: 8
+=======
+preprocessing_num_workers: 8
+dataloader_num_workers: 8
+tokenized_path: SFT_data/SFT_data/llamafactory_intern_s1_tokenized
+>>>>>>> 90bfe00c0d6049e0720b1d1d18e15442c13465f2
 enable_thinking: false
 
 ### output
 output_dir: checkpoints/Intern-S1/lora/sft
 logging_steps: 100
+<<<<<<< HEAD
 save_steps: 10000
+=======
+save_steps: 50000
+>>>>>>> 90bfe00c0d6049e0720b1d1d18e15442c13465f2
 plot_loss: true
 overwrite_output_dir: true
 save_only_model: false
@@ -47,8 +70,15 @@ num_train_epochs: 1.0
 lr_scheduler_type: cosine
 warmup_ratio: 0.1
 bf16: true
+<<<<<<< HEAD
 ddp_timeout: 180000000
 resume_from_checkpoint: null
+=======
+#pure_bf16: true
+ddp_timeout: 180000000
+resume_from_checkpoint: null
+#disable_gradient_checkpointing: true
+>>>>>>> 90bfe00c0d6049e0720b1d1d18e15442c13465f2
 
 ### eval
 # val_size: 0.1

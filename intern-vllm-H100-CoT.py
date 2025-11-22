@@ -1,5 +1,5 @@
-import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+# import os
+# os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 from transformers import AutoProcessor, AutoModelForCausalLM, AutoTokenizer
 from vllm import LLM, SamplingParams
 from vllm.inputs import TokensPrompt
@@ -8,13 +8,9 @@ import os
 import json
 from huggingface_hub import hf_hub_download
 from tdc.single_pred import ADME
-from sklearn.metrics import roc_auc_score, roc_curve
-import matplotlib.pyplot as plt
+from sklearn.metrics import roc_auc_score
 import re
 from tqdm import tqdm
-from pathlib import Path
-
-current_dir = Path(__file__).parent.resolve()
 
 def extract_answer(response):
     """从模型回答中提取最后一个Answer:之后的内容"""
@@ -92,11 +88,7 @@ def parse_answer(answer_text, format_correct):
 # os.environ.setdefault("OMP_NUM_THREADS", "1")
 
 def main():
-
-    fig_save_path = current_dir / 'figs'
-    fig_save_path.mkdir(exist_ok=True)
-
-    model_name = "internlm/Intern-S1-mini"
+    model_name = "internlm/Intern-S1-FP8"
     processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=True)
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     # model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", torch_dtype="auto", trust_remote_code=True)
@@ -108,7 +100,7 @@ def main():
         # tokenizer_mode="slow",
         max_model_len=1024*8,
         max_num_batched_tokens=1024*8,  # 限制每轮处理 token 上限，减少瞬时显存
-        # quantization="fp8", #"fp8",          # 触发 FP8 W8A8 路径（或自动识别 FP8 检查点）
+        quantization="fp8", #"fp8",          # 触发 FP8 W8A8 路径（或自动识别 FP8 检查点）
         dtype="bfloat16",            # 非 FP8 运算与累加精度（与 FP8 内核配套）
         tensor_parallel_size=4 if model_name=="internlm/Intern-S1-FP8" else 1,      # Tensor Parallel（按你的卡数调整）
         # kv_cache_dtype="fp8_e5m2",   # H100 上常用的 KV Cache 精度
@@ -132,8 +124,8 @@ def main():
 
     data = ADME(name=task_name)
     split = data.get_split()
-    test_drugs = split['test']['Drug']#[:5]
-    test_labels = split['test']['Y']#[:5]
+    test_drugs = split['test']['Drug']
+    test_labels = split['test']['Y']
 
     print(f'Total test samples: {len(test_drugs)}')
     print(f'Test labels: {test_labels[:5]}...')  # 显示前5个标签
@@ -160,7 +152,7 @@ def main():
     sp = SamplingParams(max_tokens=1024*8,
                         temperature=0.7,
                         top_p=1.0,
-                        n=16,
+                        # n=16,
                         top_k=50)
     outputs = llm.generate(all_prompts, sp)
 
@@ -172,65 +164,33 @@ def main():
     p_scores = []  # 每题的 \hat p
     per_item_stats = []  # 记录各题 A/B/None 计数
 
-    print('\nProcessing sampled outputs...')
+    print('\nProcessing outputs...')
     for idx, out in enumerate(tqdm(outputs)):
-        cnt_a, cnt_b, cnt_none = 0, 0, 0
-        # vLLM: out.outputs 是长度 n 的候选列表
-        for j, cand in enumerate(out.outputs):
-            txt = cand.text.strip()
-            ans_txt, fmt_ok = extract_answer(txt)
-            pred = parse_answer(ans_txt, fmt_ok)
-            if pred == 0:
-                cnt_a += 1
-            elif pred == 1:
-                cnt_b += 1
-            else:
-                cnt_none += 1
+        decoded_output = out.outputs[0].text.strip()
 
-            if pred is None:
-                failed_parses.append({
-                    'index': idx,
-                    'drug_smiles': test_drugs[idx],
-                    'full_output': txt,
-                    'extracted_answer': ans_txt,
-                    'true_label': test_labels[idx]
-                })
+        if idx < 3:  # 显示前3个样本的详细输出
+            print(f'\n[Sample {idx}] Output: {decoded_output}')
 
-            # 仅前2题展示前若干采样，便于 sanity check
-            if idx < 2 and j < 3:
-                print(f'\n[Item {idx} | Sample {j}]')
-                print(f'Raw: {txt}')
-                print(f'Parsed -> {pred}')
-
-
-        denom = cnt_a + cnt_b
-        if denom == 0:
-            p_hat = None  # 全部解析失败，留空
-        else:
-            p_hat = cnt_b / denom
-
-        p_scores.append(p_hat)
-        per_item_stats.append((cnt_a, cnt_b, cnt_none))
         # 提取并解析答案
-        # answer_text, format_correct = extract_answer(decoded_output)
-        # pred = parse_answer(answer_text, format_correct)
+        answer_text, format_correct = extract_answer(decoded_output)
+        pred = parse_answer(answer_text, format_correct)
 
-        # predictions.append(pred)
+        predictions.append(pred)
 
         # 记录解析失败的样本
-        # if pred is None:
-        #     failed_parses.append({
-        #         'index': idx,
-        #         'drug_smiles': test_drugs[idx],
-        #         'full_output': decoded_output,
-        #         'extracted_answer': answer_text,
-        #         'true_label': test_labels[idx]
-        #     })
-        #
-        # if idx < 3:  # 显示前3个样本的解析结果
-        #     print(f'Extracted answer: {answer_text}')
-        #     print(f'Prediction (A->0, B->1): {pred}')
-        #     print(f'True label: {test_labels[idx]}')
+        if pred is None:
+            failed_parses.append({
+                'index': idx,
+                'drug_smiles': test_drugs[idx],
+                'full_output': decoded_output,
+                'extracted_answer': answer_text,
+                'true_label': test_labels[idx]
+            })
+
+        if idx < 3:  # 显示前3个样本的解析结果
+            print(f'Extracted answer: {answer_text}')
+            print(f'Prediction (A->0, B->1): {pred}')
+            print(f'True label: {test_labels[idx]}')
 
     # 版本1: 过滤掉None值
     valid_indices = [i for i, pred in enumerate(predictions) if pred is not None]
@@ -244,6 +204,33 @@ def main():
             predictions_with_uncertain.append(0.5)
         else:
             predictions_with_uncertain.append(float(pred))
+
+    print('\n' + '='*80)
+    print('EVALUATION RESULTS')
+    print('='*80)
+
+    # 计算AUROC - 版本1 (过滤None)
+    print(f'\n[Version 1] Filtered None values:')
+    if len(filtered_predictions) > 0 and len(set(filtered_labels)) > 1:
+        auroc_filtered = roc_auc_score(filtered_labels, filtered_predictions)
+        print(f'  Mapping: (A) -> 0 (negative), (B) -> 1 (positive)')
+        print(f'  Valid samples: {len(filtered_predictions)}/{len(predictions)}')
+        print(f'  AUROC: {auroc_filtered:.4f}')
+    else:
+        print(f'  Cannot calculate AUROC (no valid predictions or only one class)')
+
+    # 计算AUROC - 版本2 (None=0.5)
+    print(f'\n[Version 2] None as uncertain (0.5):')
+    none_count = sum(1 for pred in predictions if pred is None)
+    if len(set(test_labels)) > 1:
+        auroc_uncertain = roc_auc_score(test_labels, predictions_with_uncertain)
+        print(f'  Mapping: (A) -> 0 (negative), (B) -> 1 (positive), None -> 0.5')
+        print(f'  None values: {none_count}/{len(predictions)}')
+        print(f'  AUROC: {auroc_uncertain:.4f}')
+    else:
+        print(f'  Cannot calculate AUROC (only one class in labels)')
+
+    print('\n' + '='*80)
 
     # 打印所有解析失败的样本
     if len(failed_parses) > 0:
@@ -259,54 +246,6 @@ def main():
             print('-' * 80)
     else:
         print('\nNo failed parses!')
-
-
-    # 计算AUROC - 版本1 (过滤None)
-    # —— 计算 AUROC（仅用有定义的 p_hat）——
-    valid_idx = [i for i, p in enumerate(p_scores) if p is not None]
-    y_true = [test_labels[i] for i in valid_idx]
-    y_score = [p_scores[i] for i in valid_idx]
-
-    print('y_true', y_true)
-    print('y_score', y_score)
-
-    print('\n' + '=' * 80)
-    print('EVALUATION RESULTS (MC sampling, None dropped)')
-    print('=' * 80)
-    dropped = len(p_scores) - len(valid_idx)
-    print(f'Items with defined p-hat: {len(valid_idx)}/{len(p_scores)} (dropped={dropped})')
-    if len(valid_idx) > 0 and len(set(y_true)) > 1:
-        auroc = roc_auc_score(y_true, y_score)
-        print(f'AUROC: {auroc:.4f}')
-
-        # 绘制ROC曲线
-        fpr, tpr, thresholds = roc_curve(y_true, y_score)
-
-        plt.figure(figsize=(8, 6))
-        plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (AUC = {auroc:.4f})')
-        plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label='Random classifier')
-        plt.xlim([0.0, 1.0])
-        plt.ylim([0.0, 1.05])
-        plt.xlabel('False Positive Rate')
-        plt.ylabel('True Positive Rate')
-        plt.title(f'ROC Curve - {task_name}')
-        plt.legend(loc="lower right")
-        plt.grid(True, alpha=0.3)
-
-        # 保存图像
-        plt.savefig(fig_save_path/f'roc_curve_{task_name}_{model_name.split("/")[-1]}.png', dpi=300, bbox_inches='tight')
-        print(f'\nROC curve saved to: roc_curve_{task_name}.png')
-        plt.close()
-    else:
-        print('Cannot compute AUROC (no valid items or only one class).')
-
-    # 可选：汇总解析统计
-    total_a = sum(a for a, b, n in per_item_stats)
-    total_b = sum(b for a, b, n in per_item_stats)
-    total_none = sum(n for a, b, n in per_item_stats)
-    print(f'\nParse counts across all samples: A={total_a}, B={total_b}, None={total_none}')
-    print('=' * 80)
-
 
 if __name__ == "__main__":
     main()
