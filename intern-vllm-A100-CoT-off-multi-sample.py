@@ -11,11 +11,11 @@ if os.environ.get('PYTHONHASHSEED') != '42':
     os.environ['PYTHONHASHSEED'] = '42'
     os.execv(sys.executable, [sys.executable] + sys.argv)
 
-# ---------------- vLLM & CUDA 环境 ----------------
-# os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
-# os.environ.setdefault("VLLM_USE_V1", "1")
-# os.environ.setdefault("VLLM_ATTENTION_BACKEND", "TORCH_SDPA")
-# mp.set_start_method("spawn", force=True)
+# ---------------- vLLM & CUDA 环境 在 A100 上 是必须的----------------
+os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
+os.environ.setdefault("VLLM_USE_V1", "1")
+os.environ.setdefault("VLLM_ATTENTION_BACKEND", "TORCH_SDPA")
+mp.set_start_method("spawn", force=True)
 
 # 选择显卡
 # os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
@@ -207,7 +207,7 @@ def main():
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler(str(log_file), encoding='utf-8'),  # TODO: remember to turn on when you need (Debug)
+            logging.FileHandler(str(log_file), encoding='utf-8'),  # TODO: logging to file (Debug)
             logging.StreamHandler()  # 同时输出到控制台
         ] if not DEBUG else [logging.StreamHandler()]
     )
@@ -216,7 +216,7 @@ def main():
     logger.info(f"Selected task groups: {TASK_GROUP_NAMEs}")
 
     # ---------------- 配置区 ----------------
-    MODEL_NAME = "internlm/Intern-S1-FP8"         # 也可用 "internlm/Intern-S1-mini-FP8"
+    MODEL_NAME = "internlm/Intern-S1"         # 也可用 "internlm/Intern-S1-mini-FP8"
                                                    # "jiosephlee/TDC_All_jiosephlee_Intern-S1-mini-lm_5ep_8e-05lr_64bs_ps_txgemma_v3_fps-no_attn_sdpa"
                                                     #"/data2/tianang/projects/Intern-S1/checkpoints/Intern-S1-mini/full/sft-ChemCoT/checkpoint-19904" H100
                                                     # "/data1/tianang/Projects/Intern-S1/checkpoints/Intern-S1-mini/full/sft-ChemCoT/checkpoint-19904" Node002
@@ -393,10 +393,10 @@ def main():
             elif TASK_GROUP_NAME == 'Develop':
                 data = Develop(name=TASK_NAME)
             elif TASK_GROUP_NAME == 'PPI':
-                if DEBUG and TASK_NAME == 'HuRI':  # HuRI debug 的时候我希望只看一些正样本，因为负样本是随机生成的
-                    data = PPI(name=TASK_NAME)
-                else:
-                    data = PPI(name=TASK_NAME).neg_sample(frac=1)
+                # if DEBUG and TASK_NAME == 'HuRI':  # HuRI debug 的时候我希望只看一些正样本，因为负样本是随机生成的
+                #     data = PPI(name=TASK_NAME)
+                # else:
+                data = PPI(name=TASK_NAME).neg_sample(frac=1)
             elif TASK_GROUP_NAME == 'TCREpitopeBinding':
                 data = TCREpitopeBinding(name=TASK_NAME)
             elif TASK_GROUP_NAME == 'TrialOutcome':
