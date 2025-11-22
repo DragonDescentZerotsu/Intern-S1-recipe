@@ -5,6 +5,12 @@ CUDA_VISIBLE_DEVICES=1 python intern-vllm-A100-CoT-off-multi-sample.py --task-gr
 
 
 import os, multiprocessing as mp
+import sys
+# make sure the HuRI negtive sampling is the same across runs
+if os.environ.get('PYTHONHASHSEED') != '42':
+    os.environ['PYTHONHASHSEED'] = '42'
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
 # ---------------- vLLM & CUDA 环境 ----------------
 # os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
 # os.environ.setdefault("VLLM_USE_V1", "1")
@@ -35,6 +41,7 @@ from pathlib import Path
 import logging
 from datetime import datetime
 import argparse
+import random
 
 current_dir = Path(__file__).parent.resolve()
 # import pydevd_pycharm
@@ -187,6 +194,8 @@ def main():
     else:
         TASK_GROUP_NAMEs = args.task_groups
 
+    np.random.seed(42)
+    random.seed(42)
     DEBUG = True # TODO
 
     # ---------------- 配置 Logging ----------------
@@ -384,7 +393,10 @@ def main():
             elif TASK_GROUP_NAME == 'Develop':
                 data = Develop(name=TASK_NAME)
             elif TASK_GROUP_NAME == 'PPI':
-                data = PPI(name=TASK_NAME).neg_sample(frac=1)
+                if DEBUG and TASK_NAME == 'HuRI':  # HuRI debug 的时候我希望只看一些正样本，因为负样本是随机生成的
+                    data = PPI(name=TASK_NAME)
+                else:
+                    data = PPI(name=TASK_NAME).neg_sample(frac=1)
             elif TASK_GROUP_NAME == 'TCREpitopeBinding':
                 data = TCREpitopeBinding(name=TASK_NAME)
             elif TASK_GROUP_NAME == 'TrialOutcome':
@@ -433,9 +445,9 @@ def main():
                     )
                 elif tn == 'HuRI':
                     user_text = tdc_prompts_json[tn.replace('-', '_')].replace(
-                        '{Protein1 amino acid sequence}', f'<FASTA>{entry[0]}</FASTA>'
+                        '{Protein1 amino acid sequence}', f'<FASTA>{entry[0].split("*")[0]}</FASTA>'  # For HuRI task, there could be many similar protein sequence related to the same protein, let's take the first one for prediction.
                     ).replace(
-                        '{Protein2 amino acid sequence}', f'<FASTA>{entry[1]}</FASTA>'
+                        '{Protein2 amino acid sequence}', f'<FASTA>{entry[1].split("*")[0]}</FASTA>'
                     )
                 elif tn == 'Weber':
                     user_text = tdc_prompts_json['weber'].replace(
