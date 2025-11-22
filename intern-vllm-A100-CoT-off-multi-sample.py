@@ -196,7 +196,7 @@ def main():
 
     np.random.seed(42)
     random.seed(42)
-    DEBUG = True # TODO
+    DEBUG = True # TODO DEBUG
 
     # ---------------- 配置 Logging ----------------
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -216,12 +216,13 @@ def main():
     logger.info(f"Selected task groups: {TASK_GROUP_NAMEs}")
 
     # ---------------- 配置区 ----------------
-    MODEL_NAME = "internlm/Intern-S1-FP8"         # 也可用 "internlm/Intern-S1-mini-FP8"
+    MODEL_NAME = "internlm/Intern-S1-FP8"         # TODO MODEL_NAME
+                                                # "internlm/Intern-S1-mini-FP8"
                                                    # "jiosephlee/TDC_All_jiosephlee_Intern-S1-mini-lm_5ep_8e-05lr_64bs_ps_txgemma_v3_fps-no_attn_sdpa"
                                                     #"/data2/tianang/projects/Intern-S1/checkpoints/Intern-S1-mini/full/sft-ChemCoT/checkpoint-19904" H100
                                                     # "/data1/tianang/Projects/Intern-S1/checkpoints/Intern-S1-mini/full/sft-ChemCoT/checkpoint-19904" Node002
     LORA_PATH = "checkpoints/Intern-S1-mini/lora/sft-ChemCoT/checkpoint-19904"  # 可为空字符串禁用 LoRA
-    USE_LORA = False # TODO
+    USE_LORA = False # TODO USE_LORA
 
     # 采样与打分
     N_SAMPLES = args.n_samples  # 每题采样次数，从命令行参数获取
@@ -234,7 +235,7 @@ def main():
     ENABLE_THINKING = INJECT_STEPS_BEFORE_ANSWER
     MAX_TOKENS = 1024 * 10 if INJECT_STEPS_BEFORE_ANSWER else 8 # 保证能"想完话"
 
-    FEW_SHOT = False # TODO
+    FEW_SHOT = False # TODO FEW_SHOT
 
     # ---------------- 模型 & tokenizer ----------------
     # processor 仅在部分模型需要（比如多模态），此处保留可选
