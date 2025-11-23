@@ -12,13 +12,13 @@ if os.environ.get('PYTHONHASHSEED') != '42':
     os.execv(sys.executable, [sys.executable] + sys.argv)
 
 # ---------------- vLLM & CUDA 环境 在 A100 上 是必须的----------------
-os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
-os.environ.setdefault("VLLM_USE_V1", "1")
-os.environ.setdefault("VLLM_ATTENTION_BACKEND", "TORCH_SDPA")
-mp.set_start_method("spawn", force=True)
+# os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
+# os.environ.setdefault("VLLM_USE_V1", "1")
+# os.environ.setdefault("VLLM_ATTENTION_BACKEND", "TORCH_SDPA")
+# mp.set_start_method("spawn", force=True)
 
 # 选择显卡
-# os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "3")  # TODO: GPU choice
 
 from transformers import AutoTokenizer, AutoProcessor
 from vllm import LLM, SamplingParams
@@ -216,7 +216,7 @@ def main():
     logger.info(f"Selected task groups: {TASK_GROUP_NAMEs}")
 
     # ---------------- 配置区 ----------------
-    MODEL_NAME = "internlm/Intern-S1-FP8"         # TODO MODEL_NAME
+    MODEL_NAME = "/data2/tianang/projects/Intern-S1/checkpoints/Intern-S1-mini/full/sft-ChemCoT/checkpoint-19904"         # TODO MODEL_NAME
                                                 # "internlm/Intern-S1-mini-FP8"
                                                    # "jiosephlee/TDC_All_jiosephlee_Intern-S1-mini-lm_5ep_8e-05lr_64bs_ps_txgemma_v3_fps-no_attn_sdpa"
                                                     #"/data2/tianang/projects/Intern-S1/checkpoints/Intern-S1-mini/full/sft-ChemCoT/checkpoint-19904" H100
@@ -394,10 +394,10 @@ def main():
             elif TASK_GROUP_NAME == 'Develop':
                 data = Develop(name=TASK_NAME)
             elif TASK_GROUP_NAME == 'PPI':
-                # if DEBUG and TASK_NAME == 'HuRI':  # HuRI debug 的时候我希望只看一些正样本，因为负样本是随机生成的
-                #     data = PPI(name=TASK_NAME)
+                # if DEBUG and TASK_NAME == 'HuRI':  
+                #     data = PPI(name=TASK_NAME)    # TODO: HuRI positive
                 # else:
-                data = PPI(name=TASK_NAME).neg_sample(frac=1)
+                data = PPI(name=TASK_NAME).neg_sample(frac=1)  # TODO: HuRI negtive
             elif TASK_GROUP_NAME == 'TCREpitopeBinding':
                 data = TCREpitopeBinding(name=TASK_NAME)
             elif TASK_GROUP_NAME == 'TrialOutcome':
@@ -467,7 +467,7 @@ def main():
                         INPUT_TYPE, f'<SMILES>{entry}</SMILES>'
                     )
 
-                if INJECT_STEPS_BEFORE_ANSWER:  # TODO: 新增的
+                if INJECT_STEPS_BEFORE_ANSWER:
                     if FEW_SHOT:
                         few_shot_examples = [
                             '<think>\ninput_structure:\nC[C@@H]([C@@H](C)O)N1CCN(c2ccccc2Cl)CC1\ncore_ring_identification:\npiperazine ring (N1CCNCC1) connected to a benzene ring (c2ccccc2Cl)\nscaffold_analysis:\nMurcko scaffold retains benzene ring connected to piperazine (Cl and other substituents removed)\nmatching_analysis:\nGiven scaffold (1-phenylpiperazine) matches the core rings after side-chain removal\noutput:\nYes\n</think>\nAnswer: \n{\n    ‘Output Scaffold’: c1ccc(N2CCNCC2)cc1,\n}',
