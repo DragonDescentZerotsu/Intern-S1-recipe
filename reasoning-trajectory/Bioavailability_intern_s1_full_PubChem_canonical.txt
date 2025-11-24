@@ -1,0 +1,206 @@
+/home/tianang/anaconda3/envs/reasonv/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+INFO 11-24 15:06:16 [__init__.py:216] Automatically detected platform cuda.
+2025-11-24 15:06:24,152 - INFO - Logging initialized. Log file: /data2/tianang/projects/Intern-S1/logs/experiment_log_20251124_150624.log
+2025-11-24 15:06:24,152 - INFO - Selected task groups: ['ADME']
+2025-11-24 15:06:24,152 - INFO - Sampling times: 16
+INFO 11-24 15:06:25 [utils.py:233] non-default args: {'trust_remote_code': True, 'dtype': 'bfloat16', 'max_model_len': 24576, 'tensor_parallel_size': 4, 'gpu_memory_utilization': 0.92, 'max_num_batched_tokens': 24576, 'max_num_seqs': 256, 'disable_log_stats': True, 'quantization': 'fp8', 'enforce_eager': True, 'limit_mm_per_prompt': {'video': 0, 'image': 0}, 'model': 'internlm/Intern-S1-FP8'}
+The argument `trust_remote_code` is to be used with Auto classes. It has no effect here and is ignored.
+INFO 11-24 15:06:31 [model.py:547] Resolved architecture: InternS1ForConditionalGeneration
+`torch_dtype` is deprecated! Use `dtype` instead!
+INFO 11-24 15:06:31 [model.py:1510] Using max model len 24576
+INFO 11-24 15:06:35 [scheduler.py:205] Chunked prefill is enabled with max_num_batched_tokens=24576.
+INFO 11-24 15:06:35 [__init__.py:381] Cudagraph is disabled under eager mode
+WARNING 11-24 15:06:36 [tokenizer.py:253] Using a slow tokenizer. This might cause a significant slowdown. Consider using a fast tokenizer instead.
+WARNING 11-24 15:06:37 [tokenizer.py:253] Using a slow tokenizer. This might cause a significant slowdown. Consider using a fast tokenizer instead.
+INFO 11-24 15:06:37 [registry.py:117] All limits of multimodal modalities supported by the model are set to 0, running in text-only mode.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:37 [core.py:644] Waiting for init message from front-end.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:37 [core.py:77] Initializing a V1 LLM engine (v0.11.0) with config: model='internlm/Intern-S1-FP8', speculative_config=None, tokenizer='internlm/Intern-S1-FP8', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=True, dtype=torch.bfloat16, max_seq_len=24576, download_dir=None, load_format=auto, tensor_parallel_size=4, pipeline_parallel_size=1, data_parallel_size=1, disable_custom_all_reduce=False, quantization=fp8, enforce_eager=True, kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_fallback=False, disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser=''), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None), seed=0, served_model_name=internlm/Intern-S1-FP8, enable_prefix_caching=True, chunked_prefill_enabled=True, pooler_config=None, compilation_config={"level":0,"debug_dump_path":"","cache_dir":"","backend":"","custom_ops":[],"splitting_ops":null,"use_inductor":true,"compile_sizes":[],"inductor_compile_config":{"enable_auto_functionalized_v2":false},"inductor_passes":{},"cudagraph_mode":0,"use_cudagraph":true,"cudagraph_num_of_warmups":0,"cudagraph_capture_sizes":[],"cudagraph_copy_inputs":false,"full_cuda_graph":false,"use_inductor_graph_partition":false,"pass_config":{},"max_capture_size":0,"local_cache_dir":null}
+[1;36m(EngineCore_DP0 pid=653256)[0;0m WARNING 11-24 15:06:37 [multiproc_executor.py:720] Reducing Torch parallelism from 64 threads to 1 to avoid unnecessary CPU contention. Set OMP_NUM_THREADS in the external environment to tune this value as needed.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:37 [shm_broadcast.py:289] vLLM message queue communication handle: Handle(local_reader_ranks=[0, 1, 2, 3], buffer_handle=(4, 16777216, 10, 'psm_48131131'), local_subscribe_addr='ipc:///tmp/50002743-d69c-4ac8-8e79-3ef84fcd0319', remote_subscribe_addr=None, remote_addr_ipv6=False)
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:44 [shm_broadcast.py:289] vLLM message queue communication handle: Handle(local_reader_ranks=[0], buffer_handle=(1, 10485760, 10, 'psm_fead9c10'), local_subscribe_addr='ipc:///tmp/30c4d4f4-ab13-462c-8d5e-57fa9461407a', remote_subscribe_addr=None, remote_addr_ipv6=False)
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:44 [shm_broadcast.py:289] vLLM message queue communication handle: Handle(local_reader_ranks=[0], buffer_handle=(1, 10485760, 10, 'psm_4e0ae54b'), local_subscribe_addr='ipc:///tmp/cecd66ae-f822-4011-81f4-303105a094d6', remote_subscribe_addr=None, remote_addr_ipv6=False)
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:44 [shm_broadcast.py:289] vLLM message queue communication handle: Handle(local_reader_ranks=[0], buffer_handle=(1, 10485760, 10, 'psm_cf082c28'), local_subscribe_addr='ipc:///tmp/64397478-8b6f-4b77-8108-59b7082e35a7', remote_subscribe_addr=None, remote_addr_ipv6=False)
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:44 [shm_broadcast.py:289] vLLM message queue communication handle: Handle(local_reader_ranks=[0], buffer_handle=(1, 10485760, 10, 'psm_5579b000'), local_subscribe_addr='ipc:///tmp/1979de17-5fcf-440a-a112-1041394b957d', remote_subscribe_addr=None, remote_addr_ipv6=False)
+[Gloo] Rank 0 is connected to 3 peer ranks. Expected number of connected peer ranks is : 3
+[Gloo] Rank 1 is connected to 3 peer ranks. Expected number of connected peer ranks is : 3
+[Gloo] Rank 3 is connected to 3 peer ranks. Expected number of connected peer ranks is : 3
+[Gloo] Rank 2 is connected to 3 peer ranks. Expected number of connected peer ranks is : 3
+[Gloo] Rank 0 is connected to 3 peer ranks. Expected number of connected peer ranks is : 3
+[Gloo] Rank 1 is connected to 3 peer ranks. Expected number of connected peer ranks is : 3
+[Gloo] Rank 2 is connected to 3 peer ranks. Expected number of connected peer ranks is : 3
+[Gloo] Rank 3 is connected to 3 peer ranks. Expected number of connected peer ranks is : 3
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:45 [__init__.py:1384] Found nccl from library libnccl.so.2
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:45 [__init__.py:1384] Found nccl from library libnccl.so.2
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:45 [__init__.py:1384] Found nccl from library libnccl.so.2
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:45 [__init__.py:1384] Found nccl from library libnccl.so.2
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:45 [pynccl.py:103] vLLM is using nccl==2.27.3
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:45 [pynccl.py:103] vLLM is using nccl==2.27.3
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:45 [pynccl.py:103] vLLM is using nccl==2.27.3
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:45 [pynccl.py:103] vLLM is using nccl==2.27.3
+[1;36m(EngineCore_DP0 pid=653256)[0;0m WARNING 11-24 15:06:51 [symm_mem.py:90] SymmMemCommunicator: symmetric memory multicast operations are not supported.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m WARNING 11-24 15:06:51 [symm_mem.py:90] SymmMemCommunicator: symmetric memory multicast operations are not supported.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m WARNING 11-24 15:06:51 [symm_mem.py:90] SymmMemCommunicator: symmetric memory multicast operations are not supported.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m WARNING 11-24 15:06:52 [symm_mem.py:90] SymmMemCommunicator: symmetric memory multicast operations are not supported.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m WARNING 11-24 15:06:52 [custom_all_reduce.py:144] Custom allreduce is disabled because it's not supported on more than two PCIe-only GPUs. To silence this warning, specify disable_custom_all_reduce=True explicitly.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m WARNING 11-24 15:06:52 [custom_all_reduce.py:144] Custom allreduce is disabled because it's not supported on more than two PCIe-only GPUs. To silence this warning, specify disable_custom_all_reduce=True explicitly.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m WARNING 11-24 15:06:52 [custom_all_reduce.py:144] Custom allreduce is disabled because it's not supported on more than two PCIe-only GPUs. To silence this warning, specify disable_custom_all_reduce=True explicitly.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m WARNING 11-24 15:06:52 [custom_all_reduce.py:144] Custom allreduce is disabled because it's not supported on more than two PCIe-only GPUs. To silence this warning, specify disable_custom_all_reduce=True explicitly.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:52 [shm_broadcast.py:289] vLLM message queue communication handle: Handle(local_reader_ranks=[1, 2, 3], buffer_handle=(3, 4194304, 6, 'psm_67b20f94'), local_subscribe_addr='ipc:///tmp/ec93b2f9-f6d0-4466-8d86-689e229cf9d2', remote_subscribe_addr=None, remote_addr_ipv6=False)
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[Gloo] Rank 1 is connected to 3 peer ranks. Expected number of connected peer ranks is : 3
+[Gloo] Rank 0 is connected to 3 peer ranks. Expected number of connected peer ranks is : 3
+[Gloo] Rank 3 is connected to 3 peer ranks. Expected number of connected peer ranks is : 3
+[Gloo] Rank 2 is connected to 3 peer ranks. Expected number of connected peer ranks is : 3
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:52 [__init__.py:1384] Found nccl from library libnccl.so.2
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:52 [__init__.py:1384] Found nccl from library libnccl.so.2
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:52 [__init__.py:1384] Found nccl from library libnccl.so.2
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:52 [pynccl.py:103] vLLM is using nccl==2.27.3
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:52 [pynccl.py:103] vLLM is using nccl==2.27.3
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:52 [pynccl.py:103] vLLM is using nccl==2.27.3
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:52 [__init__.py:1384] Found nccl from library libnccl.so.2
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:52 [pynccl.py:103] vLLM is using nccl==2.27.3
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:54 [parallel_state.py:1208] rank 2 in world size 4 is assigned as DP rank 0, PP rank 0, TP rank 2, EP rank 2
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:54 [parallel_state.py:1208] rank 3 in world size 4 is assigned as DP rank 0, PP rank 0, TP rank 3, EP rank 3
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:54 [parallel_state.py:1208] rank 0 in world size 4 is assigned as DP rank 0, PP rank 0, TP rank 0, EP rank 0
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:06:54 [parallel_state.py:1208] rank 1 in world size 4 is assigned as DP rank 0, PP rank 0, TP rank 1, EP rank 1
+[1;36m(EngineCore_DP0 pid=653256)[0;0m WARNING 11-24 15:06:55 [topk_topp_sampler.py:66] FlashInfer is not available. Falling back to the PyTorch-native implementation of top-p & top-k sampling. For the best performance, please install FlashInfer.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m WARNING 11-24 15:06:55 [topk_topp_sampler.py:66] FlashInfer is not available. Falling back to the PyTorch-native implementation of top-p & top-k sampling. For the best performance, please install FlashInfer.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m WARNING 11-24 15:06:55 [topk_topp_sampler.py:66] FlashInfer is not available. Falling back to the PyTorch-native implementation of top-p & top-k sampling. For the best performance, please install FlashInfer.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m WARNING 11-24 15:06:55 [topk_topp_sampler.py:66] FlashInfer is not available. Falling back to the PyTorch-native implementation of top-p & top-k sampling. For the best performance, please install FlashInfer.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m INFO 11-24 15:06:56 [gpu_model_runner.py:2602] Starting to load model internlm/Intern-S1-FP8...
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP1 pid=653266)[0;0m INFO 11-24 15:06:56 [gpu_model_runner.py:2602] Starting to load model internlm/Intern-S1-FP8...
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP2 pid=653268)[0;0m INFO 11-24 15:06:56 [gpu_model_runner.py:2602] Starting to load model internlm/Intern-S1-FP8...
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP3 pid=653270)[0;0m INFO 11-24 15:06:56 [gpu_model_runner.py:2602] Starting to load model internlm/Intern-S1-FP8...
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m INFO 11-24 15:06:56 [gpu_model_runner.py:2634] Loading model from scratch...
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m INFO 11-24 15:06:56 [layer.py:444] MultiHeadAttention attn_backend: _Backend.FLASH_ATTN, use_upstream_fa: False
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP1 pid=653266)[0;0m INFO 11-24 15:06:56 [gpu_model_runner.py:2634] Loading model from scratch...
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP1 pid=653266)[0;0m INFO 11-24 15:06:56 [layer.py:444] MultiHeadAttention attn_backend: _Backend.FLASH_ATTN, use_upstream_fa: False
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m INFO 11-24 15:06:56 [__init__.py:381] Cudagraph is disabled under eager mode
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP3 pid=653270)[0;0m INFO 11-24 15:06:56 [gpu_model_runner.py:2634] Loading model from scratch...
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP2 pid=653268)[0;0m INFO 11-24 15:06:56 [gpu_model_runner.py:2634] Loading model from scratch...
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP3 pid=653270)[0;0m INFO 11-24 15:06:56 [layer.py:444] MultiHeadAttention attn_backend: _Backend.FLASH_ATTN, use_upstream_fa: False
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP2 pid=653268)[0;0m INFO 11-24 15:06:56 [layer.py:444] MultiHeadAttention attn_backend: _Backend.FLASH_ATTN, use_upstream_fa: False
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m INFO 11-24 15:06:57 [cuda.py:366] Using Flash Attention backend on V1 engine.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m WARNING 11-24 15:06:57 [fp8.py:457] Failed to import DeepGemm kernels.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m WARNING 11-24 15:06:57 [fp8.py:480] CutlassBlockScaledGroupedGemm not supported on the current platform.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP1 pid=653266)[0;0m INFO 11-24 15:06:57 [__init__.py:381] Cudagraph is disabled under eager mode
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP2 pid=653268)[0;0m INFO 11-24 15:06:57 [__init__.py:381] Cudagraph is disabled under eager mode
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP3 pid=653270)[0;0m INFO 11-24 15:06:57 [__init__.py:381] Cudagraph is disabled under eager mode
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP1 pid=653266)[0;0m INFO 11-24 15:06:57 [cuda.py:366] Using Flash Attention backend on V1 engine.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP1 pid=653266)[0;0m WARNING 11-24 15:06:57 [fp8.py:457] Failed to import DeepGemm kernels.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP1 pid=653266)[0;0m WARNING 11-24 15:06:57 [fp8.py:480] CutlassBlockScaledGroupedGemm not supported on the current platform.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP2 pid=653268)[0;0m INFO 11-24 15:06:57 [cuda.py:366] Using Flash Attention backend on V1 engine.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP2 pid=653268)[0;0m WARNING 11-24 15:06:57 [fp8.py:457] Failed to import DeepGemm kernels.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP2 pid=653268)[0;0m WARNING 11-24 15:06:57 [fp8.py:480] CutlassBlockScaledGroupedGemm not supported on the current platform.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP3 pid=653270)[0;0m INFO 11-24 15:06:57 [cuda.py:366] Using Flash Attention backend on V1 engine.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP3 pid=653270)[0;0m WARNING 11-24 15:06:57 [fp8.py:457] Failed to import DeepGemm kernels.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP3 pid=653270)[0;0m WARNING 11-24 15:06:57 [fp8.py:480] CutlassBlockScaledGroupedGemm not supported on the current platform.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m INFO 11-24 15:06:58 [weight_utils.py:392] Using model weights format ['*.safetensors']
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP2 pid=653268)[0;0m INFO 11-24 15:06:58 [weight_utils.py:392] Using model weights format ['*.safetensors']
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP3 pid=653270)[0;0m INFO 11-24 15:06:58 [weight_utils.py:392] Using model weights format ['*.safetensors']
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP1 pid=653266)[0;0m INFO 11-24 15:06:58 [weight_utils.py:392] Using model weights format ['*.safetensors']
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:   0% Completed | 0/50 [00:00<?, ?it/s]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:   2% Completed | 1/50 [00:01<01:12,  1.48s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:   4% Completed | 2/50 [00:03<01:17,  1.62s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:   6% Completed | 3/50 [00:04<01:15,  1.61s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:   8% Completed | 4/50 [00:06<01:14,  1.62s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  10% Completed | 5/50 [00:08<01:13,  1.63s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  12% Completed | 6/50 [00:09<01:10,  1.60s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  14% Completed | 7/50 [00:11<01:08,  1.60s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  16% Completed | 8/50 [00:12<01:09,  1.65s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  18% Completed | 9/50 [00:14<01:08,  1.67s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  20% Completed | 10/50 [00:16<01:06,  1.65s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  22% Completed | 11/50 [00:18<01:05,  1.69s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  24% Completed | 12/50 [00:19<01:01,  1.63s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  26% Completed | 13/50 [00:21<00:59,  1.60s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  28% Completed | 14/50 [00:22<00:57,  1.60s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  30% Completed | 15/50 [00:24<00:56,  1.60s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  32% Completed | 16/50 [00:25<00:54,  1.61s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  34% Completed | 17/50 [00:27<00:52,  1.60s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  36% Completed | 18/50 [00:29<00:51,  1.60s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  38% Completed | 19/50 [00:30<00:50,  1.63s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  40% Completed | 20/50 [00:32<00:48,  1.61s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  42% Completed | 21/50 [00:33<00:46,  1.60s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  44% Completed | 22/50 [00:35<00:46,  1.64s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  46% Completed | 23/50 [00:37<00:44,  1.66s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  48% Completed | 24/50 [00:39<00:43,  1.68s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  50% Completed | 25/50 [00:40<00:41,  1.65s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  52% Completed | 26/50 [00:42<00:39,  1.64s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  54% Completed | 27/50 [00:44<00:38,  1.68s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  56% Completed | 28/50 [00:45<00:36,  1.67s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  58% Completed | 29/50 [00:47<00:35,  1.67s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  60% Completed | 30/50 [00:49<00:33,  1.70s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  62% Completed | 31/50 [00:51<00:33,  1.75s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  64% Completed | 32/50 [00:52<00:32,  1.80s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  66% Completed | 33/50 [00:54<00:30,  1.82s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  68% Completed | 34/50 [00:56<00:27,  1.75s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  70% Completed | 35/50 [00:58<00:25,  1.73s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  72% Completed | 36/50 [00:59<00:23,  1.70s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  74% Completed | 37/50 [01:01<00:21,  1.66s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  76% Completed | 38/50 [01:03<00:20,  1.69s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  78% Completed | 39/50 [01:04<00:18,  1.67s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  80% Completed | 40/50 [01:06<00:16,  1.64s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  82% Completed | 41/50 [01:07<00:14,  1.63s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  84% Completed | 42/50 [01:09<00:13,  1.70s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  86% Completed | 43/50 [01:11<00:11,  1.71s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  88% Completed | 44/50 [01:13<00:10,  1.74s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  90% Completed | 45/50 [01:14<00:08,  1.69s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  92% Completed | 46/50 [01:16<00:06,  1.66s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  94% Completed | 47/50 [01:18<00:05,  1.68s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  96% Completed | 48/50 [01:20<00:03,  1.75s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards:  98% Completed | 49/50 [01:21<00:01,  1.73s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP3 pid=653270)[0;0m INFO 11-24 15:08:22 [default_loader.py:267] Loading weights took 83.22 seconds
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards: 100% Completed | 50/50 [01:23<00:00,  1.73s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m Loading safetensors checkpoint shards: 100% Completed | 50/50 [01:23<00:00,  1.67s/it]
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m 
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m INFO 11-24 15:08:22 [default_loader.py:267] Loading weights took 83.89 seconds
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP3 pid=653270)[0;0m INFO 11-24 15:08:23 [gpu_model_runner.py:2653] Model loading took 60.5592 GiB and 85.436409 seconds
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP1 pid=653266)[0;0m INFO 11-24 15:08:23 [default_loader.py:267] Loading weights took 84.01 seconds
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m INFO 11-24 15:08:23 [gpu_model_runner.py:2653] Model loading took 60.5592 GiB and 86.226624 seconds
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP2 pid=653268)[0;0m INFO 11-24 15:08:24 [default_loader.py:267] Loading weights took 85.35 seconds
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP1 pid=653266)[0;0m INFO 11-24 15:08:24 [gpu_model_runner.py:2653] Model loading took 60.5592 GiB and 87.010178 seconds
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP2 pid=653268)[0;0m INFO 11-24 15:08:25 [gpu_model_runner.py:2653] Model loading took 60.5592 GiB and 87.834643 seconds
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m WARNING 11-24 15:08:30 [fused_moe.py:798] Using default MoE config. Performance might be sub-optimal! Config file not found at ['/home/tianang/anaconda3/envs/reasonv/lib/python3.11/site-packages/vllm/model_executor/layers/fused_moe/configs/E=128,N=384,device_name=NVIDIA_H100_PCIe,dtype=fp8_w8a8,block_shape=[128,128].json']
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP3 pid=653270)[0;0m WARNING 11-24 15:08:30 [fused_moe.py:798] Using default MoE config. Performance might be sub-optimal! Config file not found at ['/home/tianang/anaconda3/envs/reasonv/lib/python3.11/site-packages/vllm/model_executor/layers/fused_moe/configs/E=128,N=384,device_name=NVIDIA_H100_PCIe,dtype=fp8_w8a8,block_shape=[128,128].json']
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP1 pid=653266)[0;0m WARNING 11-24 15:08:30 [fused_moe.py:798] Using default MoE config. Performance might be sub-optimal! Config file not found at ['/home/tianang/anaconda3/envs/reasonv/lib/python3.11/site-packages/vllm/model_executor/layers/fused_moe/configs/E=128,N=384,device_name=NVIDIA_H100_PCIe,dtype=fp8_w8a8,block_shape=[128,128].json']
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP2 pid=653268)[0;0m WARNING 11-24 15:08:30 [fused_moe.py:798] Using default MoE config. Performance might be sub-optimal! Config file not found at ['/home/tianang/anaconda3/envs/reasonv/lib/python3.11/site-packages/vllm/model_executor/layers/fused_moe/configs/E=128,N=384,device_name=NVIDIA_H100_PCIe,dtype=fp8_w8a8,block_shape=[128,128].json']
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP3 pid=653270)[0;0m INFO 11-24 15:08:41 [gpu_worker.py:298] Available KV cache memory: 9.60 GiB
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP1 pid=653266)[0;0m INFO 11-24 15:08:41 [gpu_worker.py:298] Available KV cache memory: 9.60 GiB
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m INFO 11-24 15:08:41 [gpu_worker.py:298] Available KV cache memory: 9.60 GiB
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP2 pid=653268)[0;0m INFO 11-24 15:08:41 [gpu_worker.py:298] Available KV cache memory: 9.60 GiB
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:08:42 [kv_cache_utils.py:1087] GPU KV cache size: 214,208 tokens
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:08:42 [kv_cache_utils.py:1091] Maximum concurrency for 24,576 tokens per request: 8.72x
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:08:42 [kv_cache_utils.py:1087] GPU KV cache size: 214,208 tokens
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:08:42 [kv_cache_utils.py:1091] Maximum concurrency for 24,576 tokens per request: 8.72x
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:08:42 [kv_cache_utils.py:1087] GPU KV cache size: 214,208 tokens
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:08:42 [kv_cache_utils.py:1091] Maximum concurrency for 24,576 tokens per request: 8.72x
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:08:42 [kv_cache_utils.py:1087] GPU KV cache size: 214,208 tokens
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:08:42 [kv_cache_utils.py:1091] Maximum concurrency for 24,576 tokens per request: 8.72x
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP3 pid=653270)[0;0m WARNING 11-24 15:08:42 [cudagraph_dispatcher.py:106] cudagraph dispatching keys are not initialized. No cudagraph will be used.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP2 pid=653268)[0;0m WARNING 11-24 15:08:42 [cudagraph_dispatcher.py:106] cudagraph dispatching keys are not initialized. No cudagraph will be used.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP1 pid=653266)[0;0m WARNING 11-24 15:08:42 [cudagraph_dispatcher.py:106] cudagraph dispatching keys are not initialized. No cudagraph will be used.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m [1;36m(Worker_TP0 pid=653263)[0;0m WARNING 11-24 15:08:42 [cudagraph_dispatcher.py:106] cudagraph dispatching keys are not initialized. No cudagraph will be used.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:08:43 [core.py:210] init engine (profile, create kv cache, warmup model) took 17.40 seconds
+[1;36m(EngineCore_DP0 pid=653256)[0;0m WARNING 11-24 15:08:44 [tokenizer.py:253] Using a slow tokenizer. This might cause a significant slowdown. Consider using a fast tokenizer instead.
+[1;36m(EngineCore_DP0 pid=653256)[0;0m INFO 11-24 15:08:44 [__init__.py:381] Cudagraph is disabled under eager mode
+INFO 11-24 15:08:45 [llm.py:306] Supported_tasks: ['generate']
+[ADME] Processing tasks ...:   0%|          | 0/1 [00:00<?, ?it/s]Found local copy...
+Loading...
+Done!
+2025-11-24 15:08:45,385 - INFO - [ADME/Bioavailability_Ma] Total test samples: 128
+
+Adding requests:   0%|          | 0/1 [00:00<?, ?it/s][AAdding requests: 100%|██████████| 1/1 [00:00<00:00, 44.58it/s]
+
+Processed prompts:   0%|          | 0/16 [00:00<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s][A

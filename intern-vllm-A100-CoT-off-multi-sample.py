@@ -18,7 +18,7 @@ if os.environ.get('PYTHONHASHSEED') != '42':
 # mp.set_start_method("spawn", force=True)
 
 # 选择显卡
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "3")  # TODO: GPU choice
+# os.environ.setdefault("CUDA_VISIBLE_DEVICES", "3")  # TODO: GPU choice
 
 from transformers import AutoTokenizer, AutoProcessor
 from vllm import LLM, SamplingParams
@@ -175,7 +175,7 @@ def main():
         '--task-groups',
         nargs='+',
         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'all'],
-        default=['PPI'],
+        default=['ADME'],
         help='选择要运行的任务组 (可以选择多个)'
     )
 
@@ -216,9 +216,10 @@ def main():
     logger.info(f"Selected task groups: {TASK_GROUP_NAMEs}")
 
     # ---------------- 配置区 ----------------
-    MODEL_NAME = "/data2/tianang/projects/Intern-S1/checkpoints/Intern-S1-mini/full/sft-ChemCoT/checkpoint-19904"         # TODO MODEL_NAME
-                                                # "internlm/Intern-S1-mini-FP8"
-                                                   # "jiosephlee/TDC_All_jiosephlee_Intern-S1-mini-lm_5ep_8e-05lr_64bs_ps_txgemma_v3_fps-no_attn_sdpa"
+    MODEL_NAME = "internlm/Intern-S1-FP8"         # TODO MODEL_NAME
+                                                    # "internlm/Intern-S1-mini-FP8"
+                                                    # "internlm/Intern-S1-FP8"
+                                                    # "jiosephlee/TDC_All_jiosephlee_Intern-S1-mini-lm_5ep_8e-05lr_64bs_ps_txgemma_v3_fps-no_attn_sdpa"
                                                     #"/data2/tianang/projects/Intern-S1/checkpoints/Intern-S1-mini/full/sft-ChemCoT/checkpoint-19904" H100
                                                     # "/data1/tianang/Projects/Intern-S1/checkpoints/Intern-S1-mini/full/sft-ChemCoT/checkpoint-19904" Node002
     LORA_PATH = "checkpoints/Intern-S1-mini/lora/sft-ChemCoT/checkpoint-19904"  # 可为空字符串禁用 LoRA
@@ -330,11 +331,11 @@ def main():
             TASK_NAMEs = [
                 # 'PAMPA_NCATS',
                 # 'HIA_Hou',
-                # 'Bioavailability_Ma',
+                'Bioavailability_Ma',
                 # 'BBB_Martins',
                 # 'Pgp_Broccatelli',
 
-                'CYP1A2_Veith',
+                # 'CYP1A2_Veith',
                 # 'CYP2C19_Veith',
 
                 # 'CYP2C9_Veith',
@@ -418,6 +419,9 @@ def main():
                 test_inputs = split['test'][['epitope_aa', 'tcr']].values
             elif TASK_NAME in ['MHC1_IEDB-IMGT_Nielsen', 'MHC2_IEDB_Jensen']:
                 test_inputs = split['test'][['Peptide', 'MHC']].values
+            elif TASK_NAME == 'Bioavailability_Ma' and DEBUG:
+                test_inputs = split['test']['Drug'].values
+                test_inputs[0] = 'CC1=CC(=NO1)NS(=O)(=O)C2=CC=C(C=C2)N'  # TODO: Bioavailability_Ma DEBUG SMILES change
             else:
                 test_inputs = split['test']['Drug'].values
 
