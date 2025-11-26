@@ -18,7 +18,7 @@ def calculate_ppl(model, tokenizer, sentence):
 
 def main():
     parser = argparse.ArgumentParser(description="Calculate PPL for sentences using a causal LM.")
-    parser.add_argument("--model_path", type=str, default="internlm/Intern-S1-mini", 
+    parser.add_argument("--model_path", type=str, default="internlm/Intern-S1-mini-FP8", 
                         help="Path to the model or HuggingFace model ID.")
     parser.add_argument("--devices", type=str, default=None, 
                         help="Comma-separated list of GPU IDs to use (e.g., '0,1,2,3').")

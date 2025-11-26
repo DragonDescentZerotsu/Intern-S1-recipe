@@ -216,7 +216,7 @@ def main():
     logger.info(f"Selected task groups: {TASK_GROUP_NAMEs}")
 
     # ---------------- 配置区 ----------------
-    MODEL_NAME = "internlm/Intern-S1-FP8"         # TODO MODEL_NAME
+    MODEL_NAME = "internlm/Intern-S1-mini-FP8"         # TODO MODEL_NAME
                                                     # "internlm/Intern-S1-mini-FP8"
                                                     # "internlm/Intern-S1-FP8"
                                                     # "jiosephlee/TDC_All_jiosephlee_Intern-S1-mini-lm_5ep_8e-05lr_64bs_ps_txgemma_v3_fps-no_attn_sdpa"
