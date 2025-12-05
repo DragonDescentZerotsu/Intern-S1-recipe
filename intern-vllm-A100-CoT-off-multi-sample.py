@@ -27,6 +27,8 @@ import torch
 import json
 from huggingface_hub import hf_hub_download
 from tdc.single_pred import ADME, Tox, HTS, Develop
+from rdkit import Chem
+from rdkit.Chem import Draw
 from tdc.multi_pred.ppi import PPI
 from tdc.multi_pred.tcr_epi import TCREpitopeBinding
 from tdc.multi_pred.trialoutcome import TrialOutcome
@@ -186,6 +188,12 @@ def main():
         help='每题采样次数 (默认: 16)'
     )
 
+    parser.add_argument(
+        '--use-image',
+        action='store_true',
+        help='是否使用分子图像作为输入 (默认: False)'
+    )
+
     args = parser.parse_args()
 
     # 如果选择了 'all'，则运行所有任务组
@@ -216,7 +224,7 @@ def main():
     logger.info(f"Selected task groups: {TASK_GROUP_NAMEs}")
 
     # ---------------- 配置区 ----------------
-    MODEL_NAME = "internlm/Intern-S1-mini-FP8"         # TODO MODEL_NAME
+    MODEL_NAME = "internlm/Intern-S1-mini-FP8"         # TODO: MODEL_NAME
                                                     # "internlm/Intern-S1-mini-FP8"
                                                     # "internlm/Intern-S1-FP8"
                                                     # "jiosephlee/TDC_All_jiosephlee_Intern-S1-mini-lm_5ep_8e-05lr_64bs_ps_txgemma_v3_fps-no_attn_sdpa"
@@ -265,7 +273,7 @@ def main():
         trust_remote_code=True,
         gpu_memory_utilization=0.92,
         max_num_seqs=256,
-        limit_mm_per_prompt={"video": 0, "image": 0},
+        limit_mm_per_prompt={"video": 0, "image": 1 if args.use_image else 0},
         enable_lora=USE_LORA,
         tokenizer_mode="auto"
     )
@@ -435,6 +443,8 @@ def main():
             # --------- 准备 prompts ---------
             INPUT_TYPE = "{Drug SMILES}"
             base_prompts = []
+            multi_modal_datas = []  # 用于存放多模态数据 (image)
+            
             for entry in test_inputs:
                 if TASK_NAME.startswith('herg_central'):
                     tn = 'herg_central'
@@ -491,15 +501,59 @@ def main():
                             'Please think step by step and then put ONLY your final choice ((A) or (B)) after "Answer:"'
                         )
 
+                # 如果启用图像输入且当前任务适合（SMILES类型）
+                current_img = None
+                if args.use_image:
+                    # 简单判断：如果不是蛋白质序列任务，或是 explicitly defined as small molecule task
+                    # 这里暂用 "INPUT_TYPE" 是否被替换来判断，或者直接看 tn
+                    # HuRI, SAbDab_Chen, Weber, etc. are protein/antibody -> no SMILES image
+                    # ADME/Tox/HTS usually use SMILES.
+                    
+                    is_smiles_task = (tn not in ['SAbDab_Chen', 'HuRI', 'Weber', 'MHC1_IEDB-IMGT_Nielsen', 'MHC2_IEDB_Jensen'])
+                    
+                    if is_smiles_task:
+                        try:
+                            mol = Chem.MolFromSmiles(entry)
+                            if mol:
+                                current_img = Draw.MolToImage(mol, size=(224, 224))
+                                # 在 prompt 最前面加上 <image> 占位符
+                                user_text = "<image>\n" + user_text
+                        except Exception as e:
+                            logger.warning(f"Failed to generate image for SMILES {entry}: {e}")
+
                 base_prompts.append(to_prompt_user_block(tokenizer, user_text, ENABLE_THINKING))
+                if current_img is not None:
+                    multi_modal_datas.append({"image": current_img})
+                else:
+                    # 如果这一个 sample 没有图（或不是 SMILES 任务），
+                    # 但 vLLM 如果全局开启 image limit > 0，是否允许部分 sample 缺图？
+                    # 按照 vLLM 逻辑，prompt 里没 <image> token 就不需要传 image data。
+                    # 但为了对齐 index，保持 append(None) 或者不做操作？
+                    # vLLM generate 接收的是 optional[List[MultiModalData]]，长度需与 prompts 一致，或不传。
+                    # 如果 args.use_image 为 True，且 limit_mm_per_prompt['image']=1，
+                    # 那么对于没图的 prompt (比如解析失败)，我们不加 <image> 标并在 data 里放个占位？
+                    # 实际上 vLLM 中，如果 prompt 里没有 image token，就不应该传入对应的 image。
+                    # 但 `llm.generate` 的 `multi_modal_data` 参数如果是 list，需要与 prompts 长度一致吗？
+                    # 文档： "If prompts is a list of strings, this must be a list of MultiModalData objects."
+                    # 如果某个 prompt 没图，该放什么？ 
+                    # 此时放 {} 或者 None 可能会报错，或者 vLLM 能够处理 None?
+                    # 安全起见：如果启用 use-image，我们尽量保证都有 entries。
+                    # 对非 SMILES 任务，我们完全不启用 use-image flag 逻辑（在外面限制）或者在这里处理。
+                    
+                    if args.use_image:
+                        # 必须占位
+                        # 实际上如果任务根本不是 SMILES，不应该加 <image> token。
+                        # 此时 data 传 None 应该是合理的。
+                        multi_modal_datas.append({}) # 空字典表示无模态数据
+
                 if DEBUG:
                     break # TODO: for debug
 
             # --------- 生成 ---------
             if USE_LORA:
-                outputs = llm.generate(base_prompts, sp, lora_request=lora_req)
+                outputs = llm.generate(base_prompts, sp, lora_request=lora_req, multi_modal_data=multi_modal_datas if args.use_image else None)
             else:
-                outputs = llm.generate(base_prompts, sp)
+                outputs = llm.generate(base_prompts, sp, multi_modal_data=multi_modal_datas if args.use_image else None)
 
             # --------- 汇总每题概率 \hat p ---------
             p_scores = []
