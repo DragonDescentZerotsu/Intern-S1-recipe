@@ -18,7 +18,7 @@ os.environ.setdefault("VLLM_ATTENTION_BACKEND", "TORCH_SDPA")
 mp.set_start_method("spawn", force=True)
 
 # 选择显卡
-# os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")  # TODO: GPU choice
+# os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")  # TODO: GPU choice
 
 from transformers import AutoTokenizer, AutoProcessor
 from vllm import LLM, SamplingParams
@@ -200,12 +200,12 @@ def main():
 
     np.random.seed(42)
     random.seed(42)
-    DEBUG = True # TODO: DEBUG
-    USE_IMAGE = True # TODO: USE_IMAGE
+    DEBUG = False # TODO: DEBUG
+    USE_IMAGE = False # TODO: USE_IMAGE
 
     # ---------------- 配置 Logging ----------------
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    log_file = current_dir / 'logs' /f'experiment_log_{timestamp}.log'
+    log_file = current_dir / 'logs' / f'{"Use_image_" if USE_IMAGE else "No_image_"}experiment_log_{timestamp}.log'
 
     # 配置 logging：同时输出到控制台和文件
     logging.basicConfig(
