@@ -12,10 +12,10 @@ if os.environ.get('PYTHONHASHSEED') != '42':
     os.execv(sys.executable, [sys.executable] + sys.argv)
 
 # ---------------- vLLM & CUDA 环境 在 A100 上 是必须的----------------
-# os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
-# os.environ.setdefault("VLLM_USE_V1", "1")
-# os.environ.setdefault("VLLM_ATTENTION_BACKEND", "TORCH_SDPA")
-# mp.set_start_method("spawn", force=True)
+os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
+os.environ.setdefault("VLLM_USE_V1", "1")
+os.environ.setdefault("VLLM_ATTENTION_BACKEND", "TORCH_SDPA")
+mp.set_start_method("spawn", force=True)
 
 # 选择显卡
 # os.environ.setdefault("CUDA_VISIBLE_DEVICES", "3")  # TODO: GPU choice
@@ -145,7 +145,7 @@ def parse_answer(answer_text, format_correct, think_is_on:bool):
 
 # ====== 统一：构造 chat 模板 ======
 def to_prompt_user_block(tokenizer, text: str, enable_thinking:bool) -> str:
-    conv = [{"role": "user", "content": [{"type": "text", "text": text}]}]
+    conv = [{"role": "user", "content": text}]
     return tokenizer.apply_chat_template(
         conv, tokenize=False, add_generation_prompt=True, enable_thinking=enable_thinking
     )
@@ -177,7 +177,7 @@ def main():
         '--task-groups',
         nargs='+',
         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'all'],
-        default=['ADME'],
+        default=['ADME'],  # TODO: Test group
         help='选择要运行的任务组 (可以选择多个)'
     )
 
@@ -224,7 +224,7 @@ def main():
     logger.info(f"Selected task groups: {TASK_GROUP_NAMEs}")
 
     # ---------------- 配置区 ----------------
-    MODEL_NAME = "internlm/Intern-S1-mini-FP8"         # TODO: MODEL_NAME
+    MODEL_NAME = "internlm/Intern-S1-mini"         # TODO: MODEL_NAME
                                                     # "internlm/Intern-S1-mini-FP8"
                                                     # "internlm/Intern-S1-FP8"
                                                     # "jiosephlee/TDC_All_jiosephlee_Intern-S1-mini-lm_5ep_8e-05lr_64bs_ps_txgemma_v3_fps-no_attn_sdpa"
@@ -516,8 +516,8 @@ def main():
                             mol = Chem.MolFromSmiles(entry)
                             if mol:
                                 current_img = Draw.MolToImage(mol, size=(224, 224))
-                                # 在 prompt 最前面加上 <image> 占位符
-                                user_text = "<image>\n" + user_text
+                                # 在 prompt 最前面加上 <IMG_CONTEXT> 占位符
+                                user_text = "<IMG_CONTEXT>\n" + user_text
                         except Exception as e:
                             logger.warning(f"Failed to generate image for SMILES {entry}: {e}")
 
@@ -550,10 +550,17 @@ def main():
                     break # TODO: for debug
 
             # --------- 生成 ---------
-            if USE_LORA:
-                outputs = llm.generate(base_prompts, sp, lora_request=lora_req, multi_modal_data=multi_modal_datas if args.use_image else None)
+            if args.use_image:
+                inputs = [{"prompt": p, "multi_modal_data": m} for p, m in zip(base_prompts, multi_modal_datas)]
+                if USE_LORA:
+                    outputs = llm.generate(inputs, sp, lora_request=lora_req)
+                else:
+                    outputs = llm.generate(inputs, sp)
             else:
-                outputs = llm.generate(base_prompts, sp, multi_modal_data=multi_modal_datas if args.use_image else None)
+                if USE_LORA:
+                    outputs = llm.generate(base_prompts, sp, lora_request=lora_req)
+                else:
+                    outputs = llm.generate(base_prompts, sp)
 
             # --------- 汇总每题概率 \hat p ---------
             p_scores = []

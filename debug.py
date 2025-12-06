@@ -1,26 +1,32 @@
-from rdkit import Chem
-from rdkit.Chem import Draw
-# import selfies as sf
-from rdkit.Chem import rdDepictor
-from rdkit.Chem.Draw import MolDrawOptions
+from transformers import AutoTokenizer, AutoProcessor, AutoModelForCausalLM
+from PIL import Image
+import requests
+import torch
 
-# 使用从 OPSIN 获得的 SMILES
-smiles = "Cc1cc(NS(=O)(=O)c2ccc(N)cc2)no1"
-# smiles = "[C][=O][N]"
-# C[N+](C)(C)CCCC[C@@H](C(=O)[O-])[NH3+]
-# smiles = sf.decoder(smiles)
-print(smiles)
-# 创建分子对象
-mol = Chem.MolFromSmiles(smiles)
+model_name = "internlm/Intern-S1-mini"
 
-rdDepictor.SetPreferCoordGen(True)
-rdDepictor.Compute2DCoords(mol)
+tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=True)
+model = AutoModelForCausalLM.from_pretrained(
+    model_name, device_map="auto", torch_dtype="auto", trust_remote_code=True
+)
 
-opts = MolDrawOptions()
-# opts.reduceOverlap = True
+url = "http://images.cocodataset.org/val2017/000000039769.jpg"
+image = Image.open(requests.get(url, stream=True).raw).convert("RGB")
 
-# 绘制分子结构
-img = Draw.MolToImage(mol, size=(2000, 2000))
-# display(img)
-# img.show()
-img.save("mol.png")
+messages = [
+    {"role": "user", "content": "<IMG_CONTEXT>\nPlease describe the image explicitly."}
+]
+
+prompt = tokenizer.apply_chat_template(
+    messages, tokenize=False, add_generation_prompt=True
+)
+
+inputs = processor(
+    text=prompt,
+    images=image,
+    return_tensors="pt"
+).to(model.device, dtype=torch.bfloat16)
+
+out = model.generate(**inputs, max_new_tokens=512)
+print(processor.decode(out[0, inputs["input_ids"].shape[1]:], skip_special_tokens=True))
