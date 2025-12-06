@@ -18,7 +18,7 @@ os.environ.setdefault("VLLM_ATTENTION_BACKEND", "TORCH_SDPA")
 mp.set_start_method("spawn", force=True)
 
 # 选择显卡
-# os.environ.setdefault("CUDA_VISIBLE_DEVICES", "3")  # TODO: GPU choice
+# os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")  # TODO: GPU choice
 
 from transformers import AutoTokenizer, AutoProcessor
 from vllm import LLM, SamplingParams
@@ -188,11 +188,7 @@ def main():
         help='每题采样次数 (默认: 16)'
     )
 
-    parser.add_argument(
-        '--use-image',
-        action='store_true',
-        help='是否使用分子图像作为输入 (默认: False)'
-    )
+
 
     args = parser.parse_args()
 
@@ -204,7 +200,8 @@ def main():
 
     np.random.seed(42)
     random.seed(42)
-    DEBUG = True # TODO DEBUG
+    DEBUG = True # TODO: DEBUG
+    USE_IMAGE = True # TODO: USE_IMAGE
 
     # ---------------- 配置 Logging ----------------
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -273,7 +270,7 @@ def main():
         trust_remote_code=True,
         gpu_memory_utilization=0.92,
         max_num_seqs=256,
-        limit_mm_per_prompt={"video": 0, "image": 1 if args.use_image else 0},
+        limit_mm_per_prompt={"video": 0, "image": 1 if USE_IMAGE else 0},
         enable_lora=USE_LORA,
         tokenizer_mode="auto"
     )
@@ -337,11 +334,11 @@ def main():
             )
         elif TASK_GROUP_NAME == 'ADME':
             TASK_NAMEs = [
-                # 'PAMPA_NCATS',
-                # 'HIA_Hou',
+                'PAMPA_NCATS',
+                'HIA_Hou',
                 'Bioavailability_Ma',
-                # 'BBB_Martins',
-                # 'Pgp_Broccatelli',
+                'BBB_Martins',
+                'Pgp_Broccatelli',
 
                 # 'CYP1A2_Veith',
                 # 'CYP2C19_Veith',
@@ -496,14 +493,20 @@ def main():
                             f'Here are some structured reasoning examples for your reference: {few_shot_prompt}.\n Please follow the structured reasoning examples to think step by step and then put ONLY your final choice ((A) or (B)) after "Answer:"'
                         )
                     else:
-                        user_text = user_text.replace(
-                            'Answer:',
-                            'Please think step by step and then put ONLY your final choice ((A) or (B)) after "Answer:"'
-                        )
+                        if USE_IMAGE:
+                            user_text = user_text.replace(
+                                'Answer:',
+                                'Please refer to the rendered image to better understand the molecule\'s structure, then think step by step and then put ONLY your final choice ((A) or (B)) after "Answer:"'
+                            )
+                        else:
+                            user_text = user_text.replace(
+                                'Answer:',
+                                'Please think step by step and then put ONLY your final choice ((A) or (B)) after "Answer:"'
+                            )
 
                 # 如果启用图像输入且当前任务适合（SMILES类型）
                 current_img = None
-                if args.use_image:
+                if USE_IMAGE:
                     # 简单判断：如果不是蛋白质序列任务，或是 explicitly defined as small molecule task
                     # 这里暂用 "INPUT_TYPE" 是否被替换来判断，或者直接看 tn
                     # HuRI, SAbDab_Chen, Weber, etc. are protein/antibody -> no SMILES image
@@ -540,7 +543,7 @@ def main():
                     # 安全起见：如果启用 use-image，我们尽量保证都有 entries。
                     # 对非 SMILES 任务，我们完全不启用 use-image flag 逻辑（在外面限制）或者在这里处理。
                     
-                    if args.use_image:
+                    if USE_IMAGE:
                         # 必须占位
                         # 实际上如果任务根本不是 SMILES，不应该加 <image> token。
                         # 此时 data 传 None 应该是合理的。
@@ -550,7 +553,7 @@ def main():
                     break # TODO: for debug
 
             # --------- 生成 ---------
-            if args.use_image:
+            if USE_IMAGE:
                 inputs = [{"prompt": p, "multi_modal_data": m} for p, m in zip(base_prompts, multi_modal_datas)]
                 if USE_LORA:
                     outputs = llm.generate(inputs, sp, lora_request=lora_req)
