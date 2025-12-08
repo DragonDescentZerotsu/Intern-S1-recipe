@@ -38,6 +38,7 @@ from tdc.utils import retrieve_label_name_list
 from sklearn.metrics import roc_auc_score
 from tqdm import tqdm
 import numpy as np
+import matplotlib.pyplot as plt
 import ast
 import re
 from pathlib import Path
@@ -201,7 +202,7 @@ def main():
 
     np.random.seed(42)
     random.seed(42)
-    MODEL_NAME = "internlm/Intern-S1"         # TODO: MODEL_NAME
+    MODEL_NAME = "internlm/Intern-S1-mini-FP8"         # TODO: MODEL_NAME
                                                     # "internlm/Intern-S1-mini-FP8"
                                                     # "internlm/Intern-S1-FP8"
                                                     # "jiosephlee/TDC_All_jiosephlee_Intern-S1-mini-lm_5ep_8e-05lr_64bs_ps_txgemma_v3_fps-no_attn_sdpa"
@@ -210,7 +211,7 @@ def main():
     LORA_PATH = "checkpoints/Intern-S1-mini/lora/sft-ChemCoT/checkpoint-19904"  # 可为空字符串禁用 LoRA
     USE_LORA = False # TODO USE_LORA
 
-    DEBUG = False # TODO: DEBUG
+    DEBUG = True # TODO: DEBUG
     USE_IMAGE = True # TODO: USE_IMAGE
 
     # ---------------- 配置 Logging ----------------
@@ -346,19 +347,19 @@ def main():
                 # 'PAMPA_NCATS',
                 # 'HIA_Hou',
                 'Bioavailability_Ma',
-                'BBB_Martins',
-                'Pgp_Broccatelli',
+                # 'BBB_Martins',
+                # 'Pgp_Broccatelli',
 
-                'CYP1A2_Veith',
-                'CYP2C19_Veith',
+                # 'CYP1A2_Veith',
+                # 'CYP2C19_Veith',
 
-                'CYP2C9_Veith',
-                'CYP2D6_Veith',
-                'CYP3A4_Veith',
+                # 'CYP2C9_Veith',
+                # 'CYP2D6_Veith',
+                # 'CYP3A4_Veith',
 
-                'CYP2C9_Substrate_CarbonMangels',
-                'CYP2D6_Substrate_CarbonMangels',
-                'CYP3A4_Substrate_CarbonMangels',
+                # 'CYP2C9_Substrate_CarbonMangels',
+                # 'CYP2D6_Substrate_CarbonMangels',
+                # 'CYP3A4_Substrate_CarbonMangels',
             ]
         elif TASK_GROUP_NAME == 'HTS':
             TASK_NAMEs = [
@@ -563,7 +564,13 @@ def main():
                     if USE_IMAGE:
                         plt.imshow(multi_modal_datas[0]['image'])
                         plt.axis('off')
-                        plt.show()
+                        # Save to figs folder
+                        fig_dir = current_dir / 'figs'
+                        fig_dir.mkdir(parents=True, exist_ok=True)
+                        save_path = fig_dir / f'{TASK_NAME}_sample.png'
+                        plt.savefig(save_path)
+                        print(f"Image saved to {save_path}")
+                        plt.close()
                     break # TODO: for debug, only one prompt in base_prompts
 
             # --------- 生成 ---------
