@@ -216,6 +216,7 @@ def main():
     # ---------------- 配置 Logging ----------------
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     log_file = current_dir / 'logs' / f'{"Use_image_" if USE_IMAGE else "No_image_"}{MODEL_NAME.split("/")[-1]}_{timestamp}.log'
+    log_file.parent.mkdir(parents=True, exist_ok=True)
 
     # 配置 logging：同时输出到控制台和文件
     logging.basicConfig(
@@ -224,7 +225,8 @@ def main():
         handlers=[
             logging.FileHandler(str(log_file), encoding='utf-8'),  # TODO: logging to file (Debug)
             logging.StreamHandler()  # 同时输出到控制台
-        ] if not DEBUG else [logging.StreamHandler()]
+        ] if not DEBUG else [logging.StreamHandler()],
+        force=True
     )
     logger = logging.getLogger(__name__)
     logger.info(f"Logging initialized. Log file: {log_file}")
@@ -341,8 +343,8 @@ def main():
             )
         elif TASK_GROUP_NAME == 'ADME':  # TODO: ADME tasks
             TASK_NAMEs = [
-                'PAMPA_NCATS',
-                'HIA_Hou',
+                # 'PAMPA_NCATS',
+                # 'HIA_Hou',
                 'Bioavailability_Ma',
                 'BBB_Martins',
                 'Pgp_Broccatelli',
@@ -557,6 +559,11 @@ def main():
                         multi_modal_datas.append({}) # 空字典表示无模态数据
 
                 if DEBUG:
+                    # molecule image visualization
+                    if USE_IMAGE:
+                        plt.imshow(multi_modal_datas[0]['image'])
+                        plt.axis('off')
+                        plt.show()
                     break # TODO: for debug, only one prompt in base_prompts
 
             # --------- 生成 ---------
