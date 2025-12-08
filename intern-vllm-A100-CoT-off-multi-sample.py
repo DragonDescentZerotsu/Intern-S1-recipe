@@ -13,9 +13,10 @@ if os.environ.get('PYTHONHASHSEED') != '42':
 
 # ---------------- vLLM & CUDA 环境 在 A100 上 是必须的----------------
 os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
-os.environ.setdefault("VLLM_USE_V1", "1")
-os.environ.setdefault("VLLM_ATTENTION_BACKEND", "TORCH_SDPA")
+os.environ["VLLM_USE_V1"] = "1"
 mp.set_start_method("spawn", force=True)
+
+# os.environ.setdefault("VLLM_ATTENTION_BACKEND", "TORCH_SDPA")
 
 # 选择显卡
 # os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")  # TODO: GPU choice
@@ -177,7 +178,7 @@ def main():
         '--task-groups',
         nargs='+',
         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'all'],
-        default=['ADME'],  # TODO: Test group
+        default=['ADME'],  # TODO: Test group (ADME or other ones)
         help='选择要运行的任务组 (可以选择多个)'
     )
 
@@ -200,12 +201,21 @@ def main():
 
     np.random.seed(42)
     random.seed(42)
+    MODEL_NAME = "internlm/Intern-S1"         # TODO: MODEL_NAME
+                                                    # "internlm/Intern-S1-mini-FP8"
+                                                    # "internlm/Intern-S1-FP8"
+                                                    # "jiosephlee/TDC_All_jiosephlee_Intern-S1-mini-lm_5ep_8e-05lr_64bs_ps_txgemma_v3_fps-no_attn_sdpa"
+                                                    #"/data2/tianang/projects/Intern-S1/checkpoints/Intern-S1-mini/full/sft-ChemCoT/checkpoint-19904" H100
+                                                    # "/data1/tianang/Projects/Intern-S1/checkpoints/Intern-S1-mini/full/sft-ChemCoT/checkpoint-19904" Node002
+    LORA_PATH = "checkpoints/Intern-S1-mini/lora/sft-ChemCoT/checkpoint-19904"  # 可为空字符串禁用 LoRA
+    USE_LORA = False # TODO USE_LORA
+
     DEBUG = False # TODO: DEBUG
-    USE_IMAGE = False # TODO: USE_IMAGE
+    USE_IMAGE = True # TODO: USE_IMAGE
 
     # ---------------- 配置 Logging ----------------
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    log_file = current_dir / 'logs' / f'{"Use_image_" if USE_IMAGE else "No_image_"}experiment_log_{timestamp}.log'
+    log_file = current_dir / 'logs' / f'{"Use_image_" if USE_IMAGE else "No_image_"}{MODEL_NAME.split("/")[-1]}_{timestamp}.log'
 
     # 配置 logging：同时输出到控制台和文件
     logging.basicConfig(
@@ -221,14 +231,6 @@ def main():
     logger.info(f"Selected task groups: {TASK_GROUP_NAMEs}")
 
     # ---------------- 配置区 ----------------
-    MODEL_NAME = "internlm/Intern-S1-mini"         # TODO: MODEL_NAME
-                                                    # "internlm/Intern-S1-mini-FP8"
-                                                    # "internlm/Intern-S1-FP8"
-                                                    # "jiosephlee/TDC_All_jiosephlee_Intern-S1-mini-lm_5ep_8e-05lr_64bs_ps_txgemma_v3_fps-no_attn_sdpa"
-                                                    #"/data2/tianang/projects/Intern-S1/checkpoints/Intern-S1-mini/full/sft-ChemCoT/checkpoint-19904" H100
-                                                    # "/data1/tianang/Projects/Intern-S1/checkpoints/Intern-S1-mini/full/sft-ChemCoT/checkpoint-19904" Node002
-    LORA_PATH = "checkpoints/Intern-S1-mini/lora/sft-ChemCoT/checkpoint-19904"  # 可为空字符串禁用 LoRA
-    USE_LORA = False # TODO USE_LORA
 
     # 采样与打分
     N_SAMPLES = args.n_samples  # 每题采样次数，从命令行参数获取
@@ -259,21 +261,26 @@ def main():
     elif 'Intern-S1' in MODEL_NAME:
         TENSOR_PARALLELE_SIZE = 8  # 适配 A100
 
-    llm = LLM(
-        model=MODEL_NAME,
-        enforce_eager=True,
-        max_model_len=1024 * 24,
-        max_num_batched_tokens=1024 * 24,
-        quantization="fp8" if 'FP8' in MODEL_NAME else None,  # "fp8",          # 触发 FP8 W8A8 路径（或自动识别 FP8 检查点）
-        dtype="bfloat16",
-        tensor_parallel_size=TENSOR_PARALLELE_SIZE,  # 1 if 'Intern-S1-mini' in MODEL_NAME else 8,
-        trust_remote_code=True,
-        gpu_memory_utilization=0.92,
-        max_num_seqs=256,
-        limit_mm_per_prompt={"video": 0, "image": 1 if USE_IMAGE else 0},
-        enable_lora=USE_LORA,
-        tokenizer_mode="auto"
-    )
+    try:
+        llm = LLM(
+            model=MODEL_NAME,
+            enforce_eager=True,
+            max_model_len=1024 * 24,
+            max_num_batched_tokens=1024 * 24,
+            quantization="fp8" if 'FP8' in MODEL_NAME else None,  # "fp8",          # 触发 FP8 W8A8 路径（或自动识别 FP8 检查点）
+            dtype="bfloat16",
+            tensor_parallel_size=TENSOR_PARALLELE_SIZE,  # 1 if 'Intern-S1-mini' in MODEL_NAME else 8,
+            trust_remote_code=True,
+            gpu_memory_utilization=0.92,  # original: 0.92
+            max_num_seqs=256,
+            limit_mm_per_prompt={"video": 0, "image": 1 if USE_IMAGE else 0},
+            enable_lora=USE_LORA,
+            tokenizer_mode="auto"
+        )
+    except RuntimeError as e:
+        logger.error(f"Failed to initialize vLLM engine: {e}")
+        logger.error("Detailed traceback:", exc_info=True)
+        raise
 
     lora_req = None
     if USE_LORA and LORA_PATH and os.path.isdir(LORA_PATH):
@@ -332,7 +339,7 @@ def main():
                 ['herg_central' + '_' + retrieve_label_name_list('herg_central')[-1]]
                 + ['ToxCast' + '_' + label for label in retrieve_label_name_list('Toxcast')]
             )
-        elif TASK_GROUP_NAME == 'ADME':
+        elif TASK_GROUP_NAME == 'ADME':  # TODO: ADME tasks
             TASK_NAMEs = [
                 'PAMPA_NCATS',
                 'HIA_Hou',
@@ -340,16 +347,16 @@ def main():
                 'BBB_Martins',
                 'Pgp_Broccatelli',
 
-                # 'CYP1A2_Veith',
-                # 'CYP2C19_Veith',
+                'CYP1A2_Veith',
+                'CYP2C19_Veith',
 
-                # 'CYP2C9_Veith',
-                # 'CYP2D6_Veith',
-                # 'CYP3A4_Veith',
+                'CYP2C9_Veith',
+                'CYP2D6_Veith',
+                'CYP3A4_Veith',
 
-                # 'CYP2C9_Substrate_CarbonMangels',
-                # 'CYP2D6_Substrate_CarbonMangels',
-                # 'CYP3A4_Substrate_CarbonMangels',
+                'CYP2C9_Substrate_CarbonMangels',
+                'CYP2D6_Substrate_CarbonMangels',
+                'CYP3A4_Substrate_CarbonMangels',
             ]
         elif TASK_GROUP_NAME == 'HTS':
             TASK_NAMEs = [
@@ -524,7 +531,7 @@ def main():
                         except Exception as e:
                             logger.warning(f"Failed to generate image for SMILES {entry}: {e}")
 
-                base_prompts.append(to_prompt_user_block(tokenizer, user_text, ENABLE_THINKING))
+                base_prompts.append(to_prompt_user_block(tokenizer, user_text, ENABLE_THINKING))  # if DEBUG is on, this process only excute once
                 if current_img is not None:
                     multi_modal_datas.append({"image": current_img})
                 else:
@@ -550,7 +557,7 @@ def main():
                         multi_modal_datas.append({}) # 空字典表示无模态数据
 
                 if DEBUG:
-                    break # TODO: for debug
+                    break # TODO: for debug, only one prompt in base_prompts
 
             # --------- 生成 ---------
             if USE_IMAGE:
