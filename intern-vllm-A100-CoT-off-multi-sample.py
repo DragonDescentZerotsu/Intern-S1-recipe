@@ -19,7 +19,7 @@ mp.set_start_method("spawn", force=True)
 # os.environ.setdefault("VLLM_ATTENTION_BACKEND", "TORCH_SDPA")
 
 # 选择显卡
-# os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")  # TODO: GPU choice
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")  # TODO: GPU choice
 
 from transformers import AutoTokenizer, AutoProcessor
 from vllm import LLM, SamplingParams
@@ -178,8 +178,8 @@ def main():
     parser.add_argument(
         '--task-groups',
         nargs='+',
-        choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'all'],
-        default=['ADME'],  # TODO: Test group (ADME or other ones)
+        choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'Custom', 'all'],
+        default=['Custom'],  # TODO: Test group (ADME or other ones)
         help='选择要运行的任务组 (可以选择多个)'
     )
 
@@ -202,7 +202,7 @@ def main():
 
     np.random.seed(42)
     random.seed(42)
-    MODEL_NAME = "internlm/Intern-S1-mini-FP8"         # TODO: MODEL_NAME
+    MODEL_NAME = "Qwen/Qwen3-8B"         # TODO: MODEL_NAME
                                                     # "internlm/Intern-S1-mini-FP8"
                                                     # "internlm/Intern-S1-FP8"
                                                     # "jiosephlee/TDC_All_jiosephlee_Intern-S1-mini-lm_5ep_8e-05lr_64bs_ps_txgemma_v3_fps-no_attn_sdpa"
@@ -211,12 +211,12 @@ def main():
     LORA_PATH = "checkpoints/Intern-S1-mini/lora/sft-ChemCoT/checkpoint-19904"  # 可为空字符串禁用 LoRA
     USE_LORA = False # TODO USE_LORA
 
-    DEBUG = True # TODO: DEBUG
-    USE_IMAGE = True # TODO: USE_IMAGE
+    DEBUG = False # TODO: DEBUG
+    USE_IMAGE = False # TODO: USE_IMAGE
 
     # ---------------- 配置 Logging ----------------
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    log_file = current_dir / 'logs' / f'{"Use_image_" if USE_IMAGE else "No_image_"}{MODEL_NAME.split("/")[-1]}_{timestamp}.log'
+    log_file = current_dir / 'logs' / f'{"Use_image_" if USE_IMAGE else "No_image_"}{MODEL_NAME.split("/")[-1]}_RDKit_{timestamp}.log'  # TODO: log_file name
     log_file.parent.mkdir(parents=True, exist_ok=True)
 
     # 配置 logging：同时输出到控制台和文件
@@ -263,6 +263,8 @@ def main():
         TENSOR_PARALLELE_SIZE = 4  # 适配 H100
     elif 'Intern-S1' in MODEL_NAME:
         TENSOR_PARALLELE_SIZE = 8  # 适配 A100
+    else:
+        TENSOR_PARALLELE_SIZE = 1  # 适配 Qwen3-8B
 
     try:
         llm = LLM(
@@ -332,6 +334,8 @@ def main():
     phase1_AUROCS=[]; phase2_AUROCS=[]; phase3_AUROCS=[]
     # PeptideMHC
     MHC1_IEDB_IMGT_Nielsen_AUROCS=[]; MHC2_IEDB_Jensen_AUROCS=[]
+    # Custom
+    Custom_AUROCS=[]
 
     # ---------------- 任务主循环 ----------------
     for TASK_GROUP_NAME in TASK_GROUP_NAMEs:
@@ -386,6 +390,8 @@ def main():
             TASK_NAMEs = ['phase1', 'phase2', 'phase3']
         elif TASK_GROUP_NAME == 'PeptideMHC':
             TASK_NAMEs = ['MHC1_IEDB-IMGT_Nielsen', 'MHC2_IEDB_Jensen']
+        elif TASK_GROUP_NAME == 'Custom':
+            TASK_NAMEs = ['Skin_Reaction_test_vanilla+RDKit']  # TODO: Custom Data, 一次只能选一个，名字要和文件名一样！
         else:
             continue
 
@@ -420,10 +426,13 @@ def main():
                 data = TrialOutcome(name=TASK_NAME)
             elif TASK_GROUP_NAME == 'PeptideMHC':
                 data = PeptideMHC(name=TASK_NAME)
+            elif TASK_GROUP_NAME == 'Custom':
+                pass # data is loaded manually below
             else:
                 continue
 
-            split = data.get_split()
+            if TASK_GROUP_NAME != 'Custom':
+                split = data.get_split()  # test data from Joseph has only test data
 
             # --------- 构造输入与标签 ---------
             if TASK_NAME == 'SAbDab_Chen':
@@ -437,13 +446,28 @@ def main():
             elif TASK_NAME == 'Bioavailability_Ma' and DEBUG:
                 test_inputs = split['test']['Drug'].values
                 test_inputs[0] = 'CC1=CC(=NO1)NS(=O)(=O)C2=CC=C(C=C2)N'  # TODO: Bioavailability_Ma DEBUG SMILES change
+            elif TASK_GROUP_NAME == 'Custom':
+                pass # data is loaded manually below
             else:
                 test_inputs = split['test']['Drug'].values
 
             if TASK_NAME == 'Weber':
                 test_labels = split['test']['label'].values
+            elif TASK_GROUP_NAME == 'Custom':
+                pass # data is loaded manually below
             else:
                 test_labels = split['test']['Y'].values
+
+            if TASK_GROUP_NAME == 'Custom':
+                # if TASK_NAME == 'Skin_Reaction_test_vanilla':
+                jsonl_path = current_dir / 'shared_data' / f'{TASK_NAME}.jsonl'
+                raw_data = []
+                with open(jsonl_path, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        if line.strip():
+                            raw_data.append(json.loads(line))
+                test_inputs = [item['text'] for item in raw_data]
+                test_labels = [item['Y'] for item in raw_data]
 
             logger.info(f"[{TASK_GROUP_NAME}/{TASK_NAME}] Total test samples: {len(test_inputs)}")
 
@@ -483,6 +507,8 @@ def main():
                     ).replace(
                         '{Possible MHC pseudosequences}', f'<FASTA>{entry[1]}</FASTA>'
                     )
+                elif TASK_GROUP_NAME == 'Custom':
+                    user_text = entry
                 else:
                     user_text = tdc_prompts_json[tn.replace('-', '_')].replace(
                         INPUT_TYPE, f'<SMILES>{entry}</SMILES>'
@@ -757,6 +783,9 @@ def main():
                         MHC1_IEDB_IMGT_Nielsen_AUROCS.append(auroc)
                     if TASK_NAME.startswith('MHC2_IEDB_Jensen'):
                         MHC2_IEDB_Jensen_AUROCS.append(auroc)
+                elif TASK_GROUP_NAME == 'Custom':
+                    # if TASK_NAME == 'Skin_Reaction_test_vanilla':
+                    Custom_AUROCS.append(auroc)
             else:
                 print(f'Cannot compute AUROC (no valid items or only one class).')
                 print(f'{"="*80}\n')
@@ -797,6 +826,8 @@ def main():
             print('SAbDab_Chen', np.mean(np.array(SAbDab_Chen_AUROCS)) if SAbDab_Chen_AUROCS else None)
         elif TASK_GROUP_NAME == 'PPI':
             print('HuRI', np.mean(np.array(HuRI_AUROCS)) if HuRI_AUROCS else None)
+        elif TASK_GROUP_NAME == 'Custom':
+            print(TASK_NAME, np.mean(np.array(Custom_AUROCS)) if Custom_AUROCS else None)
         elif TASK_GROUP_NAME == 'TCREpitopeBinding':
             print('Weber', np.mean(np.array(Weber_AUROCS)) if Weber_AUROCS else None)
         elif TASK_GROUP_NAME == 'TrialOutcome':
