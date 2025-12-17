@@ -46,7 +46,7 @@ import logging
 from datetime import datetime
 import argparse
 import random
-from tools import describe_high_levelfg_fragments_with_attachment_points, describe_high_levelfg_fragments
+from tools import describe_high_levelfg_fragments_with_attachment_points, describe_high_levelfg_fragments, describe_high_levelfg_fragments_no_special_token
 
 current_dir = Path(__file__).parent.resolve()
 # import pydevd_pycharm
@@ -218,7 +218,7 @@ def main():
 
     # ---------------- 配置 Logging ----------------
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    log_file = current_dir / 'logs' / f'{"Use_image_" if USE_IMAGE else "No_image_"}{MODEL_NAME.split("/")[-1]}_AccFG_{timestamp}.log'  # TODO: log_file name, check when using Custom prompt source
+    log_file = current_dir / 'logs' / f'{"Use_image_" if USE_IMAGE else "No_image_"}{MODEL_NAME.split("/")[-1]}_AccFG_NoSpecToken_no_attach_points_{timestamp}.log'  # TODO: log_file name, CHECK!
     log_file.parent.mkdir(parents=True, exist_ok=True)
 
     # 配置 logging：同时输出到控制台和文件
@@ -533,7 +533,7 @@ def main():
                         )
                     else:
                         if USE_HIGH_LEVEL_FG:
-                            fg_desc = describe_high_levelfg_fragments(entry)
+                            fg_desc = describe_high_levelfg_fragments_no_special_token(entry)
                             user_text = fg_desc + "\n" + user_text
                             user_text = user_text.replace(
                                 'Answer:',

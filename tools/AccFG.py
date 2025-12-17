@@ -134,6 +134,50 @@ def describe_high_levelfg_fragments(smiles:str):
         FGs_description += "\n"
     return FGs_description
 
+def describe_high_levelfg_fragments_no_special_token(smiles:str):
+    '''
+    Parse SMILES string into functional groups
+    Args:
+        smiles (str): SMILES of the molecule
+    Returns:
+        FGs_description (str): description of founctional groups in the molecule with fragment SMILES
+    '''
+    afg = AccFG(print_load_info=False)
+    mol = Chem.MolFromSmiles(smiles)
+
+    # show_atoms=True  -> 让输出带上“功能团命中的原子编号”
+    # show_graph=True  -> 返回 fg_graph（用于打印树/结构化组织）
+    fgs, fg_graph = afg.run(smiles, show_atoms=True, show_graph=True)
+
+    FG_name_SMILES_fragment_map = {}
+    
+    for FG_name, FG_atom_ids_list in fgs.items():
+        FG_fragment_smiles_list = []
+        for FG_atom_ids in FG_atom_ids_list:
+            FG_fragment_smiles = Chem.MolFragmentToSmiles(
+                mol,
+                atomsToUse=list(FG_atom_ids),
+                isomericSmiles=True,
+                canonical=False,   # 不强制重排，通常更便于对照
+            )
+            FG_fragment_smiles_list.append(FG_fragment_smiles)
+        
+        FG_name_SMILES_fragment_map[FG_name] = FG_fragment_smiles_list
+
+    FGs_description = f"The functional groups inside <SMILES>{smiles}</SMILES> are:\n"
+    for i, (FG_name, FG_fragment_smiles_list) in enumerate(FG_name_SMILES_fragment_map.items()):
+        FGs_description += f"{i+1}. {FG_name}:"
+        FGs_description += f"\n   Count:{len(FG_fragment_smiles_list)}"
+        FGs_description += "\n   Corresponding fragment SMILES:"
+        for FG_fragment_smiles in FG_fragment_smiles_list:
+            # if FG_fragment_smiles == 'Not matched':
+            #     FGs_description += " Not matched, "
+            #     continue
+            FGs_description += f" {FG_fragment_smiles}, "  # Difference here, no <SMILES> token
+        FGs_description += "\n"
+    return FGs_description
+
+
 if __name__ == "__main__":
     # example usage
     smiles = "CCOC(=O)c1ccc(N)cc1"
