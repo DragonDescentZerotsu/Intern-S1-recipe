@@ -50,7 +50,7 @@ def fg_fragment_with_attachment_points(smiles: str, fg_atoms: tuple[int, ...]):
     return frag_smiles, all_fragged_smiles, cut_bonds
 
 
-def describe_high_levelfg_fragments_with_attachment_points(smiles:str):
+def describe_high_level_fg_fragments_with_attachment_points(smiles:str):
     '''
     Parse SMILES string into functional groups with attachment points
     Args:
@@ -91,7 +91,7 @@ def describe_high_levelfg_fragments_with_attachment_points(smiles:str):
     return FGs_description
 
 
-def describe_high_levelfg_fragments(smiles:str):
+def describe_high_level_fg_fragments(smiles:str):
     '''
     Parse SMILES string into functional groups
     Args:
@@ -134,7 +134,7 @@ def describe_high_levelfg_fragments(smiles:str):
         FGs_description += "\n"
     return FGs_description
 
-def describe_high_levelfg_fragments_no_special_token(smiles:str):
+def describe_high_level_fg_fragments_no_special_token(smiles:str):
     '''
     Parse SMILES string into functional groups
     Args:
@@ -164,7 +164,7 @@ def describe_high_levelfg_fragments_no_special_token(smiles:str):
         
         FG_name_SMILES_fragment_map[FG_name] = FG_fragment_smiles_list
 
-    FGs_description = f"The functional groups inside <SMILES>{smiles}</SMILES> are:\n"
+    FGs_description = f"The functional groups inside {smiles} are:\n"
     for i, (FG_name, FG_fragment_smiles_list) in enumerate(FG_name_SMILES_fragment_map.items()):
         FGs_description += f"{i+1}. {FG_name}:"
         FGs_description += f"\n   Count:{len(FG_fragment_smiles_list)}"
@@ -180,7 +180,9 @@ def describe_high_levelfg_fragments_no_special_token(smiles:str):
 
 if __name__ == "__main__":
     # example usage
-    smiles = "CCOC(=O)c1ccc(N)cc1"
-    print(describe_high_levelfg_fragments_with_attachment_points(smiles))
+    smiles = "O=C(O)[C@H](Cc1cnc[nH]1)N1C(=O)c2ccccc2C1=O"
+    print(describe_high_level_fg_fragments_with_attachment_points(smiles))
     print('\n')
-    print(describe_high_levelfg_fragments(smiles))
+    print(describe_high_level_fg_fragments(smiles))
+    print('\n')
+    print(describe_high_level_fg_fragments_no_special_token(smiles))

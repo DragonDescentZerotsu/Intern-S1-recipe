@@ -19,7 +19,7 @@ mp.set_start_method("spawn", force=True)
 # os.environ.setdefault("VLLM_ATTENTION_BACKEND", "TORCH_SDPA")
 
 # 选择显卡
-# os.environ.setdefault("CUDA_VISIBLE_DEVICES", "2")  # TODO: GPU choice
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "2")  # TODO: GPU choice
 
 from transformers import AutoTokenizer, AutoProcessor
 from vllm import LLM, SamplingParams
@@ -46,7 +46,9 @@ import logging
 from datetime import datetime
 import argparse
 import random
-from tools import describe_high_levelfg_fragments_with_attachment_points, describe_high_levelfg_fragments, describe_high_levelfg_fragments_no_special_token
+
+from utils import extract_answer, parse_answer
+from tools import describe_high_level_fg_fragments_with_attachment_points, describe_high_level_fg_fragments, describe_high_level_fg_fragments_no_special_token
 
 current_dir = Path(__file__).parent.resolve()
 # import pydevd_pycharm
@@ -54,97 +56,6 @@ current_dir = Path(__file__).parent.resolve()
 # pydevd_pycharm.settrace('127.0.0.1', port=5678,
 #                         stdoutToServer=True, stderrToServer=True,
 #                         suspend=True)   # 第一次连上就停在这里
-
-# ====== 解析工具：从模型文本中剥离最终选项并映射到 0/1 ======
-def extract_answer(response:str):
-    """从模型回答中提取最后一个Answer:之后的内容"""
-    # 找到所有"Answer:"的位置
-    format_correct = False
-    if 'Answer:' in response:
-        format_correct = True
-        answer_matches = list(re.finditer(r'Answer:', response, re.IGNORECASE))
-        if not answer_matches:
-            return None, format_correct
-    elif 'answer is' in response:
-        format_correct = True
-        answer_matches = list(re.finditer(r'answer is', response, re.IGNORECASE))
-        if not answer_matches:
-            return None, format_correct
-
-    # 获取最后一个"Answer:"之后的内容
-    if 'Answer:' in response or 'answer is' in response:
-        last_answer_pos = answer_matches[-1].end()
-        answer_text = response[last_answer_pos:].strip()
-    else:
-        answer_text = response
-
-    return answer_text, format_correct
-
-def parse_answer(answer_text, format_correct, think_is_on:bool):
-    """解析答案: (A) -> 0 (负类), (B) -> 1 (正类)"""
-    if think_is_on:
-        if answer_text is None:
-            return None
-        if format_correct:
-            if '(A)' in answer_text:
-                return 0
-            elif 'A**' in answer_text:
-                return 0
-            elif 'A)' in answer_text:
-                return 0
-            elif '\\boxed{A}' in answer_text:
-                return 0
-            elif '\\text{A}' in answer_text:
-                return 0
-            elif '(B)' in answer_text:
-                return 1
-            elif 'B**' in answer_text:
-                return 1
-            elif 'B)' in answer_text:
-                return 1
-            elif '\\boxed{B}' in answer_text:
-                return 1
-            elif '\\text{B}' in answer_text:
-                return 1
-            elif 'B' in answer_text:
-                return 1
-            elif 'A' in answer_text:
-                return 0
-            else:
-                return None
-        else:
-            if '\\boxed{A}' in answer_text:
-                return 0
-            elif '\\text{A}' in answer_text:
-                return 0
-            elif '\n(A)' in answer_text:
-                return 0
-            elif '\\boxed{B}' in answer_text:
-                return 1
-            elif '\\text{B}' in answer_text:
-                return 1
-            elif '\n(B)' in answer_text:
-                return 1
-            else:
-                return None
-
-    else:
-        if answer_text is None:
-            return None
-        if '(A)' in answer_text:
-            return 0
-        elif '(B)' in answer_text:
-            return 1
-        elif 'Yes' in answer_text:
-            return 1
-        elif 'yes' in answer_text:
-            return 1
-        elif 'B' in answer_text:
-            return 1
-        elif 'A' in answer_text:
-            return 0
-        else:
-            return None
 
 # ====== 统一：构造 chat 模板 ======
 def to_prompt_user_block(tokenizer, text: str, enable_thinking:bool) -> str:
@@ -533,7 +444,7 @@ def main():
                         )
                     else:
                         if USE_HIGH_LEVEL_FG:
-                            fg_desc = describe_high_levelfg_fragments_no_special_token(entry)
+                            fg_desc = describe_high_level_fg_fragments_no_special_token(entry)
                             user_text = fg_desc + "\n" + user_text
                             user_text = user_text.replace(
                                 'Answer:',
