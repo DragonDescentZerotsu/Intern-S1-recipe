@@ -1,5 +1,5 @@
 '''
-使用示例：
+example usage:
 CUDA_VISIBLE_DEVICES=1 python intern-vllm-A100-CoT-off-multi-sample.py --task-groups ADME
 '''
 
@@ -19,7 +19,7 @@ mp.set_start_method("spawn", force=True)
 # os.environ.setdefault("VLLM_ATTENTION_BACKEND", "TORCH_SDPA")
 
 # 选择显卡
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")  # TODO: GPU choice
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "2")  # TODO: GPU choice
 
 from transformers import AutoTokenizer, AutoProcessor
 from vllm import LLM, SamplingParams
@@ -47,103 +47,15 @@ from datetime import datetime
 import argparse
 import random
 
+from utils import extract_answer, parse_answer
+from tools import describe_high_level_fg_fragments_with_attachment_points, describe_high_level_fg_fragments, describe_high_level_fg_fragments_no_special_token
+
 current_dir = Path(__file__).parent.resolve()
 # import pydevd_pycharm
 
 # pydevd_pycharm.settrace('127.0.0.1', port=5678,
 #                         stdoutToServer=True, stderrToServer=True,
 #                         suspend=True)   # 第一次连上就停在这里
-
-# ====== 解析工具：从模型文本中剥离最终选项并映射到 0/1 ======
-def extract_answer(response:str):
-    """从模型回答中提取最后一个Answer:之后的内容"""
-    # 找到所有"Answer:"的位置
-    format_correct = False
-    if 'Answer:' in response:
-        format_correct = True
-        answer_matches = list(re.finditer(r'Answer:', response, re.IGNORECASE))
-        if not answer_matches:
-            return None, format_correct
-    elif 'answer is' in response:
-        format_correct = True
-        answer_matches = list(re.finditer(r'answer is', response, re.IGNORECASE))
-        if not answer_matches:
-            return None, format_correct
-
-    # 获取最后一个"Answer:"之后的内容
-    if 'Answer:' in response or 'answer is' in response:
-        last_answer_pos = answer_matches[-1].end()
-        answer_text = response[last_answer_pos:].strip()
-    else:
-        answer_text = response
-
-    return answer_text, format_correct
-
-def parse_answer(answer_text, format_correct, think_is_on:bool):
-    """解析答案: (A) -> 0 (负类), (B) -> 1 (正类)"""
-    if think_is_on:
-        if answer_text is None:
-            return None
-        if format_correct:
-            if '(A)' in answer_text:
-                return 0
-            elif 'A**' in answer_text:
-                return 0
-            elif 'A)' in answer_text:
-                return 0
-            elif '\\boxed{A}' in answer_text:
-                return 0
-            elif '\\text{A}' in answer_text:
-                return 0
-            elif '(B)' in answer_text:
-                return 1
-            elif 'B**' in answer_text:
-                return 1
-            elif 'B)' in answer_text:
-                return 1
-            elif '\\boxed{B}' in answer_text:
-                return 1
-            elif '\\text{B}' in answer_text:
-                return 1
-            elif 'B' in answer_text:
-                return 1
-            elif 'A' in answer_text:
-                return 0
-            else:
-                return None
-        else:
-            if '\\boxed{A}' in answer_text:
-                return 0
-            elif '\\text{A}' in answer_text:
-                return 0
-            elif '\n(A)' in answer_text:
-                return 0
-            elif '\\boxed{B}' in answer_text:
-                return 1
-            elif '\\text{B}' in answer_text:
-                return 1
-            elif '\n(B)' in answer_text:
-                return 1
-            else:
-                return None
-
-    else:
-        if answer_text is None:
-            return None
-        if '(A)' in answer_text:
-            return 0
-        elif '(B)' in answer_text:
-            return 1
-        elif 'Yes' in answer_text:
-            return 1
-        elif 'yes' in answer_text:
-            return 1
-        elif 'B' in answer_text:
-            return 1
-        elif 'A' in answer_text:
-            return 0
-        else:
-            return None
 
 # ====== 统一：构造 chat 模板 ======
 def to_prompt_user_block(tokenizer, text: str, enable_thinking:bool) -> str:
@@ -179,7 +91,7 @@ def main():
         '--task-groups',
         nargs='+',
         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'Custom', 'all'],
-        default=['Custom'],  # TODO: Test group (ADME or other ones)
+        default=['Tox'],  # TODO: Test group (ADME or other ones)
         help='选择要运行的任务组 (可以选择多个)'
     )
 
@@ -202,7 +114,7 @@ def main():
 
     np.random.seed(42)
     random.seed(42)
-    MODEL_NAME = "Qwen/Qwen3-8B"         # TODO: MODEL_NAME
+    MODEL_NAME = "internlm/Intern-S1-mini"         # TODO: MODEL_NAME
                                                     # "internlm/Intern-S1-mini-FP8"
                                                     # "internlm/Intern-S1-FP8"
                                                     # "jiosephlee/TDC_All_jiosephlee_Intern-S1-mini-lm_5ep_8e-05lr_64bs_ps_txgemma_v3_fps-no_attn_sdpa"
@@ -213,10 +125,11 @@ def main():
 
     DEBUG = False # TODO: DEBUG
     USE_IMAGE = False # TODO: USE_IMAGE
+    USE_HIGH_LEVEL_FG = True # TODO: USE_HIGH_LEVEL_FG
 
     # ---------------- 配置 Logging ----------------
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    log_file = current_dir / 'logs' / f'{"Use_image_" if USE_IMAGE else "No_image_"}{MODEL_NAME.split("/")[-1]}_RDKit_{timestamp}.log'  # TODO: log_file name
+    log_file = current_dir / 'logs' / f'{"Use_image_" if USE_IMAGE else "No_image_"}{MODEL_NAME.split("/")[-1]}_AccFG_NoSpecToken_no_attach_points_{timestamp}.log'  # TODO: log_file name, CHECK!
     log_file.parent.mkdir(parents=True, exist_ok=True)
 
     # 配置 logging：同时输出到控制台和文件
@@ -341,10 +254,11 @@ def main():
     for TASK_GROUP_NAME in TASK_GROUP_NAMEs:
         if TASK_GROUP_NAME == 'Tox':
             TASK_NAMEs = (
-                ['Skin_Reaction', 'hERG', 'AMES', 'DILI','ClinTox'] +
-                ['Tox21' + '_' + label.replace('-', '_') for label in retrieve_label_name_list('Tox21')] +
-                ['herg_central' + '_' + retrieve_label_name_list('herg_central')[-1]]
-                + ['ToxCast' + '_' + label for label in retrieve_label_name_list('Toxcast')]
+                ['Skin_Reaction']
+                # + ['hERG', 'AMES', 'DILI','ClinTox'] +
+                # ['Tox21' + '_' + label.replace('-', '_') for label in retrieve_label_name_list('Tox21')] +
+                # ['herg_central' + '_' + retrieve_label_name_list('herg_central')[-1]] +
+                # ['ToxCast' + '_' + label for label in retrieve_label_name_list('Toxcast')]
             )
         elif TASK_GROUP_NAME == 'ADME':  # TODO: ADME tasks
             TASK_NAMEs = [
@@ -391,7 +305,7 @@ def main():
         elif TASK_GROUP_NAME == 'PeptideMHC':
             TASK_NAMEs = ['MHC1_IEDB-IMGT_Nielsen', 'MHC2_IEDB_Jensen']
         elif TASK_GROUP_NAME == 'Custom':
-            TASK_NAMEs = ['Skin_Reaction_test_vanilla+RDKit']  # TODO: Custom Data, 一次只能选一个，名字要和文件名一样！
+            TASK_NAMEs = ['Skin_Reaction_test_vanilla+RDKit+more_context']  # TODO: Custom Data, 一次只能选一个，名字要和文件名一样！
         else:
             continue
 
@@ -476,7 +390,7 @@ def main():
             base_prompts = []
             multi_modal_datas = []  # 用于存放多模态数据 (image)
             
-            for entry in test_inputs:
+            for entry in tqdm(test_inputs, desc=f"[{TASK_GROUP_NAME}/{TASK_NAME}] Preparing prompts"):
                 if TASK_NAME.startswith('herg_central'):
                     tn = 'herg_central'
                 else:
@@ -529,6 +443,13 @@ def main():
                             f'Here are some structured reasoning examples for your reference: {few_shot_prompt}.\n Please follow the structured reasoning examples to think step by step and then put ONLY your final choice ((A) or (B)) after "Answer:"'
                         )
                     else:
+                        if USE_HIGH_LEVEL_FG:
+                            fg_desc = describe_high_level_fg_fragments_no_special_token(entry)
+                            user_text = fg_desc + "\n" + user_text
+                            user_text = user_text.replace(
+                                'Answer:',
+                                'Please think step by step and then put ONLY your final choice ((A) or (B)) after "Answer:"'
+                            )
                         if USE_IMAGE:
                             user_text = user_text.replace(
                                 'Answer:',
