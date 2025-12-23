@@ -90,6 +90,70 @@ def describe_high_level_fg_fragments_with_attachment_points(smiles:str):
         FGs_description += "\n"
     return FGs_description
 
+def high_level_fg_fragments_w_attach_points_no_special_tokens_w_atom_ids(smiles:str):
+    '''
+    Parse SMILES string into functional groups with attachment points and mark atom ids in the SMILES string for better structure description.
+    Args:
+        smiles (str): SMILES of the molecule
+    Returns:
+        FGs_description (str): SMILES string with atom ids and description of founctional groups in the molecule with fragment SMILES and attachment points
+    '''
+    afg = AccFG(print_load_info=False)
+    mol_w_ids = Chem.MolFromSmiles(smiles)
+    for atom in mol_w_ids.GetAtoms():
+        atom.SetAtomMapNum(atom.GetIdx())
+    mol_wo_ids = Chem.MolFromSmiles(smiles)
+
+    # show_atoms=True  -> 让输出带上“功能团命中的原子编号”
+    # show_graph=True  -> 返回 fg_graph（用于打印树/结构化组织）
+    fgs, fg_graph = afg.run(smiles, show_atoms=True, show_graph=True)
+
+    # mark atom ids in smiles
+    smiles_with_atom_ids = Chem.MolToSmiles(mol_w_ids, canonical=False)
+
+    FG_name_SMILES_fragment_map = {}
+    
+    for FG_name, FG_atom_ids_list in fgs.items():
+        FG_fragment_smiles_list = []
+        for FG_atom_ids in FG_atom_ids_list:
+            FG_fragment_smiles_attach, _, _ = fg_fragment_with_attachment_points(smiles, FG_atom_ids)
+            if FG_fragment_smiles_attach is None:
+                FG_fragment_smiles_list.append('Not matched')
+                continue
+            
+            FG_fragment_smiles_pure = Chem.MolFragmentToSmiles(
+                mol_wo_ids,
+                atomsToUse=list(FG_atom_ids),
+                isomericSmiles=True,
+                canonical=False,
+            )
+            FG_fragment_smiles_w_ids = Chem.MolFragmentToSmiles(
+                mol_w_ids,
+                atomsToUse=list(FG_atom_ids),
+                isomericSmiles=True,
+                canonical=False,
+            )
+            FG_fragment_smiles_list.append(f"{FG_fragment_smiles_pure} <-> {FG_fragment_smiles_w_ids} <-> {FG_fragment_smiles_attach}")
+        
+        FG_name_SMILES_fragment_map[FG_name] = FG_fragment_smiles_list
+
+    FGs_description = f"Original SMILES: {smiles}\n"
+    FGs_description += f"with atom ids marked: {smiles_with_atom_ids}.\n"
+    FGs_description += "The functional groups inside the molecule are:\n"
+    for i, (FG_name, FG_fragment_smiles_list) in enumerate(FG_name_SMILES_fragment_map.items()):
+        FGs_description += f"{i+1}. {FG_name}:"
+        FGs_description += f"\n   Count:{len(FG_fragment_smiles_list)}"
+        FGs_description += "\n   Corresponding fragment SMILES <-> with atom ids <-> with attachment points:"
+        for FG_fragment_smiles in FG_fragment_smiles_list:
+            if FG_fragment_smiles == 'Not matched':
+                FGs_description += " Not matched, "
+                continue
+            FGs_description += f" {FG_fragment_smiles}, "
+        FGs_description += "\n"
+    # FGs_description += "Be careful there might be over generalization for the name of the functional groups, double-check the corresponding fragment SMILES to make decisions. "
+    # FGs_description += "Match the functional groups' atom ids and attachment points atom ids with the original SMILES string to better understand the whole structure."
+    return FGs_description
+
 
 def describe_high_level_fg_fragments(smiles:str):
     '''
@@ -180,9 +244,9 @@ def describe_high_level_fg_fragments_no_special_token(smiles:str):
 
 if __name__ == "__main__":
     # example usage
-    smiles = "O=C(O)[C@H](Cc1cnc[nH]1)N1C(=O)c2ccccc2C1=O"
-    print(describe_high_level_fg_fragments_with_attachment_points(smiles))
-    print('\n')
-    print(describe_high_level_fg_fragments(smiles))
-    print('\n')
-    print(describe_high_level_fg_fragments_no_special_token(smiles))
+    smiles = "CCOC(=O)C(=NOC(C)(C)C(=O)OC(C)(C)C)c1csc(NC(c2ccccc2)(c2ccccc2)c2ccccc2)n1"
+    print(high_level_fg_fragments_w_attach_points_no_special_tokens_w_atom_ids(smiles))
+    # print('\n')
+    # print(describe_high_level_fg_fragments(smiles))
+    # print('\n')
+    # print(describe_high_level_fg_fragments_no_special_token(smiles))

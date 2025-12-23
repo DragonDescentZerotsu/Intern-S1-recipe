@@ -19,7 +19,7 @@ mp.set_start_method("spawn", force=True)
 # os.environ.setdefault("VLLM_ATTENTION_BACKEND", "TORCH_SDPA")
 
 # 选择显卡
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "2")  # TODO: GPU choice
+# os.environ.setdefault("CUDA_VISIBLE_DEVICES", "2")  # TODO: GPU choice
 
 from transformers import AutoTokenizer, AutoProcessor
 from vllm import LLM, SamplingParams
@@ -114,7 +114,7 @@ def main():
 
     np.random.seed(42)
     random.seed(42)
-    MODEL_NAME = "internlm/Intern-S1-mini"         # TODO: MODEL_NAME
+    MODEL_NAME = "internlm/Intern-S1"         # TODO: MODEL_NAME
                                                     # "internlm/Intern-S1-mini-FP8"
                                                     # "internlm/Intern-S1-FP8"
                                                     # "jiosephlee/TDC_All_jiosephlee_Intern-S1-mini-lm_5ep_8e-05lr_64bs_ps_txgemma_v3_fps-no_attn_sdpa"
@@ -125,11 +125,11 @@ def main():
 
     DEBUG = False # TODO: DEBUG
     USE_IMAGE = False # TODO: USE_IMAGE
-    USE_HIGH_LEVEL_FG = True # TODO: USE_HIGH_LEVEL_FG
+    USE_HIGH_LEVEL_FG = False # TODO: USE_HIGH_LEVEL_FG
 
     # ---------------- 配置 Logging ----------------
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    log_file = current_dir / 'logs' / f'{"Use_image_" if USE_IMAGE else "No_image_"}{MODEL_NAME.split("/")[-1]}_AccFG_NoSpecToken_no_attach_points_{timestamp}.log'  # TODO: log_file name, CHECK!
+    log_file = current_dir / 'logs' / f'{"Use_image_" if USE_IMAGE else "No_image_"}{MODEL_NAME.split("/")[-1]}_pure_CoT_Skin_reaction_{timestamp}.log'  # TODO: log_file name, CHECK!
     log_file.parent.mkdir(parents=True, exist_ok=True)
 
     # 配置 logging：同时输出到控制台和文件

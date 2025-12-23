@@ -19,12 +19,12 @@
 
 # External Tools
 You have access to these tools:
-{% if tools %}{{ tools | tojson(indent=2) }}{% else %}[]{% endif %}{% endset %}
-{%- set ns = namespace(multi_step_tool=true, last_query_index=messages|length - 1) %}
+{% if tools %}{{ tools | tojson(indent=2) }}{% else %}[]{% endif %}{% endset %}  {# 到这里 endset 都是在为 tool_instruction 赋值 #}
+{%- set ns = namespace(multi_step_tool=true, last_query_index=messages|length - 1) %}  {# namespace 是为了带入 for 循环中的变量 #}
 {%- for message in messages[::-1] %}
     {%- set index = (messages|length - 1) - loop.index0 %}
     {%- if ns.multi_step_tool and message.role == "user" %}
-        {%- set ns.multi_step_tool = false %}
+        {%- set ns.multi_step_tool = false %}  {# multi_step_tool 是为了判断 user message 的 flag #}
         {%- set ns.last_query_index = index %}
     {%- endif %}
 {%- endfor %}

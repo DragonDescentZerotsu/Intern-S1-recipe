@@ -9,6 +9,13 @@ from sklearn.metrics import roc_auc_score
 import numpy as np
 from openai import OpenAI
 import re
+from transformers import AutoTokenizer, AutoProcessor
+tokenizer = AutoTokenizer.from_pretrained("internlm/Intern-S1-mini", trust_remote_code=True)  # for Debug use
+
+from chat_templates.encoding_dsv32 import encode_messages, parse_message_from_completion_text  # for DeepSeek V3.2 Debug use
+encode_config = dict(thinking_mode="thinking", drop_thinking=False, add_default_bos_token=True)
+# usage: 
+# prompt = encode_messages(messages, **encode_config)
 
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -21,7 +28,7 @@ from pathlib import Path
 Current_dir = Path(__file__).parent.resolve()
 
 # Load FG cache
-fg_cache_path = Current_dir.parent / 'shared_data' / 'Skin_Reaction_test_fg_desc_no_<SMILES>.jsonl'
+fg_cache_path = Current_dir.parent / 'shared_data' / 'Skin_Reaction_test_fg_desc_with_attach_points_and_atom_ids.jsonl'  # Skin_Reaction_test_fg_desc_no_<SMILES>.jsonl
 FG_CACHE = {}
 if fg_cache_path.exists():
     with open(fg_cache_path, 'r', encoding='utf-8') as f:
@@ -45,13 +52,13 @@ tools = [{
     'type': 'function',
     'function': {
         'name': 'describe_high_level_fg_fragments',
-        'description': 'Parse SMILES string into functional groups.',
+        'description': 'Parse SMILES string into functional groups with attachment points and mark atom ids in the SMILES string for better structure description.',
         'parameters': {
             'type': 'object',
             'properties': {
                 'smiles': {
                     'type': 'string',
-                    'description': 'The SMILES string to parse into functional groups.'
+                    'description': 'The SMILES string to parse.'
                 }
             },
             'required': [
@@ -71,15 +78,23 @@ def run_turn(client, messages):
     
     while sub_turn <= depth_limit:
         try:
+            # TODO: local Intern-S1-mini
+            # response = client.chat.completions.create(
+            #     model=model_name,
+            #     messages=messages,
+            #     tools=tools,
+            #     max_tokens=10240, # Reduced from 20000 to be safe/faster, usually enough
+            #     temperature=0.8,
+            #     top_p=0.8,
+            #     stream=False,
+            #     extra_body=dict(spaces_between_special_tokens=False, enable_thinking=True)
+            # )
+            # TODO: DeepSeek V3.2
             response = client.chat.completions.create(
-                model=model_name,
+                model='deepseek-chat',
                 messages=messages,
                 tools=tools,
-                max_tokens=10240, # Reduced from 20000 to be safe/faster, usually enough
-                temperature=0.8,
-                top_p=0.8,
-                stream=False,
-                extra_body=dict(spaces_between_special_tokens=False, enable_thinking=True)
+                extra_body={ "thinking": { "type": "enabled" } }  # 使用 OpenAI SDK 的 thinking 功能
             )
         except Exception as e:
             # print(f"Error in chat completion: {e}")
@@ -120,8 +135,13 @@ def worker_process_sample(args):
     index, text, label = args
     
     # Initialize client per process
-    openai_api_key = "EMPTY"
-    openai_api_base = "http://0.0.0.0:23333/v1"
+    # TODO: local model
+    # openai_api_key = "EMPTY"
+    # openai_api_base = "http://0.0.0.0:23333/v1"
+    # TODO: DeepSeek V3.2
+    openai_api_key=os.environ.get('DEEPSEEK_API_KEY')
+    openai_api_base='https://api.deepseek.com/v1'
+
     client = OpenAI(
         api_key=openai_api_key,
         base_url=openai_api_base,
@@ -170,7 +190,7 @@ def main():
     # Adjust processes based on server capacity. 
     # If vLLM is on one GPU, too many concurrent requests might increase latency.
     # 32 or 64 is usually okay for high throughput serving.
-    num_processes = 32
+    num_processes = 32  # TODO: num_processes, change to 1 for debug
     
     results = []
     with multiprocessing.Pool(processes=num_processes) as pool:

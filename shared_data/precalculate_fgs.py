@@ -11,11 +11,11 @@ current_dir = Path(__file__).parent.resolve()
 # Add project root to path to import tools
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from tools import describe_high_level_fg_fragments
+from tools import describe_high_level_fg_fragments, high_level_fg_fragments_w_attach_points_no_special_tokens_w_atom_ids
 
 def precalculate_fgs():
     input_path = current_dir / 'Skin_Reaction_test_vanilla.jsonl'
-    output_path = current_dir / 'Skin_Reaction_test_fg_desc.jsonl'
+    output_path = current_dir / 'Skin_Reaction_test_fg_desc_with_attach_points_and_atom_ids.jsonl'  # 'Skin_Reaction_test_fg_desc.jsonl'
     
     print(f"Reading from {input_path}")
     
@@ -40,7 +40,7 @@ def precalculate_fgs():
             smiles = match.group(1)
             if smiles not in smiles_to_desc:
                 try:
-                    desc = describe_high_level_fg_fragments(smiles)
+                    desc = high_level_fg_fragments_w_attach_points_no_special_tokens_w_atom_ids(smiles)
                     smiles_to_desc[smiles] = desc
                 except Exception as e:
                     print(f"Error processing SMILES {smiles}: {e}")
