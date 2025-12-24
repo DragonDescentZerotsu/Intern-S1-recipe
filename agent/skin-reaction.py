@@ -93,27 +93,28 @@ def run_turn(client, messages):
     depth_limit = 20 # Avoid infinite loops
     
     final_content = ""
+    last_tool_names = set()
     
     while sub_turn <= depth_limit:
         try:
             # TODO: local Intern-S1-mini
-            # response = client.chat.completions.create(
-            #     model=model_name,
-            #     messages=messages,
-            #     tools=tools,
-            #     max_tokens=20000, # Reduced from 20000 to be safe/faster, usually enough
-            #     temperature=0.8,
-            #     top_p=0.8,
-            #     stream=False,
-            #     extra_body=dict(spaces_between_special_tokens=False, enable_thinking=True)
-            # )
-            # TODO: DeepSeek V3.2
             response = client.chat.completions.create(
-                model='deepseek-chat',
+                model=model_name,
                 messages=messages,
                 tools=tools,
-                extra_body={ "thinking": { "type": "enabled" } }  # 使用 OpenAI SDK 的 thinking 功能
+                max_tokens=20000, # Reduced from 20000 to be safe/faster, usually enough
+                temperature=0.8,
+                top_p=0.8,
+                stream=False,
+                extra_body=dict(spaces_between_special_tokens=False, enable_thinking=True)
             )
+            # TODO: DeepSeek V3.2
+            # response = client.chat.completions.create(
+            #     model='deepseek-chat',
+            #     messages=messages,
+            #     tools=tools,
+            #     extra_body={ "thinking": { "type": "enabled" } }  # 使用 OpenAI SDK 的 thinking 功能
+            # )
         except Exception as e:
             # print(f"Error in chat completion: {e}")
             return None
@@ -126,6 +127,12 @@ def run_turn(client, messages):
 
         if not tool_calls:
             break
+            
+        # Check if the set of tool names is the same as the previous turn to prevent infinite loops
+        current_tool_names = set(tool_call.function.name for tool_call in tool_calls)
+        if current_tool_names == last_tool_names:
+            break
+        last_tool_names = current_tool_names
             
         for tool_call in tool_calls:
             try:
@@ -154,11 +161,11 @@ def worker_process_sample(args):
     
     # Initialize client per process
     # TODO: local model
-    # openai_api_key = "EMPTY"
-    # openai_api_base = "http://0.0.0.0:23333/v1"
+    openai_api_key = "EMPTY"
+    openai_api_base = "http://0.0.0.0:23333/v1"
     # TODO: DeepSeek V3.2
-    openai_api_key=os.environ.get('DEEPSEEK_API_KEY')
-    openai_api_base='https://api.deepseek.com/v1'
+    # openai_api_key=os.environ.get('DEEPSEEK_API_KEY')
+    # openai_api_base='https://api.deepseek.com/v1'
 
     client = OpenAI(
         api_key=openai_api_key,

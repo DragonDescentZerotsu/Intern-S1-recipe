@@ -37,8 +37,13 @@ You have access to these tools:
     {%- if message.reasoning_content is string %}
       {%- set reasoning_content = message.reasoning_content %}
     {%- elif '</think>' in content %}
-      {%- set reasoning_content = content.split('</think>')[0].strip().split('<think>')[-1].strip() %}
-      {%- set content = content.split('</think>')[-1].lstrip('
+      {%- set reasoning_content = content.rsplit('</think>', 1)[0].strip() %} {# 做了修改从右边开始分割 #}
+      {%- if '<think>' in reasoning_content %}
+        {%- set reasoning_content = reasoning_content.split('<think>')[-1].strip() %}  
+      {%- elif '\n\n</think>' in reasoning_content %}
+        {%- set reasoning_content = reasoning_content.lsplit('\n\n</think>', 1)[-1].strip() %}
+      {%- endif %}
+      {%- set content = content.rsplit('</think>', 1)[-1].lstrip('
 ') %}
     {%- endif %}
     {%- if message.tool_calls %}
