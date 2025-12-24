@@ -20,7 +20,7 @@ encode_config = dict(thinking_mode="thinking", drop_thinking=False, add_default_
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from tools import describe_high_level_fg_fragments
+from tools import *
 from utils.TDC_answer_parser import extract_answer, parse_answer
 
 from pathlib import Path
@@ -36,7 +36,12 @@ if fg_cache_path.exists():
 else:
     print(f"Warning: FG cache not found at {fg_cache_path}")
 
+
 def cached_describe_high_level_fg_fragments(smiles: str):
+    '''
+    Cache the result of high level FG fragments description, refer to shared_data/precalculate_fgs.py for more details.
+    缓存高级 FG 片段描述的结果，有关更多详细信息，请参阅 shared_data/precalculate_fgs.py。
+    '''
     if smiles in FG_CACHE:
         return FG_CACHE[smiles]
     return describe_high_level_fg_fragments(smiles)
@@ -44,7 +49,18 @@ def cached_describe_high_level_fg_fragments(smiles: str):
 
 def get_function_by_name(name):
     tool_map = {
-        "describe_high_level_fg_fragments": cached_describe_high_level_fg_fragments
+        "describe_high_level_fg_fragments": cached_describe_high_level_fg_fragments,  # 如果有缓存的直接读缓存的结果省时间 / read from cache if available to save time
+        "get_molecular_weight": get_molecular_weight,
+        "get_exact_molecular_weight": get_exact_molecular_weight,
+        "get_heavy_atom_count": get_heavy_atom_count,
+        "get_mol_logp": get_mol_logp,
+        "get_tpsa": get_tpsa,
+        "get_hbd": get_hbd,
+        "get_hba": get_hba,
+        "get_num_rotatable_bonds": get_num_rotatable_bonds,
+        "get_fraction_csp3": get_fraction_csp3,
+        "get_labute_asa": get_labute_asa,
+        "get_mol_mr": get_mol_mr,
     }
     return tool_map.get(name)
 
@@ -69,10 +85,12 @@ tools = [{
 }, 
 ]
 
+tools.extend(RDKIT_OPENAI_TOOLS)
+
 def run_turn(client, messages):
     model_name = client.models.list().data[0].id
     sub_turn = 1
-    depth_limit = 2 # Avoid infinite loops
+    depth_limit = 20 # Avoid infinite loops
     
     final_content = ""
     
@@ -83,7 +101,7 @@ def run_turn(client, messages):
             #     model=model_name,
             #     messages=messages,
             #     tools=tools,
-            #     max_tokens=10240, # Reduced from 20000 to be safe/faster, usually enough
+            #     max_tokens=20000, # Reduced from 20000 to be safe/faster, usually enough
             #     temperature=0.8,
             #     top_p=0.8,
             #     stream=False,
@@ -190,7 +208,7 @@ def main():
     # Adjust processes based on server capacity. 
     # If vLLM is on one GPU, too many concurrent requests might increase latency.
     # 32 or 64 is usually okay for high throughput serving.
-    num_processes = 32  # TODO: num_processes, change to 1 for debug
+    num_processes = 1  # TODO: num_processes, change to 1 for debug
     
     results = []
     with multiprocessing.Pool(processes=num_processes) as pool:
