@@ -1,2 +1,2 @@
-from .AccFG import describe_high_level_fg_fragments_with_attachment_points, describe_high_level_fg_fragments, describe_high_level_fg_fragments_no_special_token, high_level_fg_fragments_w_attach_points_no_special_tokens_w_atom_ids
+from .AccFG import *
 from .RDKit_tools import *

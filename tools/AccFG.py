@@ -7,7 +7,36 @@ import os, csv, re
 from accfg import AccFG, draw_mol_with_fgs, molimg
 from accfg.draw import print_fg_tree
 from rdkit import Chem
+from pathlib import Path
+import json
 
+Current_dir = Path(__file__).parent.resolve()
+
+#-------------------------------------------
+# Chached tools, precomputed FGs description
+#-------------------------------------------
+
+# Load FG cache
+FG_CACHE_PATH = Current_dir.parent / 'shared_data' / 'Skin_Reaction_test_fg_desc_with_attach_points_and_atom_ids.jsonl'  # Skin_Reaction_test_fg_desc_no_<SMILES>.jsonl TODO: 记得改成你的数据路径
+FG_CACHE = {}
+if FG_CACHE_PATH.exists():
+    with open(FG_CACHE_PATH, 'r', encoding='utf-8') as f:
+        FG_CACHE = json.load(f)
+else:
+    print(f"Warning: FG cache not found at {FG_CACHE_PATH}")
+
+def cached_describe_high_level_fg_fragments(smiles: str):
+    '''
+    Cache the result of high level FG fragments description, refer to shared_data/precalculate_fgs.py for more details.
+    缓存高级 FG 片段描述的结果，有关更多详细信息，请参阅 shared_data/precalculate_fgs.py。
+    '''
+    if smiles in FG_CACHE:
+        return FG_CACHE[smiles]
+    return describe_high_level_fg_fragments(smiles)
+
+#---------------------------------------------------
+# Instant FG fragment tools, many different versions
+#---------------------------------------------------
 
 def fg_fragment_with_attachment_points(smiles: str, fg_atoms: tuple[int, ...]):
     mol = Chem.MolFromSmiles(smiles)
@@ -90,6 +119,10 @@ def describe_high_level_fg_fragments_with_attachment_points(smiles:str):
         FGs_description += "\n"
     return FGs_description
 
+#---------------------------------------------------
+# Current most advanced version
+#---------------------------------------------------
+
 def high_level_fg_fragments_w_attach_points_no_special_tokens_w_atom_ids(smiles:str):
     '''
     Parse SMILES string into functional groups with attachment points and mark atom ids in the SMILES string for better structure description.
@@ -98,7 +131,7 @@ def high_level_fg_fragments_w_attach_points_no_special_tokens_w_atom_ids(smiles:
     Returns:
         FGs_description (str): SMILES string with atom ids and description of founctional groups in the molecule with fragment SMILES and attachment points
     '''
-    afg = AccFG(print_load_info=False)
+    afg = AccFG(print_load_info=False, lite=True)  # 只用 high level 的功能团识别
     mol_w_ids = Chem.MolFromSmiles(smiles)
     for atom in mol_w_ids.GetAtoms():
         atom.SetAtomMapNum(atom.GetIdx())
@@ -154,6 +187,7 @@ def high_level_fg_fragments_w_attach_points_no_special_tokens_w_atom_ids(smiles:
     # FGs_description += "Match the functional groups' atom ids and attachment points atom ids with the original SMILES string to better understand the whole structure."
     return FGs_description
 
+#---------------------------------------------------
 
 def describe_high_level_fg_fragments(smiles:str):
     '''
