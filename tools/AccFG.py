@@ -131,7 +131,7 @@ def high_level_fg_fragments_w_attach_points_no_special_tokens_w_atom_ids(smiles:
     Returns:
         FGs_description (str): SMILES string with atom ids and description of founctional groups in the molecule with fragment SMILES and attachment points
     '''
-    afg = AccFG(print_load_info=False, lite=True)  # 只用 high level 的功能团识别
+    afg = AccFG(print_load_info=False)
     mol_w_ids = Chem.MolFromSmiles(smiles)
     for atom in mol_w_ids.GetAtoms():
         atom.SetAtomMapNum(atom.GetIdx())
