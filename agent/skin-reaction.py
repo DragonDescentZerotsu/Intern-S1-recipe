@@ -98,15 +98,26 @@ def run_turn(client, messages):
     while sub_turn <= depth_limit:
         try:
             # TODO: local Intern-S1-mini
+            # response = client.chat.completions.create(
+            #     model=model_name,
+            #     messages=messages,
+            #     tools=tools,
+            #     max_tokens=20000, # Reduced from 20000 to be safe/faster, usually enough
+            #     temperature=0.8,
+            #     top_p=0.8,
+            #     stream=False,
+            #     extra_body=dict(spaces_between_special_tokens=False, enable_thinking=True)
+            # )
+            # TODO: local DeepSeek V3.2
             response = client.chat.completions.create(
                 model=model_name,
                 messages=messages,
                 tools=tools,
-                max_tokens=20000, # Reduced from 20000 to be safe/faster, usually enough
-                temperature=0.8,
-                top_p=0.8,
-                stream=False,
-                extra_body=dict(spaces_between_special_tokens=False, enable_thinking=True)
+                # max_tokens=30000,  # Reduced from 20000 to be safe/faster, usually enough
+                # temperature=1.0,
+                # top_p=0.95,
+                # stream=False,
+                extra_body={"chat_template_kwargs": {"thinking": True}} # vLLM Server
             )
             # TODO: DeepSeek V3.2
             # response = client.chat.completions.create(
@@ -116,7 +127,7 @@ def run_turn(client, messages):
             #     extra_body={ "thinking": { "type": "enabled" } }  # 使用 OpenAI SDK 的 thinking 功能
             # )
         except Exception as e:
-            # print(f"Error in chat completion: {e}")
+            print(f"Error in chat completion: {e}")
             return None
 
         message = response.choices[0].message
@@ -161,9 +172,12 @@ def worker_process_sample(args):
     
     # Initialize client per process
     # TODO: local model
+    # openai_api_key = "EMPTY"
+    # openai_api_base = "http://0.0.0.0:23333/v1"
+    # TODO: DeepSeek V3.2 GB200 local served
     openai_api_key = "EMPTY"
-    openai_api_base = "http://0.0.0.0:23333/v1"
-    # TODO: DeepSeek V3.2
+    openai_api_base = "http://0.0.0.0:8000/v1"
+    # TODO: DeepSeek V3.2 online API
     # openai_api_key=os.environ.get('DEEPSEEK_API_KEY')
     # openai_api_base='https://api.deepseek.com/v1'
 
