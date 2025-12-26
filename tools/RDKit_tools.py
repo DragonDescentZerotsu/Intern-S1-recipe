@@ -1,6 +1,6 @@
 from rdkit import Chem
 from rdkit.Chem import Descriptors, rdMolDescriptors, Lipinski, Crippen, GraphDescriptors, Fragments
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 
 # -------------------------
@@ -434,7 +434,7 @@ TDC_RDKIT_SPECIFIC_OPENAI_TOOLS_MAP: Dict[str, List[Dict[str, Any]]] = {
     # hERG family
     "hERG_Karim": RDKIT_HERG_OPENAI_TOOLS,
     "hERG": RDKIT_HERG_OPENAI_TOOLS,
-    "herg_central": RDKIT_HERG_OPENAI_TOOLS,
+    "herg_central_hERG_inhib": RDKIT_HERG_OPENAI_TOOLS,
 
     # Genotox / carcinogenicity
     "Carcinogens_Lagunin": RDKIT_GENOTOX_OPENAI_TOOLS,

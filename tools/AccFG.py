@@ -9,7 +9,7 @@ from accfg.draw import print_fg_tree
 from rdkit import Chem
 from pathlib import Path
 import json
-from RDKit_tools import _tool
+from .RDKit_tools import _tool
 
 Current_dir = Path(__file__).parent.resolve()
 
@@ -18,11 +18,24 @@ Current_dir = Path(__file__).parent.resolve()
 #-------------------------------------------
 
 # Load FG cache
-FG_CACHE_PATH = Current_dir.parent / 'shared_data' / 'Skin_Reaction_test_fg_desc_with_attach_points_and_atom_ids.jsonl'  # Skin_Reaction_test_fg_desc_no_<SMILES>.jsonl TODO: 记得改成你的数据路径
+# We use the new precomputed JSONL file
+FG_CACHE_PATH = Current_dir.parent / 'DataPrepare' / 'shared_data' / 'TDC_train_fg_desc_with_attach_points_and_atom_ids.jsonl'
 FG_CACHE = {}
 if FG_CACHE_PATH.exists():
     with open(FG_CACHE_PATH, 'r', encoding='utf-8') as f:
-        FG_CACHE = json.load(f)
+        # The file can be a single JSON object (legacy) or JSONL (new)
+        # We try to load as JSON first, if it fails, we assume JSONL
+        try:
+            FG_CACHE = json.load(f)
+        except json.JSONDecodeError:
+            f.seek(0)
+            for line in f:
+                if line.strip():
+                    try:
+                        entry = json.loads(line)
+                        FG_CACHE.update(entry)
+                    except:
+                        pass
 else:
     print(f"Warning: FG cache not found at {FG_CACHE_PATH}")
 

@@ -1,11 +1,9 @@
 import json
-from save_jsonl import save_jsonl
+from .save_jsonl import save_jsonl
 from typing import Any, Dict, List
 import pickle
-from normalize_messages import *
-from transformers import AutoTokenizer
-
-tokenizer = AutoTokenizer.from_pretrained("internlm/Intern-S1-mini", trust_remote_code=True)
+from .normalize_messages import *
+# from transformers import AutoTokenizer
 
 def get_system(tools: list = None):
     default_thinking_sys = "You are an expert reasoner with extensive experience in all areas. You approach problems through systematic thinking and rigorous reasoning. Your response should reflect deep understanding and precise logical thinking, making your solution path and reasoning clear to others. Please put your thinking process within <think>...</think> tags."
@@ -75,7 +73,7 @@ def assistant_to_interns1_value(m: Dict[str, Any]) -> str:
         out += tool_txt
     return out.strip("\n")+'<|im_end|>'
 
-def openai_messages_to_alpaca(messages: List[Dict[str, Any]], system: str = None, tools: Any = None):
+def openai_messages_to_alpaca(messages: List[Dict[str, Any]], tokenizer, system: str = None, tools: Any = None):
 
     item = {"instruction": "", "input": "", "output": ""}
     item["instruction"] = tokenizer.apply_chat_template(messages[:-1], tokenize=False, add_generation_prompt=True, tools=tools).rstrip('<think>')
@@ -83,38 +81,40 @@ def openai_messages_to_alpaca(messages: List[Dict[str, Any]], system: str = None
     # item["output"] = assistant_to_interns1_value(messages[-1])
     return item
 
-def split_into_steps(messages: List[Dict[str, Any]], system: str = None, tools: Any = None):
+def split_into_steps(messages: List[Dict[str, Any]], tokenizer, system: str = None, tools: Any = None):
     out = []
     for i, m in enumerate(messages):
         if m.get("role") == "assistant":
-            out.append(openai_messages_to_alpaca(messages[: i + 1], system=system, tools=tools))
+            out.append(openai_messages_to_alpaca(messages[: i + 1], tokenizer, system=system, tools=tools))
     return out
 
 if __name__ == "__main__":
-    tools = [{
-        'type': 'function',
-        'function': {
-            'name': 'describe_high_level_fg_fragments',
-            'description': 'Parse SMILES string into functional groups with attachment points and mark atom ids in the SMILES string for better structure description.',
-            'parameters': {
-                'type': 'object',
-                'properties': {
-                    'smiles': {
-                        'type': 'string',
-                        'description': 'The SMILES string to parse.'
-                    }
-                },
-                'required': [
-                    'smiles'
-                ]
-            }
-        }
-    }, 
-    ]
-    # system = get_system(tools)
-    # print(system)
-    messages = pickle.load(open("/vast/projects/xia6/apex-gen/tianang/projects/Intern-S1/agent/DeepSeek_V32_output/skin_reaction_1.pkl", "rb"))
-    messages = normalize_DeepSeek_V32_messages(messages)
-    print(tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False, tools=tools))
-    sliced_messages = split_into_steps(messages, tools=tools)
-    save_jsonl(sliced_messages, "/vast/projects/xia6/apex-gen/tianang/projects/Intern-S1/SFT_data/DeepSeek_V32_distill_agent_data/data_Alpaca.jsonl")
+    pass
+    # tokenizer = AutoTokenizer.from_pretrained("internlm/Intern-S1-mini", trust_remote_code=True)
+    # tools = [{
+    #     'type': 'function',
+    #     'function': {
+    #         'name': 'describe_high_level_fg_fragments',
+    #         'description': 'Parse SMILES string into functional groups with attachment points and mark atom ids in the SMILES string for better structure description.',
+    #         'parameters': {
+    #             'type': 'object',
+    #             'properties': {
+    #                 'smiles': {
+    #                     'type': 'string',
+    #                     'description': 'The SMILES string to parse.'
+    #                 }
+    #             },
+    #             'required': [
+    #                 'smiles'
+    #             ]
+    #         }
+    #     }
+    # }, 
+    # ]
+    # # system = get_system(tools)
+    # # print(system)
+    # messages = pickle.load(open("/vast/projects/xia6/apex-gen/tianang/projects/Intern-S1/agent/DeepSeek_V32_output/skin_reaction_1.pkl", "rb"))
+    # messages = normalize_DeepSeek_V32_messages(messages)
+    # print(tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False, tools=tools))
+    # sliced_messages = split_into_steps(messages, tokenizer, tools=tools)
+    # save_jsonl(sliced_messages, "/vast/projects/xia6/apex-gen/tianang/projects/Intern-S1/SFT_data/DeepSeek_V32_distill_agent_data/data_Alpaca.jsonl")
