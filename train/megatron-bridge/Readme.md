@@ -1,4 +1,4 @@
-# This repo is for Intern-S1 recipe experiment
+# This folder is for Megatron Bridge setup
 
 ## 1. Pull my latest modified NeMo docker image
 ### On slurm cluster, use:

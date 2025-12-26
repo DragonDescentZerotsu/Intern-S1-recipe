@@ -1,8 +1,12 @@
 
 # excluding training datasets
-/SFT_data/*
-!/SFT_data/*.py
-!/SFT_data/*.md
+/DataPrepare/SFT_data/*
+!/DataPrepare/SFT_data/*.py
+!/DataPrepare/SFT_data/*.md
+
+/DataPrepare/TDC_train_prompts_label/*
+!/DataPrepare/TDC_train_prompts_label/*.py
+!/DataPrepare/TDC_train_prompts_label/*.md
 
 # excluding TDC downloaded data
 data/
@@ -20,3 +24,4 @@ data/
 __pycache__/
 
 .DS_Store
+.idea/

@@ -32,7 +32,7 @@ tools = TOOLS
 def run_turn(client, messages):
     model_name = client.models.list().data[0].id
     sub_turn = 1
-    depth_limit = 20 # Avoid infinite loops
+    depth_limit = 30 # Avoid infinite loops
     
     final_content = ""
     last_tool_names = set()
