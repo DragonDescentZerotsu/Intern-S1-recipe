@@ -27,65 +27,7 @@ from pathlib import Path
 
 Current_dir = Path(__file__).parent.resolve()
 
-# Load FG cache
-fg_cache_path = Current_dir.parent / 'shared_data' / 'Skin_Reaction_test_fg_desc_with_attach_points_and_atom_ids.jsonl'  # Skin_Reaction_test_fg_desc_no_<SMILES>.jsonl
-FG_CACHE = {}
-if fg_cache_path.exists():
-    with open(fg_cache_path, 'r', encoding='utf-8') as f:
-        FG_CACHE = json.load(f)
-else:
-    print(f"Warning: FG cache not found at {fg_cache_path}")
-
-
-def cached_describe_high_level_fg_fragments(smiles: str):
-    '''
-    Cache the result of high level FG fragments description, refer to shared_data/precalculate_fgs.py for more details.
-    缓存高级 FG 片段描述的结果，有关更多详细信息，请参阅 shared_data/precalculate_fgs.py。
-    '''
-    if smiles in FG_CACHE:
-        return FG_CACHE[smiles]
-    return describe_high_level_fg_fragments(smiles)
-
-
-def get_function_by_name(name):
-    tool_map = {
-        "describe_high_level_fg_fragments": cached_describe_high_level_fg_fragments,  # 如果有缓存的直接读缓存的结果省时间 / read from cache if available to save time
-        "get_molecular_weight": get_molecular_weight,
-        "get_exact_molecular_weight": get_exact_molecular_weight,
-        "get_heavy_atom_count": get_heavy_atom_count,
-        "get_mol_logp": get_mol_logp,
-        "get_tpsa": get_tpsa,
-        "get_hbd": get_hbd,
-        "get_hba": get_hba,
-        "get_num_rotatable_bonds": get_num_rotatable_bonds,
-        "get_fraction_csp3": get_fraction_csp3,
-        "get_labute_asa": get_labute_asa,
-        "get_mol_mr": get_mol_mr,
-    }
-    return tool_map.get(name)
-
-tools = [{
-    'type': 'function',
-    'function': {
-        'name': 'describe_high_level_fg_fragments',
-        'description': 'Parse SMILES string into functional groups with attachment points and mark atom ids in the SMILES string for better structure description.',
-        'parameters': {
-            'type': 'object',
-            'properties': {
-                'smiles': {
-                    'type': 'string',
-                    'description': 'The SMILES string to parse.'
-                }
-            },
-            'required': [
-                'smiles'
-            ]
-        }
-    }
-}, 
-]
-
-tools.extend(RDKIT_OPENAI_TOOLS)
+tools = TOOLS
 
 def run_turn(client, messages):
     model_name = client.models.list().data[0].id

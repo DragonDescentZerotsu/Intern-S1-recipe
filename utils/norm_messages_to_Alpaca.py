@@ -1,17 +1,11 @@
 import json
+from save_jsonl import save_jsonl
 from typing import Any, Dict, List
 import pickle
 from normalize_messages import *
+from transformers import AutoTokenizer
 
-def save_jsonl(records: list[dict], path: str, ensure_ascii: bool = False):
-    """
-    records: list[dict]
-    path: 输出文件路径，如 "data.jsonl"
-    ensure_ascii=False: 保留中文不转义；True 则会变成 \\uXXXX
-    """
-    with open(path, "w", encoding="utf-8") as f:
-        for obj in records:
-            f.write(json.dumps(obj, ensure_ascii=ensure_ascii) + "\n")
+tokenizer = AutoTokenizer.from_pretrained("internlm/Intern-S1-mini", trust_remote_code=True)
 
 def get_system(tools: list = None):
     default_thinking_sys = "You are an expert reasoner with extensive experience in all areas. You approach problems through systematic thinking and rigorous reasoning. Your response should reflect deep understanding and precise logical thinking, making your solution path and reasoning clear to others. Please put your thinking process within <think>...</think> tags."
@@ -79,34 +73,21 @@ def assistant_to_interns1_value(m: Dict[str, Any]) -> str:
         out += content + "\n"
     if tool_txt:
         out += tool_txt
-    return out.strip("\n")
+    return out.strip("\n")+'<|im_end|>'
 
-def openai_messages_to_sharegpt(messages: List[Dict[str, Any]], system: str = None, tools: Any = None):
-    conv = []
-    for m in messages:
-        role = m.get("role")
-        if role == "user":
-            conv.append({"from": "human", "value": m.get("content", "")})
-        elif role == "assistant":
-            conv.append({"from": "gpt", "value": assistant_to_interns1_value(m)})
-        elif role == "tool":
-            conv.append({"from": "observation", "value": m.get("content", "")})
-        else:
-            raise ValueError(f"unsupported role: {role}")
+def openai_messages_to_alpaca(messages: List[Dict[str, Any]], system: str = None, tools: Any = None):
 
-    item = {"conversations": conv}
-    if system is not None:
-        item["system"] = system
-    if tools is not None:
-        # LF 文档里 tools 是一个字符串（JSON 串） :contentReference[oaicite:3]{index=3}
-        item["tools"] = json.dumps(tools, ensure_ascii=False)
+    item = {"instruction": "", "input": "", "output": ""}
+    item["instruction"] = tokenizer.apply_chat_template(messages[:-1], tokenize=False, add_generation_prompt=True, tools=tools).rstrip('<think>')
+    item["output"] = assistant_to_interns1_value(messages[-1])
+    # item["output"] = assistant_to_interns1_value(messages[-1])
     return item
 
 def split_into_steps(messages: List[Dict[str, Any]], system: str = None, tools: Any = None):
     out = []
     for i, m in enumerate(messages):
         if m.get("role") == "assistant":
-            out.append(openai_messages_to_sharegpt(messages[: i + 1], system=system, tools=tools))
+            out.append(openai_messages_to_alpaca(messages[: i + 1], system=system, tools=tools))
     return out
 
 if __name__ == "__main__":
@@ -134,5 +115,6 @@ if __name__ == "__main__":
     # print(system)
     messages = pickle.load(open("/vast/projects/xia6/apex-gen/tianang/projects/Intern-S1/agent/DeepSeek_V32_output/skin_reaction_1.pkl", "rb"))
     messages = normalize_DeepSeek_V32_messages(messages)
+    print(tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False, tools=tools))
     sliced_messages = split_into_steps(messages, tools=tools)
-    save_jsonl(sliced_messages, "/vast/projects/xia6/apex-gen/tianang/projects/Intern-S1/SFT_data/DeepSeek_V32_distill_agent_data/data.jsonl")
+    save_jsonl(sliced_messages, "/vast/projects/xia6/apex-gen/tianang/projects/Intern-S1/SFT_data/DeepSeek_V32_distill_agent_data/data_Alpaca.jsonl")

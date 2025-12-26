@@ -1,4 +1,6 @@
 import json
+import pickle
+from transformers import AutoTokenizer
 
 def dump_obj(x):
     if hasattr(x, "model_dump"):
@@ -56,3 +58,30 @@ def write_jsonl(path, records):
     with open(path, "w", encoding="utf-8") as f:
         for r in records:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
+
+if __name__ == "__main__":
+    tokenizer = AutoTokenizer.from_pretrained("internlm/Intern-S1-mini", trust_remote_code=True)
+    tools = [{
+        'type': 'function',
+        'function': {
+            'name': 'describe_high_level_fg_fragments',
+            'description': 'Parse SMILES string into functional groups with attachment points and mark atom ids in the SMILES string for better structure description.',
+            'parameters': {
+                'type': 'object',
+                'properties': {
+                    'smiles': {
+                        'type': 'string',
+                        'description': 'The SMILES string to parse.'
+                    }
+                },
+                'required': [
+                    'smiles'
+                ]
+            }
+        }
+    }, 
+    ]
+
+    messages = pickle.load(open("/vast/projects/xia6/apex-gen/tianang/projects/Intern-S1/agent/DeepSeek_V32_output/skin_reaction_1.pkl", "rb"))
+    messages = normalize_DeepSeek_V32_messages(messages)
+    print(tokenizer.apply_chat_template(normalize_DeepSeek_V32_messages(messages), tokenize=False, enable_thinking=True, tools=tools))

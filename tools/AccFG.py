@@ -9,6 +9,7 @@ from accfg.draw import print_fg_tree
 from rdkit import Chem
 from pathlib import Path
 import json
+from RDKit_tools import _tool
 
 Current_dir = Path(__file__).parent.resolve()
 
@@ -275,6 +276,30 @@ def describe_high_level_fg_fragments_no_special_token(smiles:str):
         FGs_description += "\n"
     return FGs_description
 
+#-------------------------------------------
+# AccFG OpenAI tool list
+#-------------------------------------------
+
+AccFG_OPENAI_TOOLS = [{
+    'type': 'function',
+    'function': {
+        'name': 'describe_high_level_fg_fragments',
+        'description': 'Parse SMILES string into functional groups with attachment points and mark atom ids in the SMILES string for better structure description.',
+        'parameters': {
+            'type': 'object',
+            'properties': {
+                'smiles': {
+                    'type': 'string',
+                    'description': 'The SMILES string to parse.'
+                }
+            },
+            'required': [
+                'smiles'
+            ]
+        }
+    }
+}, 
+]
 
 if __name__ == "__main__":
     # example usage
