@@ -1,10 +1,6 @@
 {
   "AMES": {
-    "offset": 5,
-    "completed": false
-  },
-  "BBB_Martins": {
-    "offset": 5,
+    "offset": 128,
     "completed": false
   }
 }

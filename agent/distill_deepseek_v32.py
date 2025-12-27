@@ -22,7 +22,7 @@ from utils.norm_messages_to_Alpaca import normalize_DeepSeek_V32_messages, split
 from utils.save_jsonl import save_jsonl
 from transformers import AutoTokenizer
 
-tokenizer = AutoTokenizer.from_pretrained("internlm/Intern-S1-mini", trust_remote_code=True)
+
 
 # Configs
 Current_dir = Path(__file__).parent.resolve()
@@ -30,8 +30,8 @@ Project_root = Current_dir.parent
 
 API_BASE = "http://0.0.0.0:8000/v1"
 API_KEY = "EMPTY"
-MAX_SAMPLES = 16
-BATCH_SIZE = 5  # Rows per task chunk
+MAX_SAMPLES = 3
+BATCH_SIZE = 128  # Rows per task chunk
 OUTPUT_BASE_DIR = Project_root / "DataPrepare/SFT_data/DeepSeek_V32_distill_agent_data"
 ALPACA_DIR = OUTPUT_BASE_DIR / "TDC_train_Alpaca"
 RAW_NORMALIZED_DIR = OUTPUT_BASE_DIR / "TDC_train_raw_normalized_messages"
@@ -141,7 +141,9 @@ def worker_process_sample(args):
     client = OpenAI(api_key=API_KEY, base_url=API_BASE)
     
     # Try up to MAX_SAMPLES times
-    for _ in range(MAX_SAMPLES):
+    for attempt_idx in range(MAX_SAMPLES):
+        if attempt_idx > 0:
+            print(f"Sample {index} (Labels: {label}): Retry {attempt_idx + 1}/{MAX_SAMPLES}...", flush=True)
         messages = [{'role': 'user', 'content': text}]
         try:
             response_text = run_turn(client, messages, tools_def)
@@ -247,6 +249,7 @@ def load_data_chunk(task_name: str, offset: int, limit: int) -> Tuple[List[Dict]
 
 def main():
     scheduler = TaskScheduler()
+    tokenizer = AutoTokenizer.from_pretrained("internlm/Intern-S1-mini", trust_remote_code=True)
     
     print(f"Found {len(scheduler.tasks)} tasks.")
     
@@ -299,7 +302,7 @@ def main():
             # num_processes = min(multiprocessing.cpu_count(), 32) # or fixed small number if API constrained
             num_processes = 32 # Conservative start
             
-            with NoDaemonPool(processes=num_processes) as pool:
+            with multiprocessing.Pool(processes=num_processes) as pool:
                 for res in tqdm(pool.imap_unordered(worker_process_sample, work_items), total=len(work_items), desc=f"{task_name} Batch"):
                     idx, messages = res
                     if messages: # Success

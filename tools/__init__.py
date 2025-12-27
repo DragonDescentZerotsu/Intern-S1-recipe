@@ -5,7 +5,7 @@ BASIC_TOOLS = RDKIT_BASIC_OPENAI_TOOLS + AccFG_OPENAI_TOOLS  # 因为 AccFG_OPEN
 
 def get_function_by_name(name):
     tool_map = {
-        "describe_high_level_fg_fragments": high_level_fg_fragments_w_attach_points_no_special_tokens_w_atom_ids,  # 如果有缓存的直接读缓存的结果省时间 / read from cache if available to save time
+        "describe_high_level_fg_fragments": cached_describe_high_level_fg_fragments,  # 如果有缓存的直接读缓存的结果省时间 / read from cache if available to save time
         "get_molecular_weight": get_molecular_weight,
         "get_exact_molecular_weight": get_exact_molecular_weight,
         "get_heavy_atom_count": get_heavy_atom_count,

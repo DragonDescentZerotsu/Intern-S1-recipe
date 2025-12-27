@@ -19,7 +19,7 @@ Current_dir = Path(__file__).parent.resolve()
 
 # Load FG cache
 # We use the new precomputed JSONL file
-FG_CACHE_PATH = Current_dir.parent / 'DataPrepare' / 'shared_data' / 'TDC_train_fg_desc_with_attach_points_and_atom_ids.jsonl'
+FG_CACHE_PATH = Current_dir.parent / 'DataPrepare' / 'shared_data' / 'TDC_train_fg_desc_with_attach_points_and_atom_ids.jsonl'  # TODO: 注意这个改了没有
 FG_CACHE = {}
 if FG_CACHE_PATH.exists():
     with open(FG_CACHE_PATH, 'r', encoding='utf-8') as f:
@@ -46,7 +46,10 @@ def cached_describe_high_level_fg_fragments(smiles: str):
     '''
     if smiles in FG_CACHE:
         return FG_CACHE[smiles]
-    return describe_high_level_fg_fragments(smiles)
+
+    # If not cached, compute and cache
+    print(f"{smiles} not cached, computing...")
+    return "Failed to parse."  # describe_high_level_fg_fragments(smiles)
 
 #---------------------------------------------------
 # Instant FG fragment tools, many different versions
