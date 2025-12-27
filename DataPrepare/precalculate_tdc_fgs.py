@@ -21,9 +21,18 @@ from tdc.utils import retrieve_label_name_list
 import concurrent.futures
 import multiprocessing
 
+
 # Add project root to path
 current_dir = Path(__file__).parent.resolve()
 sys.path.append(str(current_dir.parent))
+
+# Mock pyPgSQL to prevent RDKit from crashing when trying to import it
+# This must be done BEFORE importing tools.AccFG which imports rdkit
+try:
+    import pyPgSQL
+except ImportError:
+    from unittest.mock import MagicMock
+    sys.modules["pyPgSQL"] = MagicMock()
 
 from tools.AccFG import high_level_fg_fragments_w_attach_points_no_special_tokens_w_atom_ids
 
@@ -153,10 +162,10 @@ def main():
         logger.info("Using joblib for parallelism.")
         
         # AccFG is CPU bound. Machine has 224 cores.
-        # Using 32 jobs to be safe but efficient.
+        # Using 128 jobs to be safe (avoid Too many open files).
         # Write line by line to allow resume/progress check.
         with open(output_path, 'w', encoding='utf-8') as f_out:
-            parallel = Parallel(n_jobs=32, verbose=5, backend='loky', return_generator=True)
+            parallel = Parallel(n_jobs=128, verbose=5, backend='loky', return_generator=True)
             
             # Use a generator expression
             results_generator = parallel(delayed(process_single_smiles)(s) for s in all_smiles)
