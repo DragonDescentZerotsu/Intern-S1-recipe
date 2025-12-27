@@ -3,6 +3,7 @@
 /DataPrepare/SFT_data/*
 !/DataPrepare/SFT_data/*.py
 !/DataPrepare/SFT_data/*.md
+/DataPrepare/shared_data/TDC_train_fg_desc_with_attach_points_and_atom_ids.jsonl
 
 /DataPrepare/TDC_train_prompts_label/*
 !/DataPrepare/TDC_train_prompts_label/*.py
