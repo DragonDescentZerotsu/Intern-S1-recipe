@@ -1,5 +1,101 @@
 {
   "AMES": {
+    "offset": 256,
+    "completed": false
+  },
+  "BBB_Martins": {
+    "offset": 256,
+    "completed": false
+  },
+  "Bioavailability_Ma": {
+    "offset": 256,
+    "completed": false
+  },
+  "CYP1A2_Veith": {
+    "offset": 256,
+    "completed": false
+  },
+  "CYP2C19_Veith": {
+    "offset": 128,
+    "completed": false
+  },
+  "CYP2C9_Substrate_CarbonMangels": {
+    "offset": 128,
+    "completed": false
+  },
+  "CYP2C9_Veith": {
+    "offset": 128,
+    "completed": false
+  },
+  "CYP2D6_Substrate_CarbonMangels": {
+    "offset": 128,
+    "completed": false
+  },
+  "CYP2D6_Veith": {
+    "offset": 128,
+    "completed": false
+  },
+  "CYP3A4_Substrate_CarbonMangels": {
+    "offset": 128,
+    "completed": false
+  },
+  "CYP3A4_Veith": {
+    "offset": 128,
+    "completed": false
+  },
+  "ClinTox": {
+    "offset": 128,
+    "completed": false
+  },
+  "DILI": {
+    "offset": 128,
+    "completed": false
+  },
+  "HIA_Hou": {
+    "offset": 128,
+    "completed": false
+  },
+  "HIV": {
+    "offset": 128,
+    "completed": false
+  },
+  "PAMPA_NCATS": {
+    "offset": 128,
+    "completed": false
+  },
+  "Pgp_Broccatelli": {
+    "offset": 128,
+    "completed": false
+  },
+  "SARSCoV2_3CLPro_Diamond": {
+    "offset": 128,
+    "completed": false
+  },
+  "SARSCoV2_Vitro_Touret": {
+    "offset": 128,
+    "completed": false
+  },
+  "Skin_Reaction": {
+    "offset": 128,
+    "completed": false
+  },
+  "Tox21": {
+    "offset": 128,
+    "completed": false
+  },
+  "ToxCast": {
+    "offset": 128,
+    "completed": false
+  },
+  "butkiewicz": {
+    "offset": 128,
+    "completed": false
+  },
+  "hERG": {
+    "offset": 128,
+    "completed": false
+  },
+  "herg_central_hERG_inhib": {
     "offset": 128,
     "completed": false
   }

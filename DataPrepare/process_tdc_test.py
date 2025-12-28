@@ -15,7 +15,7 @@ import ast
 def to_prompt(prompt_template, entry, task_name):
     """
     Generate prompt based on task type.
-    Crucially, do NOT add <SMILES>/<FASTA> tags.
+    Includes <SMILES>/<FASTA> tags to match inference/test contexts.
     """
     user_text = ""
     
@@ -27,35 +27,59 @@ def to_prompt(prompt_template, entry, task_name):
             pair = entry 
             
         user_text = prompt_template.replace(
-            '{Antibody heavy chain sequence}', f'{pair[0]}'
+            '{Antibody heavy chain sequence}', f'<FASTA>{pair[0]}</FASTA>'
         ).replace(
-            '{Antibody light chain sequence}', f'{pair[1]}'
+            '{Antibody light chain sequence}', f'<FASTA>{pair[1]}</FASTA>'
         )
     elif task_name == 'HuRI':
         user_text = prompt_template.replace(
-            '{Protein1 amino acid sequence}', f'{entry[0].split("*")[0]}'
+            '{Protein1 amino acid sequence}', f'<FASTA>{entry[0].split("*")[0]}</FASTA>'
         ).replace(
-            '{Protein2 amino acid sequence}', f'{entry[1].split("*")[0]}'
+            '{Protein2 amino acid sequence}', f'<FASTA>{entry[1].split("*")[0]}</FASTA>'
         )
     elif task_name == 'Weber':
         user_text = prompt_template.replace(
-            '{Epitope amino acid sequence}', f'{entry[0]}'
+            '{Epitope amino acid sequence}', f'<FASTA>{entry[0]}</FASTA>'
         ).replace(
-            '{TCR amino acid sequence}', f'{entry[1]}'
+            '{TCR amino acid sequence}', f'<FASTA>{entry[1]}</FASTA>'
         )
     elif task_name in ['MHC1_IEDB-IMGT_Nielsen', 'MHC2_IEDB_Jensen']:
         user_text = prompt_template.replace(
-            '{Peptide amino acid sequence}', f'{entry[0]}'
+            '{Peptide amino acid sequence}', f'<FASTA>{entry[0]}</FASTA>'
         ).replace(
-            '{Possible MHC pseudosequences}', f'{entry[1]}'
+            '{Possible MHC pseudosequences}', f'<FASTA>{entry[1]}</FASTA>'
         )
     else:
         # Standard SMILES task
         user_text = prompt_template.replace(
-            "{Drug SMILES}", f'{entry}'
+            "{Drug SMILES}", f'<SMILES>{entry}</SMILES>'
         )
 
     # Append instruction
+    # Matching the training script's appended instruction, 
+    # but the reference script might inject its own. 
+    # Since we are generating "prompts", we should probably include the instruction 
+    # if it's considered part of the "user_text" for Custom loading.
+    # In intern-vllm...py "Custom" block, it uses the text as is.
+    # In intern-vllm...py standard block, it also does NOT seem to add extra instructions 
+    # in the Custom path? Wait.
+    # In intern-vllm...py line 431: "if INJECT_STEPS_BEFORE_ANSWER:"
+    # It adds instructions DYNAMICALLY.
+    # If we add them here, they will be doubled if intern-vllm adds them again.
+    # However, for "Custom" data in intern-vllm...py, it performs:
+    # user_text = entry (Line 425)
+    # Then line 431 checks INJECT_STEPS_BEFORE_ANSWER and replaces 'Answer:'.
+    # So we should validly generate the "base" prompt (with the template) 
+    # BUT we must check if the template includes "Answer:".
+    # Usually TDC templates end with "Answer:".
+    # The training script APPENDED "\nPlease think step by step..." (Line 59).
+    # If we append it here, and then usage in intern-vllm ALSO replaces 'Answer:', 
+    # it might be fine if the replacement targets "Answer:" which is at the end.
+    
+    # However, to be safe and consistent with "processing test data" (often for simple inference),
+    # I will stick to what the training script did (appending the instruction), 
+    # as the user asked to modify the training script processing logic.
+    
     user_text = user_text.replace(
                                 'Answer:',
                                 'Please think step by step and then put ONLY your final choice ((A) or (B)) after "Answer:"'
@@ -68,7 +92,7 @@ def main():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     logger = logging.getLogger(__name__)
 
-    output_dir = Path("DataPrepare/TDC_train_prompts_label")
+    output_dir = Path("DataPrepare/TDC_test_prompts_label")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Load TDC prompts
@@ -167,31 +191,31 @@ def main():
                     continue
 
                 split = data.get_split()
-                if 'train' not in split:
-                    logger.warning(f"No train split for {task_name}, skipping.")
+                if 'test' not in split:
+                    logger.warning(f"No test split for {task_name}, skipping.")
                     continue
                 
-                train_df = split['train']
+                test_df = split['test']
                 
                 # 2. Extract inputs and labels
                 inputs = []
                 labels = []
                 
                 if task_name == 'SAbDab_Chen':
-                     inputs = train_df['Antibody'].values
-                     labels = train_df['Y'].values
+                     inputs = test_df['Antibody'].values
+                     labels = test_df['Y'].values
                 elif task_name == 'HuRI':
-                     inputs = train_df[['Protein1', 'Protein2']].values
-                     labels = train_df['Y'].values
+                     inputs = test_df[['Protein1', 'Protein2']].values
+                     labels = test_df['Y'].values
                 elif task_name == 'Weber':
-                     inputs = train_df[['epitope_aa', 'tcr']].values
-                     labels = train_df['label'].values
+                     inputs = test_df[['epitope_aa', 'tcr']].values
+                     labels = test_df['label'].values
                 elif task_name in ['MHC1_IEDB-IMGT_Nielsen', 'MHC2_IEDB_Jensen']:
-                     inputs = train_df[['Peptide', 'MHC']].values
-                     labels = train_df['Y'].values
+                     inputs = test_df[['Peptide', 'MHC']].values
+                     labels = test_df['Y'].values
                 else:
-                     inputs = train_df['Drug'].values
-                     labels = train_df['Y'].values
+                     inputs = test_df['Drug'].values
+                     labels = test_df['Y'].values
 
                 # 3. Generate Prompts
                 processed_data = []
@@ -207,16 +231,11 @@ def main():
                     if base_key in tdc_prompts_json:
                          clean_key = base_key
                     else:
-                         # Attempt to fall back for Tox21/ToxCast if needed, though they shoud use 'Tox21'/'ToxCast' keys ideally?
-                         # TDC prompts json typically has keys like 'Tox21', 'ToxCast'.
-                         # If task_name is 'Tox21_AhR', clean_key is 'Tox21_AhR'.
-                         # If json has 'Tox21', we need to match it.
                          if 'Tox21' in task_name and 'Tox21' in tdc_prompts_json:
                              clean_key = 'Tox21'
                          elif 'ToxCast' in task_name and 'ToxCast' in tdc_prompts_json:
                              clean_key = 'ToxCast'
                          else:
-                             # Try partial match or skip
                              logger.warning(f"Prompt key {clean_key} not found for {task_name}. Skipping.")
                              continue
 

@@ -65,7 +65,7 @@ def run_turn(client: OpenAI, messages: List[Dict], tools: List[Dict]) -> str:
                 model=model_name,
                 messages=messages,
                 tools=tools,
-                extra_body={"chat_template_kwargs": {"thinking": True}}
+                extra_body={"chat_template_kwargs": {"thinking": True}}  # 这里 thinking 一定是开的
             )
         except Exception as e:
             print(f"Error in chat completion: {e}")
@@ -170,6 +170,10 @@ class TaskScheduler:
         self.tasks = self.discover_tasks()
         
     def discover_tasks(self) -> List[str]:
+        """
+        Discover tasks from the data source directory.
+        从数据源目录中发现任务名字 task_name
+        """
         files = list(DATA_SOURCE_DIR.glob("*.jsonl"))
         tasks = []
         for f in files:
