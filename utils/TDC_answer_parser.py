@@ -15,9 +15,14 @@ def extract_answer(response:str):
         answer_matches = list(re.finditer(r'answer is', response, re.IGNORECASE))
         if not answer_matches:
             return None, format_correct
+    elif '<answer>' in response:
+        format_correct = True
+        answer_matches = list(re.finditer(r'<answer>', response, re.IGNORECASE))
+        if not answer_matches:
+            return None, format_correct
 
     # 获取最后一个"Answer:"之后的内容
-    if 'Answer:' in response or 'answer is' in response:
+    if 'Answer:' in response or 'answer is' in response or '<answer>' in response:
         last_answer_pos = answer_matches[-1].end()
         answer_text = response[last_answer_pos:].strip()
     else:

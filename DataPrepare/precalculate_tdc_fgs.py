@@ -102,11 +102,18 @@ def get_all_tdc_smiles():
                     continue
 
                 split = data.get_split()
-                if 'train' in split:
-                    train_df = split['train']
+                # if 'train' in split:
+                #     train_df = split['train']
+                #     # Standard SMILES task usually has 'Drug' column
+                #     if 'Drug' in train_df.columns:
+                #         smiles_set.update(train_df['Drug'].dropna().unique())
+                # TODO: chose 'train' or 'test' to collect SMILES
+
+                if 'test' in split:
+                    test_df = split['test']
                     # Standard SMILES task usually has 'Drug' column
-                    if 'Drug' in train_df.columns:
-                        smiles_set.update(train_df['Drug'].dropna().unique())
+                    if 'Drug' in test_df.columns:
+                        smiles_set.update(test_df['Drug'].dropna().unique())
             
             except Exception as e:
                 logger.warning(f"Error processing {task_name}: {e}")
@@ -145,7 +152,7 @@ class NoDaemonContext(type(multiprocessing.get_context())):
 # Since I can't guarantee joblib, I will try to use the NoDaemon logic for Pool.
 
 def main():
-    output_path = current_dir / 'shared_data' / 'TDC_train_fg_desc_with_attach_points_and_atom_ids.jsonl'
+    output_path = current_dir / 'shared_data' / 'TDC_test_fg_desc_with_attach_points_and_atom_ids.jsonl'  # 'TDC_train_fg_desc_with_attach_points_and_atom_ids.jsonl'
     output_path.parent.mkdir(parents=True, exist_ok=True)
     
     # 1. Collect SMILES
