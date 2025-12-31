@@ -13,9 +13,12 @@ from openai import OpenAI
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from tools import BASIC_TOOLS, get_function_by_name
+
 # Verify these imports exist in your project structure
 try:
     from tools import * 
+    from tools.RDKit_tools import TDC_RDKIT_SPECIFIC_OPENAI_TOOLS_MAP
     from utils.TDC_answer_parser import extract_answer, parse_answer
 except ImportError:
     # Fallback if specific tools/utils are not easily importable or if running standalone
@@ -28,52 +31,129 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)  # 隐藏 HTTP 请求日志
 logger = logging.getLogger(__name__)
 
+def get_tools_for_task(task_name):
+    """Combine BASIC_TOOLS with task-specific tools."""
+    specific_tools = TDC_RDKIT_SPECIFIC_OPENAI_TOOLS_MAP.get(task_name, [])
+    # Filter out potential duplicates if any, though lists are usually distinct in design
+    return BASIC_TOOLS + specific_tools
+
 def get_args():
     parser = argparse.ArgumentParser(description='Run TDC benchmark tasks via OpenAI-compatible API')
     
-    parser.add_argument('--task-groups', nargs='+', default=['ADME'],
+    parser.add_argument('--task-groups', nargs='+', default=['Tox', 'ADME'],  # TODO: test tasks
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'Other', 'all'],
                         help='Task groups to run')
     parser.add_argument('--n-samples', type=int, default=16, help='Number of samples per query')
-    parser.add_argument('--api-base', type=str, default="http://0.0.0.0:8000/v1", help='API Base URL')
+    parser.add_argument('--api-base', type=str, defa···ult="http://0.0.0.0:8000/v1", help='API Base URL')
     parser.add_argument('--api-key', type=str, default="EMPTY", help='API Key')
     parser.add_argument('--model', type=str, default="", help='Model name (optional, will query server if empty)')
     parser.add_argument('--num-processes', type=int, default=32, help='Number of parallel workers')
     parser.add_argument('--data-dir', type=str, default="DataPrepare/TDC_test_prompts_label", help='Directory containing processed test data')
     parser.add_argument('--thinking', action='store_false', help='Enable thinking parameter for DeepSeek models')  # TODO: 注意这里 thinking 到底是开了还是没开
+    parser.add_argument('--enable-tools', action='store_false', help='Enable tool calling')
     
     args = parser.parse_args()
     return args
 
-def run_turn(client, messages, model_name, thinking=False):
+def run_turn(client, messages, model_name, thinking=False, tools=None):
     """
-    Executes a single turn of conversation. 
-    Simplified version of agent/skin-reaction.py's run_turn, 
-    assuming single-turn or limited tool usage if tools are enabled.
-    For standard TDC evaluation, it's often single-turn QA.
+    Executes a single turn of conversation with optional tool support.
     """
-    try:
-        extra_body = {}
-        if thinking:
-             extra_body = {"chat_template_kwargs": {"thinking": True}} # vLLM Server style
+    depth_limit = 30 # Avoid infinite loops
+    sub_turn = 1
+    last_tool_names = set()
+    final_content = ""
 
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=messages,
-            # tools=TOOLS if 'TOOLS' in globals() else None, # Enable tools if needed
-            extra_body=extra_body
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        logger.error(f"Error in chat completion: {e}")
-        return None
+    extra_body = {}
+    if thinking:
+            extra_body = {"chat_template_kwargs": {"thinking": True}} # vLLM Server style
+
+    while sub_turn <= depth_limit:
+        try:
+            # TODO: local Intern-S1-mini
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                tools=tools,
+                max_tokens=20000, # Reduced from 20000 to be safe/faster, usually enough
+                temperature=0.8,
+                top_p=0.8,
+                stream=False,
+                extra_body=dict(spaces_between_special_tokens=False, enable_thinking=True)
+            )
+            # TODO: local DeepSeek V3.2
+            # response = client.chat.completions.create(
+            #     model=model_name,
+            #     messages=messages,
+            #     tools=tools,
+            #     # max_tokens=30000,  # Reduced from 20000 to be safe/faster, usually enough
+            #     # temperature=1.0,
+            #     # top_p=0.95,
+            #     # stream=False,
+            #     extra_body={"chat_template_kwargs": {"thinking": True}} # vLLM Server
+            # )
+            # TODO: DeepSeek V3.2
+            # response = client.chat.completions.create(
+            #     model='deepseek-chat',
+            #     messages=messages,
+            #     tools=tools,
+            #     extra_body={ "thinking": { "type": "enabled" } }  # 使用 OpenAI SDK 的 thinking 功能
+            # )
+        except Exception as e:
+            logger.error(f"Error in chat completion: {e}")
+            return None
+
+        message = response.choices[0].message
+        messages.append(message)
+        
+        tool_calls = message.tool_calls
+        final_content = message.content
+
+        if not tool_calls:
+            break
+            
+        # Check if the set of tool names is the same as the previous turn to prevent infinite loops
+        current_tool_names = set(tool_call.function.name for tool_call in tool_calls)
+        if current_tool_names == last_tool_names:
+            break
+        last_tool_names = current_tool_names
+            
+        for tool_call in tool_calls:
+            try:
+                tool_call_args = json.loads(tool_call.function.arguments)
+                tool_call_result = get_function_by_name(tool_call.function.name)(**tool_call_args)
+                tool_call_result_str = str(tool_call_result)
+            except Exception as e:
+                tool_call_result_str = f"Error executing tool: {e}"
+            
+            messages.append({
+                'role': 'tool',
+                'name': tool_call.function.name,
+                'content': tool_call_result_str,
+                'tool_call_id': tool_call.id
+            })
+        sub_turn += 1
+        
+    # Calculate total tool calls (excluding initial user message and final response)
+    # We count 'tool_calls' in assistant messages.
+    # Note: The simple way is to count how many times we found tool_calls in the loop. 
+    # But since we didn't track it cumulatively, let's just count from the messages list or return a counter.
+    # Let's count tool messages in the history as a proxy for successful tool executions? 
+    # Or better, just count how many tool_call blocks we processed.
+    # Let's iterate messages to be accurate on what happened.
+    total_tool_calls = 0
+    for msg in messages:
+        if getattr(msg, 'role', '') == 'assistant' and getattr(msg, 'tool_calls', None):
+            total_tool_calls += len(msg.tool_calls)
+            
+    return final_content, total_tool_calls
 
 def worker_process_sample(args):
     """
-    Args: (index, text, label_dummy, api_base, api_key, model_name, thinking)
+    Args: (index, text, label_dummy, api_base, api_key, model_name, thinking, enable_tools, task_name)
     Returns: (index, prediction_int_or_None)
     """
-    index, text, _, api_base, api_key, model_name, thinking = args
+    index, text, _, api_base, api_key, model_name, thinking, enable_tools, task_name = args
     
     client = OpenAI(
         api_key=api_key,
@@ -82,8 +162,13 @@ def worker_process_sample(args):
     
     messages = [{'role': 'user', 'content': text}]
     
+    # Determine tools
+    tools = None
+    if enable_tools:
+        tools = get_tools_for_task(task_name)
+    
     try:
-        response_text = run_turn(client, messages, model_name, thinking)
+        response_text, tool_count = run_turn(client, messages, model_name, thinking, tools)
         if response_text:
             # parsing logic
             # Ensure extract_answer and parse_answer are available
@@ -94,12 +179,12 @@ def worker_process_sample(args):
             # Note: parse_answer signature might vary. 
             # In skin-reaction.py: parse_answer(ans_txt, fmt_ok, think_is_on=True)
             
-            return (index, prediction)
+            return (index, prediction, tool_count)
     except Exception as e:
         # logger.error(f"Worker error: {e}")
         pass
         
-    return (index, None)
+    return (index, None, 0)
 
 def load_tasks_map(data_dir):
     """
@@ -107,10 +192,31 @@ def load_tasks_map(data_dir):
     This mapping relies on the file naming convention from process_tdc_test.py.
     """
     mapping = {
-        'Tox': ['Tox21.jsonl', 'ToxCast.jsonl', 'Skin_Reaction.jsonl', 'hERG.jsonl', 'AMES.jsonl', 'DILI.jsonl', 'ClinTox.jsonl', 'herg_central.jsonl'],
-        'ADME': ['PAMPA_NCATS.jsonl', 'HIA_Hou.jsonl', 'Bioavailability_Ma.jsonl', 'BBB_Martins.jsonl', 'Pgp_Broccatelli.jsonl', 
-                 'CYP1A2_Veith.jsonl', 'CYP2C19_Veith.jsonl', 'CYP2C9_Veith.jsonl', 'CYP2D6_Veith.jsonl', 'CYP3A4_Veith.jsonl',
-                 'CYP2C9_Substrate_CarbonMangels.jsonl', 'CYP2D6_Substrate_CarbonMangels.jsonl', 'CYP3A4_Substrate_CarbonMangels.jsonl'],
+        'Tox': [
+            # 'Tox21.jsonl', 
+            # 'ToxCast.jsonl', 
+            'Skin_Reaction.jsonl', 
+            # 'hERG.jsonl', 
+            # 'AMES.jsonl', 
+            # 'DILI.jsonl', 
+            # 'ClinTox.jsonl', 
+            # 'herg_central_hERG_inhib.jsonl'
+        ],
+        'ADME': [
+            # 'PAMPA_NCATS.jsonl', 
+            # 'HIA_Hou.jsonl', 
+            'Bioavailability_Ma.jsonl', 
+            # 'BBB_Martins.jsonl', 
+            # 'Pgp_Broccatelli.jsonl', 
+            # 'CYP1A2_Veith.jsonl', 
+            # 'CYP2C19_Veith.jsonl', 
+            # 'CYP2C9_Veith.jsonl', 
+            # 'CYP2D6_Veith.jsonl', 
+            # 'CYP3A4_Veith.jsonl',
+            # 'CYP2C9_Substrate_CarbonMangels.jsonl', 
+            # 'CYP2D6_Substrate_CarbonMangels.jsonl', 
+            # 'CYP3A4_Substrate_CarbonMangels.jsonl'
+        ],
         'HTS': ['HIV.jsonl', 'SARSCoV2_3CLPro_Diamond.jsonl', 'SARSCoV2_Vitro_Touret.jsonl', 'butkiewicz.jsonl'],
         'Develop': ['SAbDab_Chen.jsonl'],
         'PPI': ['HuRI.jsonl'],
@@ -185,7 +291,7 @@ def main():
             # tasks[i] = (index, text, label, ...)
             worker_tasks = []
             for idx, item in enumerate(raw_data):
-                task_tuple = (idx, item['text'], item['Y'], args.api_base, args.api_key, args.model, args.thinking)
+                task_tuple = (idx, item['text'], item['Y'], args.api_base, args.api_key, args.model, args.thinking, args.enable_tools, task_name)
                 for _ in range(args.n_samples):
                     worker_tasks.append(task_tuple)
             
@@ -197,11 +303,15 @@ def main():
             
             # Aggregate
             item_results = {} # idx -> list of predictions
-            for idx, pred in results:
+            item_tool_counts = {} # idx -> list of tool counts
+            
+            for idx, pred, tool_count in results:
                 if idx not in item_results:
                     item_results[idx] = []
+                    item_tool_counts[idx] = []
                 if pred is not None:
                     item_results[idx].append(pred)
+                    item_tool_counts[idx].append(tool_count)
             
             # Calculate metrics
             y_true = []
@@ -232,6 +342,30 @@ def main():
                 # Print mean score if AUROC fails
                 if y_scores:
                     logger.info(f"{task_name} Mean Pred Score: {np.mean(y_scores):.4f}")
+
+            # --- Tool Usage Statistics ---
+            if args.enable_tools:
+                all_tool_counts = []
+                questions_with_tool_usage = 0
+                total_questions = 0
+
+                for idx in item_tool_counts:
+                    counts = item_tool_counts[idx]
+                    if not counts: 
+                        continue
+                    
+                    all_tool_counts.extend(counts)
+                    total_questions += 1
+                    
+                    # Check if at least one sample for this question used tools
+                    if any(c > 0 for c in counts):
+                        questions_with_tool_usage += 1
+                
+                avg_tool_calls = np.mean(all_tool_counts) if all_tool_counts else 0.0
+                usage_rate = (questions_with_tool_usage / total_questions) * 100 if total_questions > 0 else 0.0
+                
+                logger.info(f"{task_name} Avg Tools/Sample: {avg_tool_calls:.2f}")
+                logger.info(f"{task_name} Questions w/ Tools: {questions_with_tool_usage}/{total_questions} ({usage_rate:.1f}%)")
 
 if __name__ == "__main__":
     multiprocessing.set_start_method('spawn', force=True)
