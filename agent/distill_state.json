@@ -1,102 +1,102 @@
 {
   "AMES": {
-    "offset": 384,
+    "offset": 768,
     "completed": false
   },
   "BBB_Martins": {
-    "offset": 384,
+    "offset": 768,
     "completed": false
   },
   "Bioavailability_Ma": {
-    "offset": 384,
-    "completed": false
+    "offset": 448,
+    "completed": true
   },
   "CYP1A2_Veith": {
-    "offset": 384,
+    "offset": 768,
     "completed": false
   },
   "CYP2C19_Veith": {
-    "offset": 384,
+    "offset": 768,
     "completed": false
   },
   "CYP2C9_Substrate_CarbonMangels": {
-    "offset": 384,
-    "completed": false
+    "offset": 468,
+    "completed": true
   },
   "CYP2C9_Veith": {
-    "offset": 384,
+    "offset": 768,
     "completed": false
   },
   "CYP2D6_Substrate_CarbonMangels": {
-    "offset": 384,
-    "completed": false
+    "offset": 467,
+    "completed": true
   },
   "CYP2D6_Veith": {
-    "offset": 256,
+    "offset": 768,
     "completed": false
   },
   "CYP3A4_Substrate_CarbonMangels": {
-    "offset": 256,
-    "completed": false
+    "offset": 469,
+    "completed": true
   },
   "CYP3A4_Veith": {
-    "offset": 256,
+    "offset": 768,
     "completed": false
   },
   "ClinTox": {
-    "offset": 256,
+    "offset": 768,
     "completed": false
   },
   "DILI": {
-    "offset": 256,
-    "completed": false
+    "offset": 332,
+    "completed": true
   },
   "HIA_Hou": {
-    "offset": 256,
-    "completed": false
+    "offset": 404,
+    "completed": true
   },
   "HIV": {
-    "offset": 256,
+    "offset": 768,
     "completed": false
   },
   "PAMPA_NCATS": {
-    "offset": 256,
+    "offset": 768,
     "completed": false
   },
   "Pgp_Broccatelli": {
-    "offset": 256,
+    "offset": 768,
     "completed": false
   },
   "SARSCoV2_3CLPro_Diamond": {
-    "offset": 256,
-    "completed": false
+    "offset": 616,
+    "completed": true
   },
   "SARSCoV2_Vitro_Touret": {
-    "offset": 256,
+    "offset": 768,
     "completed": false
   },
   "Skin_Reaction": {
-    "offset": 256,
-    "completed": false
+    "offset": 283,
+    "completed": true
   },
   "Tox21": {
-    "offset": 256,
+    "offset": 768,
     "completed": false
   },
   "ToxCast": {
-    "offset": 256,
+    "offset": 768,
     "completed": false
   },
   "butkiewicz": {
-    "offset": 128,
+    "offset": 768,
     "completed": false
   },
   "hERG": {
-    "offset": 128,
-    "completed": false
+    "offset": 458,
+    "completed": true
   },
   "herg_central_hERG_inhib": {
-    "offset": 128,
+    "offset": 768,
     "completed": false
   }
 }
