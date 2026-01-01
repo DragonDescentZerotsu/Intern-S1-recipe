@@ -47,7 +47,7 @@ lr_scheduler_type: cosine
 warmup_ratio: 0.1
 bf16: true
 ddp_timeout: 180000000
-resume_from_checkpoint: /vast/projects/xia6/apex-gen/tianang/projects/Intern-S1/checkpoints/Intern-S1-mini/full/sft-ChemCoT
+resume_from_checkpoint: null
 
 ### eval
 # val_size: 0.1

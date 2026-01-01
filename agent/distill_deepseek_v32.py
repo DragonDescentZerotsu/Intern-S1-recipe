@@ -33,8 +33,8 @@ API_KEY = "EMPTY"
 MAX_SAMPLES = 3
 BATCH_SIZE = 128  # Rows per task chunk
 OUTPUT_BASE_DIR = Project_root / "DataPrepare/SFT_data/DeepSeek_V32_distill_agent_data"
-ALPACA_DIR = OUTPUT_BASE_DIR / "TDC_train_Alpaca"
-RAW_NORMALIZED_DIR = OUTPUT_BASE_DIR / "TDC_train_raw_normalized_messages"
+ALPACA_DIR = OUTPUT_BASE_DIR / "TDC_train_Alpaca_per_task"
+RAW_NORMALIZED_DIR = OUTPUT_BASE_DIR / "TDC_train_raw_normalized_messages_per_task"
 STATE_FILE = Current_dir / "distill_state.json"
 DATA_SOURCE_DIR = Project_root / "DataPrepare/TDC_train_prompts_label"
 

@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import json
-from huggingface_hub import hf_hub_download
-from tdc.single_pred import ADME, Tox, HTS, Develop
-=======
+
 '''
 可以选择把数据保存成LlamaFactory需要的Alpaca格式，或者是Megatron需要的GPT格式
 '''
@@ -10,17 +6,12 @@ from tdc.single_pred import ADME, Tox, HTS, Develop
 import json
 from huggingface_hub import hf_hub_download
 from tdc.single_pred import ADME, Tox, HTS, Develop, CRISPROutcome, Yields
->>>>>>> 90bfe00c0d6049e0720b1d1d18e15442c13465f2
+
 from tdc.multi_pred.ppi import PPI
 from tdc.multi_pred.tcr_epi import TCREpitopeBinding
 from tdc.multi_pred.trialoutcome import TrialOutcome
 from tdc.multi_pred.peptidemhc import PeptideMHC
-<<<<<<< HEAD
-from tdc.utils import retrieve_label_name_list
-from tqdm import tqdm
-import ast
-from pathlib import Path
-=======
+
 from tdc.multi_pred.dti import DTI
 from tdc.multi_pred.drugsyn import DrugSyn
 from tdc.multi_pred.drugres import DrugRes
@@ -31,22 +22,11 @@ from tqdm import tqdm
 import ast
 from pathlib import Path
 import numpy as np
->>>>>>> 90bfe00c0d6049e0720b1d1d18e15442c13465f2
+
 
 current_dir = Path(__file__).parent.resolve()
 
 # ===================== 配置 =====================
-<<<<<<< HEAD
-DATA_DIR = current_dir / 'SFT_data'
-DATA_DIR.mkdir(exist_ok=True)
-OUTPUT_FILE = 'TDC_SFT_data_all_tasks.json'  # 输出文件名
-OUTPUT_FILE = DATA_DIR / OUTPUT_FILE
-INPUT_TYPE = "{Drug SMILES}"
-
-# 定义所有任务组和任务
-ALL_TASK_CONFIGS = {
-    'Tox': (
-=======
 DATA_STYLE = 'GPT'  # 'GPT' or 'Alpaca'
 SPLIT = 'test'  # 'train' or 'valid' or 'test'
 
@@ -75,7 +55,6 @@ ENABLE_THINKING = False
 ALL_TASK_CONFIGS = {
     'Tox': (
         ["hERG_Karim", "Carcinogens_Lagunin"] +  # Accuracy
->>>>>>> 90bfe00c0d6049e0720b1d1d18e15442c13465f2
         ['Skin_Reaction', 'hERG', 'AMES', 'DILI', 'ClinTox'] +
         ['Tox21'+'_'+label.replace('-', '_') for label in retrieve_label_name_list('Tox21')] +
         ['herg_central'+'_'+retrieve_label_name_list('herg_central')[-1]] +
@@ -98,11 +77,9 @@ ALL_TASK_CONFIGS = {
     'PPI': ['HuRI'],
     'TCREpitopeBinding': ['Weber'],
     # 'TrialOutcome': ['phase1', 'phase2', 'phase3'],
-<<<<<<< HEAD
-    'PeptideMHC': ['MHC1_IEDB-IMGT_Nielsen', 'MHC2_IEDB_Jensen'],
-=======
+
     # 'PeptideMHC': ['MHC1_IEDB-IMGT_Nielsen', 'MHC2_IEDB_Jensen']  # TODO: 这个有点问题，好像不是二分类？/some problems, maybe not binary cls?
->>>>>>> 90bfe00c0d6049e0720b1d1d18e15442c13465f2
+
 }
 
 # ===================== 加载TDC模板 =====================
@@ -117,11 +94,7 @@ tdc_prompts_json['SARSCoV2_3CLPro_Diamond'] = tdc_prompts_json['SARSCOV2_3CLPro_
 # ===================== 生成SFT数据 =====================
 all_sft_data = []
 
-<<<<<<< HEAD
-# 遍历所有任务组
-=======
 # 遍历所有 classification 任务组
->>>>>>> 90bfe00c0d6049e0720b1d1d18e15442c13465f2
 for TASK_GROUP_NAME, TASK_NAMEs in tqdm(ALL_TASK_CONFIGS.items(), desc="Processing task groups"):
     print(f"\n{'='*80}")
     print(f"Processing {TASK_GROUP_NAME} tasks...")
@@ -162,27 +135,6 @@ for TASK_GROUP_NAME, TASK_NAMEs in tqdm(ALL_TASK_CONFIGS.items(), desc="Processi
 
         # 提取输入序列
         if TASK_NAME == 'SAbDab_Chen':
-<<<<<<< HEAD
-            train_drugs = split['train']['Antibody'].values
-        elif TASK_NAME == 'HuRI':
-            train_drugs = split['train'][['Protein1', 'Protein2']].values
-        elif TASK_NAME == 'Weber':
-            # take amino acid sequence as input, although they offer SMILES. In the TxGemma template, they use aa seqs.
-            train_drugs = split['train'][['epitope_aa', 'tcr']].values
-        elif TASK_NAME in ['MHC1_IEDB-IMGT_Nielsen', 'MHC2_IEDB_Jensen']:
-            # take amino acid sequence as input, although they offer SMILES. In the TxGemma template, they use aa seqs.
-            train_drugs = split['train'][['Peptide', 'MHC']].values
-        else:
-            train_drugs = split['train']['Drug'].values
-
-        # 提取标签
-        if TASK_NAME in ['Weber']:
-            train_labels = split['train']['label'].values
-        else:
-            train_labels = split['train']['Y'].values  # 0/1
-
-        print(f"Total train samples: {len(train_drugs)}")
-=======
             train_drugs = split[SPLIT]['Antibody'].values
         elif TASK_NAME == 'HuRI':
             train_drugs = split[SPLIT][['Protein1', 'Protein2']].values
@@ -202,7 +154,6 @@ for TASK_GROUP_NAME, TASK_NAMEs in tqdm(ALL_TASK_CONFIGS.items(), desc="Processi
             train_labels = split[SPLIT]['Y'].values  # 0/1
 
         print(f"Total {SPLIT} samples: {len(train_drugs)}")
->>>>>>> 90bfe00c0d6049e0720b1d1d18e15442c13465f2
 
         # 生成Alpaca格式的数据
         for smi, label in zip(train_drugs, train_labels):
@@ -244,11 +195,7 @@ for TASK_GROUP_NAME, TASK_NAMEs in tqdm(ALL_TASK_CONFIGS.items(), desc="Processi
 
             # 根据标签生成output：0->(A), 1->(B)
             if label == 1:
-<<<<<<< HEAD
                 output = "(B)" 
-=======
-                output = "(B)"
->>>>>>> 90bfe00c0d6049e0720b1d1d18e15442c13465f2
             elif label == 0:
                 output = "(A)"
             else:
@@ -257,15 +204,6 @@ for TASK_GROUP_NAME, TASK_NAMEs in tqdm(ALL_TASK_CONFIGS.items(), desc="Processi
                 exit(1)
 
             # 创建Alpaca格式的数据
-<<<<<<< HEAD
-            alpaca_data = {
-                "instruction": user_text,
-                "input": "",
-                "output": output
-            }
-
-            all_sft_data.append(alpaca_data)
-=======
             if DATA_STYLE == 'Alpaca':
                 alpaca_data = {
                     "instruction": user_text,
@@ -536,21 +474,16 @@ for TASK_GROUP_NAME, TASK_NAMEs in tqdm(ALL_TASK_CONFIGS.items(), desc="Processi
 #             .replace('{Reactant SMILES}', f'<SMILES>{rea}</SMILES>') \
 #             .replace('{Product SMILES}', f'<SMILES>{prod}</SMILES>')
 #         all_sft_data.append({"instruction": user_text, "input": "", "output": _fmt_000(int(y_s))})
->>>>>>> 90bfe00c0d6049e0720b1d1d18e15442c13465f2
 
 # ===================== 保存数据 =====================
 print(f"\n{'='*80}")
 print(f"Total SFT samples: {len(all_sft_data)}")
 print(f"Saving to {OUTPUT_FILE}...")
 with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
-<<<<<<< HEAD
-    json.dump(all_sft_data, f, ensure_ascii=False, indent=2)
-=======
     if DATA_STYLE == 'Alpaca':
         json.dump(all_sft_data, f, ensure_ascii=False, indent=2)
     elif DATA_STYLE == 'GPT':
         for item in tqdm(all_sft_data, desc=f'Saving {DATA_STYLE} SFT data'):
             f.write(json.dumps(item, ensure_ascii=False) + '\n')
->>>>>>> 90bfe00c0d6049e0720b1d1d18e15442c13465f2
 print(f"Done! Data saved to {OUTPUT_FILE}")
 print(f"{'='*80}\n")
