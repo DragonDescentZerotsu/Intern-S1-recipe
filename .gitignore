@@ -18,6 +18,8 @@
 !/DataPrepare/TDC_test_prompts_label/*.md
 !/DataPrepare/TDC_test_prompts_label/*.json
 
+/wandb
+
 # excluding TDC downloaded data
 data/
 
