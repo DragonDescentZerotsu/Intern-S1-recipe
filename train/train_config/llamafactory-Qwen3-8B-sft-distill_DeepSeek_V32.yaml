@@ -1,5 +1,5 @@
 ### model
-model_name_or_path: internlm/Intern-S1-mini
+model_name_or_path: Qwen/Qwen3-8B
 #image_max_pixels: 262144
 #video_max_pixels: 16384
 trust_remote_code: true
@@ -31,19 +31,19 @@ dataloader_num_workers: 16
 # enable_thinking: true  # false for TDC
 
 ### output
-output_dir: checkpoints/Intern-S1-mini/full/sft-distill_DeepSeek_V32-TDC-train-set
+output_dir: checkpoints/Qwen3-8B/full/sft-distill_DeepSeek_V32-TDC-train-set
 logging_steps: 100
 save_steps: 10000
 plot_loss: true
 overwrite_output_dir: true
 save_only_model: false
 report_to: wandb  # choices: [none, wandb, tensorboard, swanlab, mlflow]
-run_name: Intern-S1-mini_full_distill_sft_DeepSeekV32_TDC
+run_name: Qwen3-8B_full_distill_sft_DeepSeekV32_TDC
 include_effective_tokens_per_second: true
 
 
 ### train
-per_device_train_batch_size: 2 # 4
+per_device_train_batch_size: 1 # 4
 gradient_accumulation_steps: 1
 learning_rate: 1.0e-5
 num_train_epochs: 2.0
