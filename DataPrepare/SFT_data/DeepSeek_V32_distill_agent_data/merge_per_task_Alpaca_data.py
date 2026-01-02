@@ -1,6 +1,9 @@
 import glob
 import os
 from tqdm import tqdm
+from pathlib import Path
+
+current_dir = Path(__file__).parent
 
 def merge_jsonl_files(source_dir, output_file):
     """
@@ -33,7 +36,7 @@ def merge_jsonl_files(source_dir, output_file):
     print(f"Total lines written: {total_lines}")
 
 if __name__ == "__main__":
-    source_directory = "/vast/projects/xia6/apex-gen/tianang/projects/Intern-S1/DataPrepare/SFT_data/DeepSeek_V32_distill_agent_data/TDC_train_Alpaca_per_task"
-    output_filepath = "/vast/projects/xia6/apex-gen/tianang/projects/Intern-S1/DataPrepare/SFT_data/DeepSeek_V32_distill_agent_data/TDC_train_Alpaca_merged/TDC_train_Alpaca_merged.jsonl"
+    source_directory = current_dir / "TDC_train_Alpaca_per_task"
+    output_filepath = current_dir / "TDC_train_Alpaca_merged/TDC_train_Alpaca_merged.jsonl"
     
     merge_jsonl_files(source_directory, output_filepath)
