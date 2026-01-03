@@ -2,6 +2,7 @@ import os
 import argparse
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
 from tqdm import tqdm
 import multiprocessing
@@ -25,6 +26,8 @@ except ImportError:
     # We will define a simple extractor if import fails, but prefer project utils
     pass
 
+current_dir = Path(__file__).parent.resolve()
+
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -44,13 +47,14 @@ def get_args():
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'Other', 'all'],
                         help='Task groups to run')
     parser.add_argument('--n-samples', type=int, default=16, help='Number of samples per query')
-    parser.add_argument('--api-base', type=str, defa···ult="http://0.0.0.0:8000/v1", help='API Base URL')
+    parser.add_argument('--api-base', type=str, default="http://0.0.0.0:8000/v1", help='API Base URL')
     parser.add_argument('--api-key', type=str, default="EMPTY", help='API Key')
     parser.add_argument('--model', type=str, default="", help='Model name (optional, will query server if empty)')
     parser.add_argument('--num-processes', type=int, default=32, help='Number of parallel workers')
-    parser.add_argument('--data-dir', type=str, default="DataPrepare/TDC_test_prompts_label", help='Directory containing processed test data')
+    parser.add_argument('--data-dir', type=Path, default=current_dir.parent / "DataPrepare/TDC_test_prompts_label", help='Directory containing processed test data')  # TODO: 改成用 Path 的真正的相对路径
     parser.add_argument('--thinking', action='store_false', help='Enable thinking parameter for DeepSeek models')  # TODO: 注意这里 thinking 到底是开了还是没开
     parser.add_argument('--enable-tools', action='store_false', help='Enable tool calling')
+    parser.add_argument('--log-file', action='store_true', help='Save logs to file')
     
     args = parser.parse_args()
     return args
@@ -193,29 +197,32 @@ def load_tasks_map(data_dir):
     """
     mapping = {
         'Tox': [
-            # 'Tox21.jsonl', 
-            # 'ToxCast.jsonl', 
-            'Skin_Reaction.jsonl', 
-            # 'hERG.jsonl', 
-            # 'AMES.jsonl', 
-            # 'DILI.jsonl', 
-            # 'ClinTox.jsonl', 
-            # 'herg_central_hERG_inhib.jsonl'
+            # 'Tox21.jsonl',  # 15589
+            # 'ToxCast.jsonl',  # 306679
+            # 'herg_central_hERG_inhib.jsonl'  # 61379
+            # ---------------------------
+            'Skin_Reaction.jsonl',  # 81
+            # 'hERG.jsonl',  # 131
+            # 'DILI.jsonl',  # 95
+            # 'ClinTox.jsonl',  # 296
+            # ---------------------------
+            # 'AMES.jsonl',  # 1456
         ],
         'ADME': [
-            # 'PAMPA_NCATS.jsonl', 
-            # 'HIA_Hou.jsonl', 
-            'Bioavailability_Ma.jsonl', 
-            # 'BBB_Martins.jsonl', 
-            # 'Pgp_Broccatelli.jsonl', 
-            # 'CYP1A2_Veith.jsonl', 
-            # 'CYP2C19_Veith.jsonl', 
-            # 'CYP2C9_Veith.jsonl', 
-            # 'CYP2D6_Veith.jsonl', 
-            # 'CYP3A4_Veith.jsonl',
-            # 'CYP2C9_Substrate_CarbonMangels.jsonl', 
-            # 'CYP2D6_Substrate_CarbonMangels.jsonl', 
-            # 'CYP3A4_Substrate_CarbonMangels.jsonl'
+            # 'PAMPA_NCATS.jsonl',  # 407
+            # 'HIA_Hou.jsonl',  # 116
+            'Bioavailability_Ma.jsonl',  # 128
+            # 'BBB_Martins.jsonl',  # 406
+            # 'Pgp_Broccatelli.jsonl',  # 244
+            # 'CYP2C9_Substrate_CarbonMangels.jsonl',  # 134
+            # 'CYP2D6_Substrate_CarbonMangels.jsonl',  # 133
+            # 'CYP3A4_Substrate_CarbonMangels.jsonl'  # 134
+            # ---------------------------
+            'CYP1A2_Veith.jsonl',  # 2516
+            'CYP2C19_Veith.jsonl',  # 2533
+            'CYP2C9_Veith.jsonl',  # 2418
+            'CYP2D6_Veith.jsonl',  # 2626
+            'CYP3A4_Veith.jsonl',  # 2466
         ],
         'HTS': ['HIV.jsonl', 'SARSCoV2_3CLPro_Diamond.jsonl', 'SARSCoV2_Vitro_Touret.jsonl', 'butkiewicz.jsonl'],
         'Develop': ['SAbDab_Chen.jsonl'],
@@ -239,7 +246,7 @@ def load_tasks_map(data_dir):
 def main():
     args = get_args()
     
-    data_path = Path(args.data_dir).resolve()
+    data_path = args.data_dir
     if not data_path.exists():
         logger.error(f"Data directory {data_path} does not exist.")
         return
@@ -260,6 +267,18 @@ def main():
     groups_to_run = args.task_groups
     if 'all' in groups_to_run:
         groups_to_run = list(task_map.keys())
+
+    # Configure File Handler if log_file is provided
+    if args.log_file:
+        log_dir = current_dir / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_path = log_dir / f"test_tdc_via_api_{timestamp}.log"
+        
+        fh = logging.FileHandler(log_path)
+        fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        logging.getLogger().addHandler(fh)
+        logger.info(f"Logging to file: {log_path}")
 
     logger.info(f"Running groups: {groups_to_run}")
 
