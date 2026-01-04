@@ -43,7 +43,7 @@ def get_tools_for_task(task_name):
 def get_args():
     parser = argparse.ArgumentParser(description='Run TDC benchmark tasks via OpenAI-compatible API')
     
-    parser.add_argument('--task-groups', nargs='+', default=['Tox', 'ADME'],  # TODO: test tasks
+    parser.add_argument('--task-groups', nargs='+', default=['Tox'],  # TODO: test tasks
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'Other', 'all'],
                         help='Task groups to run')
     parser.add_argument('--n-samples', type=int, default=16, help='Number of samples per query')
@@ -51,10 +51,10 @@ def get_args():
     parser.add_argument('--api-key', type=str, default="EMPTY", help='API Key')
     parser.add_argument('--model', type=str, default="", help='Model name (optional, will query server if empty)')
     parser.add_argument('--num-processes', type=int, default=32, help='Number of parallel workers')
-    parser.add_argument('--data-dir', type=Path, default=current_dir.parent / "DataPrepare/TDC_test_prompts_label", help='Directory containing processed test data')  # TODO: 改成用 Path 的真正的相对路径
+    parser.add_argument('--data-dir', type=Path, default=current_dir.parent / "DataPrepare/TDC_test_prompts_label", help='Directory containing processed test data')
     parser.add_argument('--thinking', action='store_false', help='Enable thinking parameter for DeepSeek models')  # TODO: 注意这里 thinking 到底是开了还是没开
     parser.add_argument('--enable-tools', action='store_false', help='Enable tool calling')
-    parser.add_argument('--log-file', action='store_true', help='Save logs to file')
+    parser.add_argument('--log-file', action='store_false', help='Save logs to file')  # TODO: 注意这里 log-file 到底是开了还是没开
     
     args = parser.parse_args()
     return args
@@ -63,7 +63,7 @@ def run_turn(client, messages, model_name, thinking=False, tools=None):
     """
     Executes a single turn of conversation with optional tool support.
     """
-    depth_limit = 30 # Avoid infinite loops
+    depth_limit = 40 # Avoid infinite loops
     sub_turn = 1
     last_tool_names = set()
     final_content = ""
@@ -197,32 +197,36 @@ def load_tasks_map(data_dir):
     """
     mapping = {
         'Tox': [
+            # --------------------------- Tox Group 1
             # 'Tox21.jsonl',  # 15589
             # 'ToxCast.jsonl',  # 306679
             # 'herg_central_hERG_inhib.jsonl'  # 61379
-            # ---------------------------
+            # --------------------------- Tox Group 2
             'Skin_Reaction.jsonl',  # 81
-            # 'hERG.jsonl',  # 131
-            # 'DILI.jsonl',  # 95
-            # 'ClinTox.jsonl',  # 296
-            # ---------------------------
+            'hERG.jsonl',  # 131
+            'DILI.jsonl',  # 95
+            'ClinTox.jsonl',  # 296
+            # --------------------------- Tox Group 3
             # 'AMES.jsonl',  # 1456
         ],
         'ADME': [
+            # --------------------------- ADME Group 1
             # 'PAMPA_NCATS.jsonl',  # 407
             # 'HIA_Hou.jsonl',  # 116
-            'Bioavailability_Ma.jsonl',  # 128
+            # 'Bioavailability_Ma.jsonl',  # 128
+
             # 'BBB_Martins.jsonl',  # 406
             # 'Pgp_Broccatelli.jsonl',  # 244
-            # 'CYP2C9_Substrate_CarbonMangels.jsonl',  # 134
-            # 'CYP2D6_Substrate_CarbonMangels.jsonl',  # 133
-            # 'CYP3A4_Substrate_CarbonMangels.jsonl'  # 134
-            # ---------------------------
-            'CYP1A2_Veith.jsonl',  # 2516
-            'CYP2C19_Veith.jsonl',  # 2533
-            'CYP2C9_Veith.jsonl',  # 2418
-            'CYP2D6_Veith.jsonl',  # 2626
-            'CYP3A4_Veith.jsonl',  # 2466
+
+            'CYP2C9_Substrate_CarbonMangels.jsonl',  # 134
+            'CYP2D6_Substrate_CarbonMangels.jsonl',  # 133
+            'CYP3A4_Substrate_CarbonMangels.jsonl'  # 134
+            # --------------------------- ADME Group 2
+            # 'CYP1A2_Veith.jsonl',  # 2516
+            # 'CYP2C19_Veith.jsonl',  # 2533
+            # 'CYP2C9_Veith.jsonl',  # 2418
+            # 'CYP2D6_Veith.jsonl',  # 2626
+            # 'CYP3A4_Veith.jsonl',  # 2466
         ],
         'HTS': ['HIV.jsonl', 'SARSCoV2_3CLPro_Diamond.jsonl', 'SARSCoV2_Vitro_Touret.jsonl', 'butkiewicz.jsonl'],
         'Develop': ['SAbDab_Chen.jsonl'],
@@ -270,10 +274,10 @@ def main():
 
     # Configure File Handler if log_file is provided
     if args.log_file:
-        log_dir = current_dir / "logs"
+        log_dir = current_dir.parent / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_path = log_dir / f"test_tdc_via_api_{timestamp}.log"
+        log_path = log_dir / f"intern_s1_mini_distilled_{timestamp}_0.log"  # TODO: log file name
         
         fh = logging.FileHandler(log_path)
         fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))

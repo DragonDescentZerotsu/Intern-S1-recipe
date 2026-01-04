@@ -319,7 +319,7 @@ AccFG_OPENAI_TOOLS = [{
 
 if __name__ == "__main__":
     # example usage
-    smiles = "CCOC(=O)C(=NOC(C)(C)C(=O)OC(C)(C)C)c1csc(NC(c2ccccc2)(c2ccccc2)c2ccccc2)n1"
+    smiles = "CCC=CCC=CCC=CCCCCCCCC(=O)OS(C)(=O)=O"
     print(high_level_fg_fragments_w_attach_points_no_special_tokens_w_atom_ids(smiles))
     # print('\n')
     # print(describe_high_level_fg_fragments(smiles))
