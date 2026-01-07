@@ -43,11 +43,11 @@ def get_tools_for_task(task_name):
 def get_args():
     parser = argparse.ArgumentParser(description='Run TDC benchmark tasks via OpenAI-compatible API')
     
-    parser.add_argument('--task-groups', nargs='+', default=['Tox'],  # TODO: test tasks
+    parser.add_argument('--task-groups', nargs='+', default=['ADME'],  # TODO: test tasks
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'Other', 'all'],
                         help='Task groups to run')
     parser.add_argument('--n-samples', type=int, default=16, help='Number of samples per query')
-    parser.add_argument('--api-base', type=str, default="http://0.0.0.0:8000/v1", help='API Base URL')
+    parser.add_argument('--api-base', type=str, default="http://0.0.0.0:8003/v1", help='API Base URL')
     parser.add_argument('--api-key', type=str, default="EMPTY", help='API Key')
     parser.add_argument('--model', type=str, default="", help='Model name (optional, will query server if empty)')
     parser.add_argument('--num-processes', type=int, default=32, help='Number of parallel workers')
@@ -218,15 +218,15 @@ def load_tasks_map(data_dir):
             # 'BBB_Martins.jsonl',  # 406
             # 'Pgp_Broccatelli.jsonl',  # 244
 
-            'CYP2C9_Substrate_CarbonMangels.jsonl',  # 134
-            'CYP2D6_Substrate_CarbonMangels.jsonl',  # 133
-            'CYP3A4_Substrate_CarbonMangels.jsonl'  # 134
+            # 'CYP2C9_Substrate_CarbonMangels.jsonl',  # 134
+            # 'CYP2D6_Substrate_CarbonMangels.jsonl',  # 133
+            # 'CYP3A4_Substrate_CarbonMangels.jsonl'  # 134
             # --------------------------- ADME Group 2
             # 'CYP1A2_Veith.jsonl',  # 2516
             # 'CYP2C19_Veith.jsonl',  # 2533
             # 'CYP2C9_Veith.jsonl',  # 2418
             # 'CYP2D6_Veith.jsonl',  # 2626
-            # 'CYP3A4_Veith.jsonl',  # 2466
+            'CYP3A4_Veith.jsonl',  # 2466
         ],
         'HTS': ['HIV.jsonl', 'SARSCoV2_3CLPro_Diamond.jsonl', 'SARSCoV2_Vitro_Touret.jsonl', 'butkiewicz.jsonl'],
         'Develop': ['SAbDab_Chen.jsonl'],
@@ -277,7 +277,7 @@ def main():
         log_dir = current_dir.parent / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_path = log_dir / f"intern_s1_mini_distilled_{timestamp}_0.log"  # TODO: log file name
+        log_path = log_dir / f"intern_s1_mini_distilled_{timestamp}_3.log"  # TODO: log file name
         
         fh = logging.FileHandler(log_path)
         fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))

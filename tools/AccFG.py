@@ -39,6 +39,68 @@ if FG_CACHE_PATH.exists():
 else:
     print(f"Warning: FG cache not found at {FG_CACHE_PATH}")
 
+from unittest.mock import patch
+import multiprocessing
+
+
+# 这里两个 Synchronous 都是为了防止 daemonic 的并行问题
+class SynchronousPool:
+    def __init__(self, *args, **kwargs):
+        pass
+    def __enter__(self):
+        return self
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+    def map(self, func, iterable, chunksize=None):
+        return list(map(func, iterable))
+    def imap(self, func, iterable, chunksize=1):
+        return map(func, iterable)
+    def imap_unordered(self, func, iterable, chunksize=1):
+        return map(func, iterable)
+    def starmap(self, func, iterable, chunksize=None):
+        return [func(*args) for args in iterable]
+    def apply_async(self, func, args=(), kwds={}, callback=None):
+        res = func(*args, **kwds)
+        if callback: callback(res)
+        class AsyncResult:
+             def __init__(self, val): self.val = val
+             def get(self, timeout=None): return self.val
+             def successful(self): return True
+             def wait(self, timeout=None): pass
+        return AsyncResult(res)
+    def close(self): pass
+    def join(self): pass
+    def terminate(self): pass
+
+class SynchronousProcessPoolExecutor:
+    def __init__(self, *args, **kwargs):
+        # 可加日志确认是否命中
+        # print("[SyncExecutor] ProcessPoolExecutor patched -> running synchronously")
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False  # 不吞异常
+
+    def submit(self, fn, *args, **kwargs):
+        # 直接同步执行
+        value = fn(*args, **kwargs)
+
+        class _FakeFuture:
+            def __init__(self, v):
+                self._v = v
+            def result(self, timeout=None):
+                return self._v
+
+        return _FakeFuture(value)
+
+    # 有些代码可能会用到 shutdown
+    def shutdown(self, wait=True, cancel_futures=False):
+        pass
+
+
 def cached_describe_high_level_fg_fragments(smiles: str):
     '''
     Cache the result of high level FG fragments description, refer to shared_data/precalculate_fgs.py for more details.
@@ -49,7 +111,9 @@ def cached_describe_high_level_fg_fragments(smiles: str):
 
     # If not cached, compute and cache
     print(f"{smiles} not cached, computing...")
-    return "Failed to parse."  # describe_high_level_fg_fragments(smiles)
+    # Prevent nested daemon pool error by forcing synchronous execution if the underlying library tries to spawn a pool
+    with patch('multiprocessing.Pool', side_effect=SynchronousPool), patch('accfg.main.ProcessPoolExecutor', SynchronousProcessPoolExecutor):
+        return high_level_fg_fragments_w_attach_points_no_special_tokens_w_atom_ids(smiles)
 
 #---------------------------------------------------
 # Instant FG fragment tools, many different versions
