@@ -31,9 +31,9 @@ dataloader_num_workers: 16
 # enable_thinking: true  # false for TDC
 
 ### output
-output_dir: checkpoints/Intern-S1-mini/full/sft-distill_DeepSeek_V32-TDC-train-set
+output_dir: checkpoints/Intern-S1-mini/full/sft-distill_DeepSeek_V32-TDC-train-set_less_save_interval
 logging_steps: 100
-save_steps: 10000
+save_steps: 3000
 plot_loss: true
 overwrite_output_dir: true
 save_only_model: false
@@ -45,10 +45,10 @@ include_effective_tokens_per_second: true
 ### train
 per_device_train_batch_size: 1 # 4
 gradient_accumulation_steps: 1
-learning_rate: 1.0e-5
-num_train_epochs: 2.0
+learning_rate: 5.0e-6
+num_train_epochs: 0.5
 lr_scheduler_type: cosine
-warmup_ratio: 0.1
+warmup_ratio: 0.4
 bf16: true
 ddp_timeout: 180000000
 resume_from_checkpoint: null

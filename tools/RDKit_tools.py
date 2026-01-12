@@ -1,5 +1,5 @@
 from rdkit import Chem
-from rdkit.Chem import Descriptors, rdMolDescriptors, Lipinski, Crippen, GraphDescriptors, Fragments
+from rdkit.Chem import Descriptors, rdMolDescriptors, Lipinski, Crippen, GraphDescriptors, Fragments, QED
 from typing import Dict, Any, List
 
 
@@ -548,5 +548,5 @@ def calc_all_rdkit_descriptors(smiles: str):
 if __name__ == "__main__":
     smiles = "CCOC(=O)C(=NOC(C)(C)C(=O)OC(C)(C)C)c1csc(NC(c2ccccc2)(c2ccccc2)c2ccccc2)n1"
     # results, errors = calc_all_rdkit_descriptors(smiles)
-    print(RDKIT_OPENAI_TOOLS)
+    print(get_qed(smiles))
     # print(errors)

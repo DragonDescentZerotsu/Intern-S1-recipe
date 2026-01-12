@@ -9,13 +9,13 @@ os.environ.setdefault("VLLM_USE_V1", "1")
 # 如需完全规避，可切到 PyTorch SDPA 注意力：
 #  - 好处：不会在导入时访问 CUDA
 #  - 代价：性能可能略降
-os.environ.setdefault("VLLM_ATTENTION_BACKEND", "TORCH_SDPA")
+# os.environ.setdefault("VLLM_ATTENTION_BACKEND", "TORCH_SDPA")
 
 # 3) 在 Python 侧把多进程 start method 切成 spawn（双保险）
 mp.set_start_method("spawn", force=True)
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '4'
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'  # TODO: device GPU #
 
 from transformers import AutoProcessor, AutoTokenizer
 from vllm import LLM, SamplingParams
@@ -37,7 +37,8 @@ import ast
 
 def main():
     # ===================== 配置 =====================
-    MODEL_NAME = "internlm/Intern-S1-mini"
+    # MODEL_NAME = "internlm/Intern-S1-mini"
+    MODEL_NAME = "checkpoints/Intern-S1-mini/full/sft-distill_DeepSeek_V32-TDC-train-set_less_save_interval/checkpoint-3000"
     # MODEL_NAME = "checkpoints/Intern-S1-mini/full/sft"
     USE_LORA = False
     LORA_PATH = "checkpoints/Intern-S1-mini/lora/sft/checkpoint-180000"  # 你的 LoRA 目录
@@ -76,7 +77,7 @@ def main():
                                lora_int_id=1,
                                lora_path=LORA_PATH) # 你的 LoRA 目录
 
-    TASK_GROUP_NAMEs = ['Develop', 'PPI', 'TCREpitopeBinding', 'PeptideMHC'] # 'ADME'/'Tox'/'HTS'/'Develop'/'PPI'/'TCREpitopeBinding'/'TrialOutcome'/'PeptideMHC'
+    TASK_GROUP_NAMEs = ['ADME'] # 'ADME'/'Tox'/'HTS'/'Develop'/'PPI'/'TCREpitopeBinding'/'TrialOutcome'/'PeptideMHC'
 
     AUTO_FASTA = True
     if not AUTO_FASTA:

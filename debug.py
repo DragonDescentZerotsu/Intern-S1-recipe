@@ -1,32 +1,16 @@
-from transformers import AutoTokenizer, AutoProcessor, AutoModelForCausalLM
-from PIL import Image
-import requests
-import torch
+from openai import OpenAI
 
-model_name = "internlm/Intern-S1-mini"
-
-tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=True)
-model = AutoModelForCausalLM.from_pretrained(
-    model_name, device_map="auto", torch_dtype="auto", trust_remote_code=True
+client = OpenAI(
+    base_url="http://127.0.0.1:8000/v1",
+    api_key="EMPTY",
+    timeout=180.0,     # 先拉大
+    max_retries=0,     # 避免重试掩盖问题 :contentReference[oaicite:2]{index=2}
 )
 
-url = "http://images.cocodataset.org/val2017/000000039769.jpg"
-image = Image.open(requests.get(url, stream=True).raw).convert("RGB")
-
-messages = [
-    {"role": "user", "content": "<IMG_CONTEXT>\nPlease describe the image explicitly."}
-]
-
-prompt = tokenizer.apply_chat_template(
-    messages, tokenize=False, add_generation_prompt=True
+resp = client.chat.completions.create(
+    model="local-model",
+    messages=[{"role":"user","content":"ping"}],
+    max_tokens=8,
+    temperature=0,
 )
-
-inputs = processor(
-    text=prompt,
-    images=image,
-    return_tensors="pt"
-).to(model.device, dtype=torch.bfloat16)
-
-out = model.generate(**inputs, max_new_tokens=512)
-print(processor.decode(out[0, inputs["input_ids"].shape[1]:], skip_special_tokens=True))
+print(resp.choices[0].message.content)

@@ -8,7 +8,13 @@ from tqdm import tqdm
 import multiprocessing
 import numpy as np
 from sklearn.metrics import roc_auc_score
-from openai import OpenAI
+# from openai import OpenAI  # use this when don't need langfuse
+import logfire
+from langfuse.openai import OpenAI  # langfuse
+from langfuse import observe, get_client
+import atexit
+from dotenv import load_dotenv
+load_dotenv()
 
 # Add project root to path to import utils/tools if needed
 import sys
@@ -32,7 +38,12 @@ current_dir = Path(__file__).parent.resolve()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)  # 隐藏 HTTP 请求日志
+# logging.getLogger("openai").setLevel(logging.DEBUG)
+# logging.getLogger("openai._base_client").setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+# Global client instance
+_CLIENT = None
 
 def get_tools_for_task(task_name):
     """Combine BASIC_TOOLS with task-specific tools."""
@@ -47,18 +58,32 @@ def get_args():
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'Other', 'all'],
                         help='Task groups to run')
     parser.add_argument('--n-samples', type=int, default=16, help='Number of samples per query')
-    parser.add_argument('--api-base', type=str, default="http://0.0.0.0:8003/v1", help='API Base URL')
+    parser.add_argument('--api-base', type=str, default="http://localhost:8000/v1", help='API Base URL')  # TODO: port number
     parser.add_argument('--api-key', type=str, default="EMPTY", help='API Key')
     parser.add_argument('--model', type=str, default="", help='Model name (optional, will query server if empty)')
-    parser.add_argument('--num-processes', type=int, default=32, help='Number of parallel workers')
+    parser.add_argument('--num-processes', type=int, default=1, help='Number of parallel workers')
     parser.add_argument('--data-dir', type=Path, default=current_dir.parent / "DataPrepare/TDC_test_prompts_label", help='Directory containing processed test data')
     parser.add_argument('--thinking', action='store_false', help='Enable thinking parameter for DeepSeek models')  # TODO: 注意这里 thinking 到底是开了还是没开
-    parser.add_argument('--enable-tools', action='store_false', help='Enable tool calling')
-    parser.add_argument('--log-file', action='store_false', help='Save logs to file')  # TODO: 注意这里 log-file 到底是开了还是没开
+    parser.add_argument('--enable-tools', action='store_false', help='Enable tool calling')  # TODO: 注意是否使用了 tool ， debug 可能关了
+    parser.add_argument('--log-file', action='store_true', help='Save logs to file')  # TODO: 注意这里 log-file 到底是开了还是没开
+    parser.add_argument('--logfire', action='store_false', help='Save logs to file')  # TODO: 注意这里 logfire 到底是开了还是没开
     
     args = parser.parse_args()
     return args
 
+def init_worker(api_base, api_key):
+    global _CLIENT
+    _CLIENT = OpenAI(
+        api_key=api_key,
+        base_url=api_base,
+        # 让问题暴露得更明显，避免一直重试掩盖根因
+        max_retries=0,          # 或 1/2
+        # timeout=120.0           # 视你模型速度调整
+    )
+    # 每个 worker 进程退出时把队列刷出去
+    atexit.register(lambda: get_client().flush())  # langfuse
+
+@observe()  # langfuse
 def run_turn(client, messages, model_name, thinking=False, tools=None):
     """
     Executes a single turn of conversation with optional tool support.
@@ -76,10 +101,11 @@ def run_turn(client, messages, model_name, thinking=False, tools=None):
         try:
             # TODO: local Intern-S1-mini
             response = client.chat.completions.create(
+                name='repaired_QED',
                 model=model_name,
                 messages=messages,
                 tools=tools,
-                max_tokens=20000, # Reduced from 20000 to be safe/faster, usually enough
+                max_tokens=10240, # Reduced from 20000 to be safe/faster, usually enough. Important to keep this small other wise retry and slow down the speed.
                 temperature=0.8,
                 top_p=0.8,
                 stream=False,
@@ -157,13 +183,16 @@ def worker_process_sample(args):
     Args: (index, text, label_dummy, api_base, api_key, model_name, thinking, enable_tools, task_name)
     Returns: (index, prediction_int_or_None)
     """
+    global _CLIENT
+
     index, text, _, api_base, api_key, model_name, thinking, enable_tools, task_name = args
     
-    client = OpenAI(
-        api_key=api_key,
-        base_url=api_base,
-    )
-    
+    # client = OpenAI(
+    #     api_key=api_key,
+    #     base_url=api_base,
+    # )
+    client = _CLIENT
+
     messages = [{'role': 'user', 'content': text}]
     
     # Determine tools
@@ -211,13 +240,13 @@ def load_tasks_map(data_dir):
         ],
         'ADME': [
             # --------------------------- ADME Group 1
-            # 'PAMPA_NCATS.jsonl',  # 407
+            'PAMPA_NCATS.jsonl',  # 407
             # 'HIA_Hou.jsonl',  # 116
-            # 'Bioavailability_Ma.jsonl',  # 128
 
             # 'BBB_Martins.jsonl',  # 406
             # 'Pgp_Broccatelli.jsonl',  # 244
 
+            # 'Bioavailability_Ma.jsonl',  # 128
             # 'CYP2C9_Substrate_CarbonMangels.jsonl',  # 134
             # 'CYP2D6_Substrate_CarbonMangels.jsonl',  # 133
             # 'CYP3A4_Substrate_CarbonMangels.jsonl'  # 134
@@ -226,7 +255,7 @@ def load_tasks_map(data_dir):
             # 'CYP2C19_Veith.jsonl',  # 2533
             # 'CYP2C9_Veith.jsonl',  # 2418
             # 'CYP2D6_Veith.jsonl',  # 2626
-            'CYP3A4_Veith.jsonl',  # 2466
+            # 'CYP3A4_Veith.jsonl',  # 2466
         ],
         'HTS': ['HIV.jsonl', 'SARSCoV2_3CLPro_Diamond.jsonl', 'SARSCoV2_Vitro_Touret.jsonl', 'butkiewicz.jsonl'],
         'Develop': ['SAbDab_Chen.jsonl'],
@@ -249,6 +278,10 @@ def load_tasks_map(data_dir):
 
 def main():
     args = get_args()
+
+    # if args.logfire:
+    #     logfire.configure()
+    #     logfire.instrument_openai()
     
     data_path = args.data_dir
     if not data_path.exists():
@@ -277,7 +310,7 @@ def main():
         log_dir = current_dir.parent / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_path = log_dir / f"intern_s1_mini_distilled_{timestamp}_3.log"  # TODO: log file name
+        log_path = log_dir / f"intern_s1_mini_distilled_3000_steps_no_tools_{timestamp}_2.log"  # TODO: log file name
         
         fh = logging.FileHandler(log_path)
         fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
@@ -320,7 +353,11 @@ def main():
             
             # Execute
             results = []
-            with multiprocessing.Pool(processes=args.num_processes) as pool:
+            with multiprocessing.Pool(
+                processes=args.num_processes,
+                initializer=init_worker,
+                initargs=(args.api_base, args.api_key)
+            ) as pool:
                 for result in tqdm(pool.imap_unordered(worker_process_sample, worker_tasks), total=len(worker_tasks), desc=f"{task_name}"):
                     results.append(result)
             
@@ -389,6 +426,7 @@ def main():
                 
                 logger.info(f"{task_name} Avg Tools/Sample: {avg_tool_calls:.2f}")
                 logger.info(f"{task_name} Questions w/ Tools: {questions_with_tool_usage}/{total_questions} ({usage_rate:.1f}%)")
+    get_client().flush()  # langfuse
 
 if __name__ == "__main__":
     multiprocessing.set_start_method('spawn', force=True)
