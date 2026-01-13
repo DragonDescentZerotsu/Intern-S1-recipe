@@ -371,7 +371,7 @@ def get_3d_exposed_polar_surface(smiles: str):
             f"ERROR: {et}: {msg}"
         )
 
-SASA_OPEN_TOOLS = [_tool('get_3d_exposed_polar_surface', 'Return the 3D conformation based estimation of exposed polar surface area and its fraction of the total 3D solvent-accessible surface area.')]
+SASA_OPENAI_TOOLS = [_tool('get_3d_exposed_polar_surface', 'Return the 3D conformation based estimation of exposed polar surface area and its fraction of the total 3D solvent-accessible surface area.')]
 
 if __name__ == "__main__":
     smiles = "C[C@]12C[C@H]([C@@H]([C@@]1(CC(=O)[C@@]3([C@H]2CC=C4[C@H]3C=C(C(=O)C4(C)C)O)C)C)[C@](C)(C(=O)/C=C\\C(C)(C)O)O)O"  # 你的 SMILES

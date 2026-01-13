@@ -55,19 +55,20 @@ def get_tools_for_task(task_name):
 def get_args():
     parser = argparse.ArgumentParser(description='Run TDC benchmark tasks via OpenAI-compatible API')
     
-    parser.add_argument('--task-groups', nargs='+', default=['ADME'],  # TODO: test tasks
+    parser.add_argument('--task-groups', nargs='+', default=['Tox', 'ADME'],  # TODO: test tasks
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'Other', 'all'],
                         help='Task groups to run')
     parser.add_argument('--n-samples', type=int, default=16, help='Number of samples per query')
     parser.add_argument('--api-base', type=str, default="https://openrouter.ai/api/v1", help='API Base URL')  # TODO: port number | local model: http://localhost:8000/v1 | openrouter: https://openrouter.ai/api/v1 ｜ deepseek: https://api.deepseek.com/v1
     parser.add_argument('--api-key', type=str, default=os.environ["OPENROUTER_API_KEY"], help='API Key')  # TODO: API Key | local model: "EMPTY" | openrouter: os.environ["OPENROUTER_API_KEY"] | deepseek: os.environ["DEEPSEEK_API_KEY"]
-    parser.add_argument('--model', type=str, default="openai/gpt-5-mini", help='Model name (optional, will query server if empty)')  # TODO: model name | local model: "" | openrouter: deepseek/deepseek-v3.2; openai/gpt-5.2; openai/gpt-5-mini | deepseek: deepseek-chat
-    parser.add_argument('--num-processes', type=int, default=1, help='Number of parallel workers')
+    parser.add_argument('--model', type=str, default="deepseek/deepseek-v3.2", help='Model name (optional, will query server if empty)')  # TODO: model name | local model: "" | openrouter: deepseek/deepseek-v3.2; openai/gpt-5.2; openai/gpt-5-mini | deepseek: deepseek-chat
+    parser.add_argument('--num-processes', type=int, default=32, help='Number of parallel workers')
     parser.add_argument('--data-dir', type=Path, default=current_dir.parent / "DataPrepare/TDC_test_prompts_label", help='Directory containing processed test data')
     parser.add_argument('--thinking', action='store_false', help='Enable thinking parameter for DeepSeek models')  # TODO: 注意这里 thinking 到底是开了还是没开
     parser.add_argument('--enable-tools', action='store_false', help='Enable tool calling')  # TODO: 注意是否使用了 tool ， debug 可能关了
-    parser.add_argument('--log-file', action='store_true', help='Save logs to file')  # TODO: 注意这里 log-file 到底是开了还是没开
-    parser.add_argument('--langfuse', action='store_false', help='Save logs to file')  # TODO: 注意这里 langfuse trace 到底是开了还是没开
+    parser.add_argument('--log-file', action='store_false', help='Save logs to file')  # TODO: 注意这里 log-file 到底是开了还是没开
+    parser.add_argument('--log-file-name', type=str, default="OpenRouter_deepseek_v3.2_{t_stamp}_Tox_ADME_1.log", help='logs file name')   # TODO: log file name
+    parser.add_argument('--langfuse', action='store_false', help='Save traces to langfuse')  # TODO: 注意这里 langfuse trace 到底是开了还是没开
     
     args = parser.parse_args()
     return args
@@ -200,6 +201,9 @@ def _get_usage_details(
 
     return usage_details_out, cost_details_out
 
+def get_provider():
+    return "openrouter"
+
 @observe(as_type="agent")  # langfuse
 def run_turn(client, messages, model_name, thinking=False, tools=None, use_langfuse=False):
     """
@@ -252,14 +256,22 @@ def run_turn(client, messages, model_name, thinking=False, tools=None, use_langf
                 messages=messages,
                 tools=tools,
                 extra_body={ 
-                    "reasoning": { 
-                        "effort": "high",
-                        "summary": "auto"
-                        # "enabled": True 
+                    "reasoning": {   # 使用 OpenAI SDK 的 reasoning 功能
+                        # "effort": "high",  # TODO: Turn this OFF for OpenRouter offered DeepSeek models
+                        # "summary": "auto"  # TODO: Turn this OFF for OpenRouter offered DeepSeek models
+                        "enabled": True  # TODO: Turn this ON for OpenRouter offered DeepSeek models
                     },
                     "usage": {"include": True},
-                }  # 使用 OpenAI SDK 的 reasoning 功能
+                    **({  # 在用 DeepSeek 的时候指定模型提供商，别的时候暂时不指定
+                        "provider":{
+                            "only":["DeepSeek"],
+                            "allow_fallbacks": False  # 严格只使用 DeepSeek 更便宜
+                        }
+                    } if 'deepseek' in model_name else {})
+                },  
             )
+            # TODO: OpenAI official API (not implemented yet)
+
         except Exception as e:
             logger.error(f"Error in chat completion: {e}")
             return None
@@ -396,7 +408,7 @@ def load_tasks_map(data_dir):
             # 'ToxCast.jsonl',  # 306679
             # 'herg_central_hERG_inhib.jsonl'  # 61379
             # --------------------------- Tox Group 2
-            'Skin_Reaction.jsonl',  # 81
+            # 'Skin_Reaction.jsonl',  # 81
             'hERG.jsonl',  # 131
             'DILI.jsonl',  # 95
             'ClinTox.jsonl',  # 296
@@ -475,7 +487,7 @@ def main():
         log_dir = current_dir.parent / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_path = log_dir / f"intern_s1_mini_distilled_3000_steps_no_tools_{timestamp}_2.log"  # TODO: log file name
+        log_path = log_dir / args.log_file_name.format(t_stamp=timestamp)
         
         fh = logging.FileHandler(log_path)
         fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
