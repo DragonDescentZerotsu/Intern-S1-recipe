@@ -3,14 +3,15 @@ import argparse
 import json
 import logging
 from datetime import datetime
+from typing import Any, Dict, Optional, Tuple
 from pathlib import Path
 from tqdm import tqdm
 import multiprocessing
 import numpy as np
 from sklearn.metrics import roc_auc_score
-# from openai import OpenAI  # use this when don't need langfuse
+from openai import OpenAI  # use this when don't need langfuse
 import logfire
-from langfuse.openai import OpenAI  # langfuse
+# from langfuse.openai import OpenAI  # langfuse
 from langfuse import observe, get_client
 import atexit
 from dotenv import load_dotenv
@@ -58,20 +59,20 @@ def get_args():
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'Other', 'all'],
                         help='Task groups to run')
     parser.add_argument('--n-samples', type=int, default=16, help='Number of samples per query')
-    parser.add_argument('--api-base', type=str, default="http://localhost:8000/v1", help='API Base URL')  # TODO: port number
-    parser.add_argument('--api-key', type=str, default="EMPTY", help='API Key')
-    parser.add_argument('--model', type=str, default="", help='Model name (optional, will query server if empty)')
+    parser.add_argument('--api-base', type=str, default="https://openrouter.ai/api/v1", help='API Base URL')  # TODO: port number | local model: http://localhost:8000/v1 | openrouter: https://openrouter.ai/api/v1 ｜ deepseek: https://api.deepseek.com/v1
+    parser.add_argument('--api-key', type=str, default=os.environ["OPENROUTER_API_KEY"], help='API Key')  # TODO: API Key | local model: "EMPTY" | openrouter: os.environ["OPENROUTER_API_KEY"] | deepseek: os.environ["DEEPSEEK_API_KEY"]
+    parser.add_argument('--model', type=str, default="openai/gpt-5-mini", help='Model name (optional, will query server if empty)')  # TODO: model name | local model: "" | openrouter: deepseek/deepseek-v3.2; openai/gpt-5.2; openai/gpt-5-mini | deepseek: deepseek-chat
     parser.add_argument('--num-processes', type=int, default=1, help='Number of parallel workers')
     parser.add_argument('--data-dir', type=Path, default=current_dir.parent / "DataPrepare/TDC_test_prompts_label", help='Directory containing processed test data')
     parser.add_argument('--thinking', action='store_false', help='Enable thinking parameter for DeepSeek models')  # TODO: 注意这里 thinking 到底是开了还是没开
     parser.add_argument('--enable-tools', action='store_false', help='Enable tool calling')  # TODO: 注意是否使用了 tool ， debug 可能关了
     parser.add_argument('--log-file', action='store_true', help='Save logs to file')  # TODO: 注意这里 log-file 到底是开了还是没开
-    parser.add_argument('--logfire', action='store_false', help='Save logs to file')  # TODO: 注意这里 logfire 到底是开了还是没开
+    parser.add_argument('--langfuse', action='store_false', help='Save logs to file')  # TODO: 注意这里 langfuse trace 到底是开了还是没开
     
     args = parser.parse_args()
     return args
 
-def init_worker(api_base, api_key):
+def init_worker(api_base, api_key, use_langfuse):
     global _CLIENT
     _CLIENT = OpenAI(
         api_key=api_key,
@@ -80,11 +81,127 @@ def init_worker(api_base, api_key):
         max_retries=0,          # 或 1/2
         # timeout=120.0           # 视你模型速度调整
     )
-    # 每个 worker 进程退出时把队列刷出去
-    atexit.register(lambda: get_client().flush())  # langfuse
+    if use_langfuse:
+        # 每个 worker 进程退出时把队列刷出去
+        atexit.register(lambda: get_client().flush())  # langfuse
 
-@observe()  # langfuse
-def run_turn(client, messages, model_name, thinking=False, tools=None):
+def _get_usage_details(
+    resp: Any,
+    *,
+    pricing: Optional[Dict[str, Any]] = None,  # OpenRouter "pricing" object for this model (optional)
+) -> Tuple[Optional[Dict[str, int]], Optional[Dict[str, float]]]:
+    """
+    Returns:
+      usage_details: Dict[str, int]  (Langfuse: units per usage type)
+      cost_details:  Dict[str, float] (Langfuse: USD cost per usage type)
+
+    Works best with OpenRouter usage accounting enabled:
+      extra_body={"usage": {"include": True}}
+    """
+    usage = getattr(resp, "usage", None)
+    if usage is None:
+        return None, None
+
+    def g(x: Any, k: str, default=None):
+        if x is None:
+            return default
+        if isinstance(x, dict):
+            return x.get(k, default)
+        return getattr(x, k, default)
+
+    # --- token counts ---
+    prompt_tokens = g(usage, "prompt_tokens")
+    completion_tokens = g(usage, "completion_tokens")
+    total_tokens = g(usage, "total_tokens")
+
+    # details dicts (provider-dependent)
+    prompt_details = g(usage, "prompt_tokens_details", {}) or {}
+    completion_details = g(usage, "completion_tokens_details", {}) or {}
+
+    cached_tokens = g(prompt_details, "cached_tokens")  # OpenRouter uses cached_tokens :contentReference[oaicite:4]{index=4}
+    reasoning_tokens = g(completion_details, "reasoning_tokens")  # OpenRouter example shows reasoning_tokens :contentReference[oaicite:5]{index=5}
+
+    usage_details: Dict[str, int] = {}
+    if prompt_tokens is not None:
+        usage_details["input"] = int(prompt_tokens)
+    if completion_tokens is not None:
+        usage_details["output"] = int(completion_tokens)
+    if cached_tokens is not None:
+        usage_details["input_cache_read"] = int(cached_tokens)
+    if reasoning_tokens is not None:
+        # OpenRouter pricing object has "internal_reasoning" pricing field :contentReference[oaicite:6]{index=6}
+        usage_details["internal_reasoning"] = int(reasoning_tokens)
+    if total_tokens is not None:
+        usage_details["total"] = int(total_tokens)
+
+    # If pricing includes request cost, treat as 1 unit request
+    if pricing and float(pricing.get("request", "0") or 0) != 0:
+        usage_details["request"] = 1
+
+    # --- cost ---
+    cost_details: Dict[str, float] = {}
+
+    # 1) Prefer provider-reported total cost if present (OpenRouter returns cost in credits; credits are USD-denominated) :contentReference[oaicite:7]{index=7}
+    reported_cost = g(usage, "cost")
+    if reported_cost is not None:
+        try:
+            cost_details["total"] = float(reported_cost)
+        except Exception:
+            pass
+
+    # 2) If we have per-unit pricing, compute breakdown in USD (OpenRouter pricing is USD per token/request/unit) :contentReference[oaicite:8]{index=8}
+    if pricing:
+        def f(k: str) -> float:
+            v = pricing.get(k, "0")
+            try:
+                return float(v)
+            except Exception:
+                return 0.0
+
+        pt = int(prompt_tokens or 0)
+        ct = int(completion_tokens or 0)
+        cache = int(cached_tokens or 0)
+        rt = int(reasoning_tokens or 0)
+
+        input_cost = pt * f("prompt")
+        output_cost = ct * f("completion")
+        cache_read_cost = cache * f("input_cache_read")
+        reasoning_cost = rt * f("internal_reasoning")
+        request_cost = (1 * f("request")) if ("request" in usage_details) else 0.0
+
+        # Only set keys if non-zero (avoid clutter)
+        if input_cost:
+            cost_details["input"] = input_cost
+        if output_cost:
+            cost_details["output"] = output_cost
+        if cache_read_cost:
+            cost_details["input_cache_read"] = cache_read_cost
+        if reasoning_cost:
+            cost_details["internal_reasoning"] = reasoning_cost
+        if request_cost:
+            cost_details["request"] = request_cost
+
+        # If provider didn't give total, derive it
+        if "total" not in cost_details:
+            cost_details["total"] = float(
+                input_cost + output_cost + cache_read_cost + reasoning_cost + request_cost
+            )
+
+    # If both are empty, return None to avoid writing junk into Langfuse
+    if not usage_details:
+        usage_details_out = None
+    else:
+        usage_details_out = usage_details
+
+    if not cost_details:
+        cost_details_out = None
+    else:
+        cost_details_out = cost_details
+
+    return usage_details_out, cost_details_out
+
+@observe(as_type="agent")  # langfuse
+def run_turn(client, messages, model_name, thinking=False, tools=None, use_langfuse=False):
     """
     Executes a single turn of conversation with optional tool support.
     """
@@ -100,17 +217,17 @@ def run_turn(client, messages, model_name, thinking=False, tools=None):
     while sub_turn <= depth_limit:
         try:
             # TODO: local Intern-S1-mini
-            response = client.chat.completions.create(
-                name='repaired_QED',
-                model=model_name,
-                messages=messages,
-                tools=tools,
-                max_tokens=10240, # Reduced from 20000 to be safe/faster, usually enough. Important to keep this small other wise retry and slow down the speed.
-                temperature=0.8,
-                top_p=0.8,
-                stream=False,
-                extra_body=dict(spaces_between_special_tokens=False, enable_thinking=True)
-            )
+            # response = client.chat.completions.create(
+            #     name='repaired_QED',  # langfuse
+            #     model=model_name,
+            #     messages=messages,
+            #     tools=tools,
+            #     max_tokens=10240, # Reduced from 20000 to be safe/faster, usually enough. Important to keep this small other wise retry and slow down the speed.
+            #     temperature=0.8,
+            #     top_p=0.8,
+            #     stream=False,
+            #     extra_body=dict(spaces_between_special_tokens=False, enable_thinking=True)
+            # )
             # TODO: local DeepSeek V3.2
             # response = client.chat.completions.create(
             #     model=model_name,
@@ -129,15 +246,63 @@ def run_turn(client, messages, model_name, thinking=False, tools=None):
             #     tools=tools,
             #     extra_body={ "thinking": { "type": "enabled" } }  # 使用 OpenAI SDK 的 thinking 功能
             # )
+            # TODO: OpenRouter
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                tools=tools,
+                extra_body={ 
+                    "reasoning": { 
+                        "effort": "high",
+                        "summary": "auto"
+                        # "enabled": True 
+                    },
+                    "usage": {"include": True},
+                }  # 使用 OpenAI SDK 的 reasoning 功能
+            )
         except Exception as e:
             logger.error(f"Error in chat completion: {e}")
             return None
 
         message = response.choices[0].message
         messages.append(message)
+
+        # langfuse
+        if use_langfuse:
+            langfuse = get_client()
+            usage_details, cost_details = _get_usage_details(response, pricing=None)
+            # reasoning = getattr(message, "reasoning_content", None)
+
+            with langfuse.start_as_current_observation(as_type="generation", name="deepseek-call") as gen:
+                gen.update(
+                    model=response.model,
+                    input=[m.model_dump() if hasattr(m, "model_dump") else m for m in messages],
+                    output={
+                        "content": message.content,
+                        "reasoning_content": getattr(message, "reasoning_content", None) or getattr(message, "reasoning", None),
+                    },
+                    usage_details=usage_details,
+                    cost_details=cost_details,
+                )
         
         tool_calls = message.tool_calls
         final_content = message.content
+        # if reasoning:
+            # 注意：reasoning 可能很长，Langfuse 有事件大小限制，太大会被丢弃；建议截断保存 :contentReference[oaicite:2]{index=2}
+            # reasoning_trunc = reasoning[:20000]  # 你可以调大/调小
+
+            # 把它放到当前 span 的 output（UI里更直观），再加点统计信息到 metadata
+            # langfuse.update_current_span(
+                # output={
+                #     "final_content": message.content,
+                #     "reasoning_content": reasoning_trunc,
+                # },
+                # metadata={
+                #     "has_reasoning_content": True,
+                #     "reasoning_chars": len(reasoning),
+                #     "reasoning_truncated_to": len(reasoning_trunc),
+                # },
+            # )
 
         if not tool_calls:
             break
@@ -185,7 +350,7 @@ def worker_process_sample(args):
     """
     global _CLIENT
 
-    index, text, _, api_base, api_key, model_name, thinking, enable_tools, task_name = args
+    index, text, _, api_base, api_key, model_name, thinking, enable_tools, task_name, use_langfuse = args
     
     # client = OpenAI(
     #     api_key=api_key,
@@ -201,7 +366,7 @@ def worker_process_sample(args):
         tools = get_tools_for_task(task_name)
     
     try:
-        response_text, tool_count = run_turn(client, messages, model_name, thinking, tools)
+        response_text, tool_count = run_turn(client, messages, model_name, thinking, tools, use_langfuse)
         if response_text:
             # parsing logic
             # Ensure extract_answer and parse_answer are available
@@ -347,7 +512,7 @@ def main():
             # tasks[i] = (index, text, label, ...)
             worker_tasks = []
             for idx, item in enumerate(raw_data):
-                task_tuple = (idx, item['text'], item['Y'], args.api_base, args.api_key, args.model, args.thinking, args.enable_tools, task_name)
+                task_tuple = (idx, item['text'], item['Y'], args.api_base, args.api_key, args.model, args.thinking, args.enable_tools, task_name, args.langfuse)
                 for _ in range(args.n_samples):
                     worker_tasks.append(task_tuple)
             
@@ -356,7 +521,7 @@ def main():
             with multiprocessing.Pool(
                 processes=args.num_processes,
                 initializer=init_worker,
-                initargs=(args.api_base, args.api_key)
+                initargs=(args.api_base, args.api_key, args.langfuse)
             ) as pool:
                 for result in tqdm(pool.imap_unordered(worker_process_sample, worker_tasks), total=len(worker_tasks), desc=f"{task_name}"):
                     results.append(result)
@@ -426,7 +591,8 @@ def main():
                 
                 logger.info(f"{task_name} Avg Tools/Sample: {avg_tool_calls:.2f}")
                 logger.info(f"{task_name} Questions w/ Tools: {questions_with_tool_usage}/{total_questions} ({usage_rate:.1f}%)")
-    get_client().flush()  # langfuse
+    if args.langfuse:
+        get_client().flush()  # langfuse
 
 if __name__ == "__main__":
     multiprocessing.set_start_method('spawn', force=True)
