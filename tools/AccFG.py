@@ -232,7 +232,7 @@ def high_level_fg_fragments_w_attach_points_no_special_tokens_w_atom_ids(smiles:
         for FG_atom_ids in FG_atom_ids_list:
             FG_fragment_smiles_attach, _, _ = fg_fragment_with_attachment_points(smiles, FG_atom_ids)
             if FG_fragment_smiles_attach is None:
-                FG_fragment_smiles_list.append('Not matched')
+                FG_fragment_smiles_list.append('No attachment point; FG is the entire molecule')
                 continue
             
             FG_fragment_smiles_pure = Chem.MolFragmentToSmiles(
@@ -259,8 +259,8 @@ def high_level_fg_fragments_w_attach_points_no_special_tokens_w_atom_ids(smiles:
         FGs_description += f"\n   Count:{len(FG_fragment_smiles_list)}"
         FGs_description += "\n   Corresponding fragment SMILES <-> with atom ids <-> with attachment points:"
         for FG_fragment_smiles in FG_fragment_smiles_list:
-            if FG_fragment_smiles == 'Not matched':
-                FGs_description += " Not matched, "
+            if FG_fragment_smiles == 'No attachment point; FG is the entire molecule':
+                FGs_description += " No attachment point; FG is the entire molecule, "
                 continue
             FGs_description += f" {FG_fragment_smiles}, "
         FGs_description += "\n"
