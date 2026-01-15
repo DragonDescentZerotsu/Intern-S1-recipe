@@ -45,6 +45,7 @@ logger = logging.getLogger(__name__)
 
 # Global client instance
 _CLIENT = None
+_RUN_TURN = None
 
 def get_tools_for_task(task_name):
     """Combine BASIC_TOOLS with task-specific tools."""
@@ -55,7 +56,7 @@ def get_tools_for_task(task_name):
 def get_args():
     parser = argparse.ArgumentParser(description='Run TDC benchmark tasks via OpenAI-compatible API')
     
-    parser.add_argument('--task-groups', nargs='+', default=['Tox', 'ADME'],  # TODO: test tasks
+    parser.add_argument('--task-groups', nargs='+', default=['ADME'],  # TODO: test tasks
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'Other', 'all'],
                         help='Task groups to run')
     parser.add_argument('--n-samples', type=int, default=16, help='Number of samples per query')
@@ -67,21 +68,24 @@ def get_args():
     parser.add_argument('--thinking', action='store_false', help='Enable thinking parameter for DeepSeek models')  # TODO: 注意这里 thinking 到底是开了还是没开
     parser.add_argument('--enable-tools', action='store_false', help='Enable tool calling')  # TODO: 注意是否使用了 tool ， debug 可能关了
     parser.add_argument('--log-file', action='store_false', help='Save logs to file')  # TODO: 注意这里 log-file 到底是开了还是没开
-    parser.add_argument('--log-file-name', type=str, default="OpenRouter_deepseek_v3.2_{t_stamp}_Tox_ADME_1.log", help='logs file name')   # TODO: log file name
+    parser.add_argument('--log-file-name', type=str, default="OpenRouter_deepseek_v3.2_{t_stamp}_ADME_2.log", help='logs file name')   # TODO: log file name
     parser.add_argument('--langfuse', action='store_false', help='Save traces to langfuse')  # TODO: 注意这里 langfuse trace 到底是开了还是没开
     
     args = parser.parse_args()
     return args
 
-def init_worker(api_base, api_key, use_langfuse):
-    global _CLIENT
+def init_worker(api_base, api_key, use_langfuse, task_name):
+    global _CLIENT, _RUN_TURN
     _CLIENT = OpenAI(
         api_key=api_key,
         base_url=api_base,
         # 让问题暴露得更明显，避免一直重试掩盖根因
-        max_retries=0,          # 或 1/2
+        max_retries=1,          # 或 1/2
         # timeout=120.0           # 视你模型速度调整
     )
+
+    _RUN_TURN = get_run_turn(use_langfuse, task_name)
+
     if use_langfuse:
         # 每个 worker 进程退出时把队列刷出去
         atexit.register(lambda: get_client().flush())  # langfuse
@@ -201,11 +205,22 @@ def _get_usage_details(
 
     return usage_details_out, cost_details_out
 
-def get_provider():
-    return "openrouter"
+def get_run_turn(use_langfuse: bool, task_name: str):
+    '''
+    Returns the run_turn function with langfuse observation if use_langfuse is True.
+    Otherwise, returns the run_turn_base function.
+    '''
+    if use_langfuse:
+        return observe(
+            as_type="agent",
+            name=task_name,
+            # capture_input=False,
+            # capture_output=False,
+        )(run_turn_base)
+    return run_turn_base
 
-@observe(as_type="agent")  # langfuse
-def run_turn(client, messages, model_name, thinking=False, tools=None, use_langfuse=False):
+# @observe(as_type="agent")  # langfuse
+def run_turn_base(client, messages, model_name, thinking=False, tools=None, use_langfuse=False):
     """
     Executes a single turn of conversation with optional tool support.
     """
@@ -221,17 +236,17 @@ def run_turn(client, messages, model_name, thinking=False, tools=None, use_langf
     while sub_turn <= depth_limit:
         try:
             # TODO: local Intern-S1-mini
-            # response = client.chat.completions.create(
-            #     name='repaired_QED',  # langfuse
-            #     model=model_name,
-            #     messages=messages,
-            #     tools=tools,
-            #     max_tokens=10240, # Reduced from 20000 to be safe/faster, usually enough. Important to keep this small other wise retry and slow down the speed.
-            #     temperature=0.8,
-            #     top_p=0.8,
-            #     stream=False,
-            #     extra_body=dict(spaces_between_special_tokens=False, enable_thinking=True)
-            # )
+            response = client.chat.completions.create(
+                # name='repaired_QED',  # langfuse
+                model=model_name,
+                messages=messages,
+                tools=tools,
+                max_tokens=6000, # Reduced from 20000 to be safe/faster, usually enough. Important to keep this small other wise retry and slow down the speed.
+                temperature=0.8,
+                top_p=0.8,
+                stream=False,
+                extra_body=dict(spaces_between_special_tokens=False, enable_thinking=True)
+            )
             # TODO: local DeepSeek V3.2
             # response = client.chat.completions.create(
             #     model=model_name,
@@ -251,25 +266,25 @@ def run_turn(client, messages, model_name, thinking=False, tools=None, use_langf
             #     extra_body={ "thinking": { "type": "enabled" } }  # 使用 OpenAI SDK 的 thinking 功能
             # )
             # TODO: OpenRouter
-            response = client.chat.completions.create(
-                model=model_name,
-                messages=messages,
-                tools=tools,
-                extra_body={ 
-                    "reasoning": {   # 使用 OpenAI SDK 的 reasoning 功能
-                        # "effort": "high",  # TODO: Turn this OFF for OpenRouter offered DeepSeek models
-                        # "summary": "auto"  # TODO: Turn this OFF for OpenRouter offered DeepSeek models
-                        "enabled": True  # TODO: Turn this ON for OpenRouter offered DeepSeek models
-                    },
-                    "usage": {"include": True},
-                    **({  # 在用 DeepSeek 的时候指定模型提供商，别的时候暂时不指定
-                        "provider":{
-                            "only":["DeepSeek"],
-                            "allow_fallbacks": False  # 严格只使用 DeepSeek 更便宜
-                        }
-                    } if 'deepseek' in model_name else {})
-                },  
-            )
+            # response = client.chat.completions.create(
+            #     model=model_name,
+            #     messages=messages,
+            #     tools=tools,
+            #     extra_body={ 
+            #         "reasoning": {   # 使用 OpenAI SDK 的 reasoning 功能
+            #             # "effort": "high",  # TODO: Turn this OFF for OpenRouter offered DeepSeek models
+            #             # "summary": "auto"  # TODO: Turn this OFF for OpenRouter offered DeepSeek models
+            #             "enabled": True  # TODO: Turn this ON for OpenRouter offered DeepSeek models
+            #         },
+            #         "usage": {"include": True},
+            #         **({  # 在用 DeepSeek 的时候指定模型提供商，别的时候暂时不指定
+            #             "provider":{
+            #                 "only":["DeepSeek"],
+            #                 "allow_fallbacks": False  # 严格只使用 DeepSeek 更便宜
+            #             }
+            #         } if 'deepseek' in model_name else {})
+            #     },  
+            # )
             # TODO: OpenAI official API (not implemented yet)
 
         except Exception as e:
@@ -360,7 +375,7 @@ def worker_process_sample(args):
     Args: (index, text, label_dummy, api_base, api_key, model_name, thinking, enable_tools, task_name)
     Returns: (index, prediction_int_or_None)
     """
-    global _CLIENT
+    global _CLIENT, _RUN_TURN
 
     index, text, _, api_base, api_key, model_name, thinking, enable_tools, task_name, use_langfuse = args
     
@@ -378,7 +393,7 @@ def worker_process_sample(args):
         tools = get_tools_for_task(task_name)
     
     try:
-        response_text, tool_count = run_turn(client, messages, model_name, thinking, tools, use_langfuse)
+        response_text, tool_count = _RUN_TURN(client, messages, model_name, thinking, tools, use_langfuse)
         if response_text:
             # parsing logic
             # Ensure extract_answer and parse_answer are available
@@ -411,22 +426,22 @@ def load_tasks_map(data_dir):
             # 'Skin_Reaction.jsonl',  # 81
             'hERG.jsonl',  # 131
             'DILI.jsonl',  # 95
-            'ClinTox.jsonl',  # 296
+            # 'ClinTox.jsonl',  # 296
             # --------------------------- Tox Group 3
             # 'AMES.jsonl',  # 1456
         ],
         'ADME': [
             # --------------------------- ADME Group 1
-            'PAMPA_NCATS.jsonl',  # 407
-            # 'HIA_Hou.jsonl',  # 116
+            # 'PAMPA_NCATS.jsonl',  # 407
+            'HIA_Hou.jsonl',  # 116
 
-            # 'BBB_Martins.jsonl',  # 406
-            # 'Pgp_Broccatelli.jsonl',  # 244
+            'BBB_Martins.jsonl',  # 406
+            'Pgp_Broccatelli.jsonl',  # 244
 
-            # 'Bioavailability_Ma.jsonl',  # 128
-            # 'CYP2C9_Substrate_CarbonMangels.jsonl',  # 134
-            # 'CYP2D6_Substrate_CarbonMangels.jsonl',  # 133
-            # 'CYP3A4_Substrate_CarbonMangels.jsonl'  # 134
+            'Bioavailability_Ma.jsonl',  # 128
+            'CYP2C9_Substrate_CarbonMangels.jsonl',  # 134
+            'CYP2D6_Substrate_CarbonMangels.jsonl',  # 133
+            'CYP3A4_Substrate_CarbonMangels.jsonl'  # 134
             # --------------------------- ADME Group 2
             # 'CYP1A2_Veith.jsonl',  # 2516
             # 'CYP2C19_Veith.jsonl',  # 2533
@@ -533,7 +548,7 @@ def main():
             with multiprocessing.Pool(
                 processes=args.num_processes,
                 initializer=init_worker,
-                initargs=(args.api_base, args.api_key, args.langfuse)
+                initargs=(args.api_base, args.api_key, args.langfuse, task_name)
             ) as pool:
                 for result in tqdm(pool.imap_unordered(worker_process_sample, worker_tasks), total=len(worker_tasks), desc=f"{task_name}"):
                     results.append(result)

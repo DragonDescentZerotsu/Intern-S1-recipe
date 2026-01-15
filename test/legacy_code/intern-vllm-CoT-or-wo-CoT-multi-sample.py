@@ -21,7 +21,7 @@ mp.set_start_method("spawn", force=True)
 # os.environ.setdefault("VLLM_ATTENTION_BACKEND", "TORCH_SDPA")
 
 # 选择显卡
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "2")  # TODO: GPU choice
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "6")  # TODO: GPU choice
 
 from transformers import AutoTokenizer, AutoProcessor
 from vllm import LLM, SamplingParams
@@ -93,7 +93,7 @@ def main():
         '--task-groups',
         nargs='+',
         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'Custom', 'all'],
-        default=['ADME'],  # TODO: Test group (ADME or other ones)
+        default=['Tox'],  # TODO: Test group (ADME or other ones)
         help='选择要运行的任务组 (可以选择多个)'
     )
 
@@ -116,7 +116,7 @@ def main():
 
     np.random.seed(42)
     random.seed(42)
-    MODEL_NAME = "checkpoints/Intern-S1-mini/full/sft-distill_DeepSeek_V32-TDC-train-set_less_save_interval/checkpoint-3000"         # TODO: MODEL_NAME
+    MODEL_NAME = "internlm/Intern-S1-mini"         # TODO: MODEL_NAME
                                                     # "internlm/Intern-S1-mini-FP8"
                                                     # "internlm/Intern-S1-FP8"
                                                     # "jiosephlee/TDC_All_jiosephlee_Intern-S1-mini-lm_5ep_8e-05lr_64bs_ps_txgemma_v3_fps-no_attn_sdpa"
@@ -132,7 +132,7 @@ def main():
     # ---------------- 配置 Logging ----------------
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     # log_file = current_dir / 'logs' / f'{"Use_image_" if USE_IMAGE else "No_image_"}{MODEL_NAME.split("/")[-1]}_pure_CoT_Skin_reaction_{timestamp}.log'  # TODO: log_file name, CHECK!
-    log_file = current_dir.parent.parent / 'logs' / f'intern_s1_mini_distilled_3000_steps_no_tools_non_API_{timestamp}_2.log'
+    log_file = current_dir.parent.parent / 'logs' / f'intern_s1_mini_ReDo_ClinTox_{timestamp}_GPU6.log'
     log_file.parent.mkdir(parents=True, exist_ok=True)
 
     # 配置 logging：同时输出到控制台和文件
@@ -257,9 +257,13 @@ def main():
     for TASK_GROUP_NAME in TASK_GROUP_NAMEs:
         if TASK_GROUP_NAME == 'Tox':
             TASK_NAMEs = (
-                # ['Skin_Reaction']
-                # + ['hERG', 'AMES'] +
-                ['DILI','ClinTox']
+                [
+                # 'Skin_Reaction',
+                # 'hERG', 
+                # 'AMES',
+                # 'DILI',
+                'ClinTox'
+                ]
                 # + ['Tox21' + '_' + label.replace('-', '_') for label in retrieve_label_name_list('Tox21')] +
                 # ['herg_central' + '_' + retrieve_label_name_list('herg_central')[-1]] +
                 # ['ToxCast' + '_' + label for label in retrieve_label_name_list('Toxcast')]

@@ -63,6 +63,8 @@ def parse_answer(answer_text, format_correct, think_is_on:bool):
             else:
                 return None
         else:
+            if '</think>' in answer_text:  # more robust for answer matching without correct "Answer:" flags
+                answer_text = answer_text.rsplit('</think>')[1].strip()
             if '\\boxed{A}' in answer_text:
                 return 0
             elif '\\text{A}' in answer_text:
