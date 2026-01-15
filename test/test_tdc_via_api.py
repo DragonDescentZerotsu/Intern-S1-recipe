@@ -60,16 +60,16 @@ def get_args():
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'Other', 'all'],
                         help='Task groups to run')
     parser.add_argument('--n-samples', type=int, default=16, help='Number of samples per query')
-    parser.add_argument('--api-base', type=str, default="https://openrouter.ai/api/v1", help='API Base URL')  # TODO: port number | local model: http://localhost:8000/v1 | openrouter: https://openrouter.ai/api/v1 ｜ deepseek: https://api.deepseek.com/v1
-    parser.add_argument('--api-key', type=str, default=os.environ["OPENROUTER_API_KEY"], help='API Key')  # TODO: API Key | local model: "EMPTY" | openrouter: os.environ["OPENROUTER_API_KEY"] | deepseek: os.environ["DEEPSEEK_API_KEY"]
-    parser.add_argument('--model', type=str, default="deepseek/deepseek-v3.2", help='Model name (optional, will query server if empty)')  # TODO: model name | local model: "" | openrouter: deepseek/deepseek-v3.2; openai/gpt-5.2; openai/gpt-5-mini | deepseek: deepseek-chat
+    parser.add_argument('--api-base', type=str, default="http://localhost:8005/v1", help='API Base URL')  # TODO: port number | local model: http://localhost:8000/v1 | openrouter: https://openrouter.ai/api/v1 ｜ deepseek: https://api.deepseek.com/v1
+    parser.add_argument('--api-key', type=str, default="EMPTY", help='API Key')  # TODO: API Key | local model: "EMPTY" | openrouter: os.environ["OPENROUTER_API_KEY"] | deepseek: os.environ["DEEPSEEK_API_KEY"]
+    parser.add_argument('--model', type=str, default="", help='Model name (optional, will query server if empty)')  # TODO: model name | local model: "" | openrouter: deepseek/deepseek-v3.2; openai/gpt-5.2; openai/gpt-5-mini | deepseek: deepseek-chat
     parser.add_argument('--num-processes', type=int, default=32, help='Number of parallel workers')
     parser.add_argument('--data-dir', type=Path, default=current_dir.parent / "DataPrepare/TDC_test_prompts_label", help='Directory containing processed test data')
     parser.add_argument('--thinking', action='store_false', help='Enable thinking parameter for DeepSeek models')  # TODO: 注意这里 thinking 到底是开了还是没开
     parser.add_argument('--enable-tools', action='store_false', help='Enable tool calling')  # TODO: 注意是否使用了 tool ， debug 可能关了
     parser.add_argument('--log-file', action='store_false', help='Save logs to file')  # TODO: 注意这里 log-file 到底是开了还是没开
-    parser.add_argument('--log-file-name', type=str, default="OpenRouter_deepseek_v3.2_{t_stamp}_ADME_2.log", help='logs file name')   # TODO: log file name
-    parser.add_argument('--langfuse', action='store_false', help='Save traces to langfuse')  # TODO: 注意这里 langfuse trace 到底是开了还是没开
+    parser.add_argument('--log-file-name', type=str, default="intern-s1-mini_distill_deepseek_v3.2_10000_steps_{t_stamp}_4.log", help='logs file name')   # TODO: log file name
+    parser.add_argument('--langfuse', action='store_true', help='Save traces to langfuse')  # TODO: 注意这里 langfuse trace 到底是开了还是没开
     
     args = parser.parse_args()
     return args
@@ -416,30 +416,30 @@ def load_tasks_map(data_dir):
     Maps task groups to specific files in the data directory.
     This mapping relies on the file naming convention from process_tdc_test.py.
     """
-    mapping = {
+    mapping = {  # TODO: Detailed Task selection
         'Tox': [
             # --------------------------- Tox Group 1
             # 'Tox21.jsonl',  # 15589
             # 'ToxCast.jsonl',  # 306679
             # 'herg_central_hERG_inhib.jsonl'  # 61379
             # --------------------------- Tox Group 2
-            # 'Skin_Reaction.jsonl',  # 81
+            'Skin_Reaction.jsonl',  # 81
             'hERG.jsonl',  # 131
             'DILI.jsonl',  # 95
-            # 'ClinTox.jsonl',  # 296
+            'ClinTox.jsonl',  # 296
             # --------------------------- Tox Group 3
             # 'AMES.jsonl',  # 1456
         ],
         'ADME': [
             # --------------------------- ADME Group 1
             # 'PAMPA_NCATS.jsonl',  # 407
-            'HIA_Hou.jsonl',  # 116
+            # 'HIA_Hou.jsonl',  # 116
 
-            'BBB_Martins.jsonl',  # 406
-            'Pgp_Broccatelli.jsonl',  # 244
+            # 'BBB_Martins.jsonl',  # 406
+            # 'Pgp_Broccatelli.jsonl',  # 244
 
-            'Bioavailability_Ma.jsonl',  # 128
-            'CYP2C9_Substrate_CarbonMangels.jsonl',  # 134
+            # 'Bioavailability_Ma.jsonl',  # 128
+            # 'CYP2C9_Substrate_CarbonMangels.jsonl',  # 134
             'CYP2D6_Substrate_CarbonMangels.jsonl',  # 133
             'CYP3A4_Substrate_CarbonMangels.jsonl'  # 134
             # --------------------------- ADME Group 2
@@ -556,6 +556,13 @@ def main():
             # Aggregate
             item_results = {} # idx -> list of predictions
             item_tool_counts = {} # idx -> list of tool counts
+            
+            # --- Failure Statistics (None predictions) ---
+            total_samples_count = len(results)
+            none_pred_count = sum(1 for _, p, _ in results if p is None)
+            if total_samples_count > 0:
+                none_rate = (none_pred_count / total_samples_count) * 100
+                logger.info(f"{task_name} Failure Rate (pred is None): {none_pred_count}/{total_samples_count} ({none_rate:.2f}%)")
             
             for idx, pred, tool_count in results:
                 if idx not in item_results:

@@ -21,7 +21,7 @@ mp.set_start_method("spawn", force=True)
 # os.environ.setdefault("VLLM_ATTENTION_BACKEND", "TORCH_SDPA")
 
 # 选择显卡
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "6")  # TODO: GPU choice
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "7")  # TODO: GPU choice
 
 from transformers import AutoTokenizer, AutoProcessor
 from vllm import LLM, SamplingParams
@@ -93,7 +93,7 @@ def main():
         '--task-groups',
         nargs='+',
         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'Custom', 'all'],
-        default=['Tox'],  # TODO: Test group (ADME or other ones)
+        default=['ADME'],  # TODO: Test group (ADME or other ones)
         help='选择要运行的任务组 (可以选择多个)'
     )
 
@@ -132,7 +132,7 @@ def main():
     # ---------------- 配置 Logging ----------------
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     # log_file = current_dir / 'logs' / f'{"Use_image_" if USE_IMAGE else "No_image_"}{MODEL_NAME.split("/")[-1]}_pure_CoT_Skin_reaction_{timestamp}.log'  # TODO: log_file name, CHECK!
-    log_file = current_dir.parent.parent / 'logs' / f'intern_s1_mini_ReDo_ClinTox_{timestamp}_GPU6.log'
+    log_file = current_dir.parent.parent / 'logs' / f'intern_s1_mini_ReDo_Bioavailability_Ma_{timestamp}_GPU7.log'
     log_file.parent.mkdir(parents=True, exist_ok=True)
 
     # 配置 logging：同时输出到控制台和文件
@@ -272,7 +272,7 @@ def main():
             TASK_NAMEs = [
                 # 'PAMPA_NCATS', # 407
                 # 'HIA_Hou', # 116
-                # 'Bioavailability_Ma', # 128
+                'Bioavailability_Ma', # 128
                 # 'BBB_Martins', # 406
                 # 'Pgp_Broccatelli', # 244
 
@@ -283,9 +283,9 @@ def main():
                 # 'CYP2D6_Veith', # 2626
                 # 'CYP3A4_Veith', # 2466
 
-                'CYP2C9_Substrate_CarbonMangels',
-                'CYP2D6_Substrate_CarbonMangels',
-                'CYP3A4_Substrate_CarbonMangels',
+                # 'CYP2C9_Substrate_CarbonMangels',
+                # 'CYP2D6_Substrate_CarbonMangels',
+                # 'CYP3A4_Substrate_CarbonMangels',
             ]
         elif TASK_GROUP_NAME == 'HTS':
             TASK_NAMEs = [
@@ -354,7 +354,7 @@ def main():
                 continue
 
             if TASK_GROUP_NAME != 'Custom':
-                split = data.get_split()  # test data from Joseph has only test data
+                split = data.get_split(method='scaffold')  # test data from Joseph has only test data
 
             # --------- 构造输入与标签 ---------
             if TASK_NAME == 'SAbDab_Chen':
