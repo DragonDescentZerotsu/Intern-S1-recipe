@@ -419,42 +419,54 @@ def load_tasks_map(data_dir):
     mapping = {  # TODO: Detailed Task selection
         'Tox': [
             # --------------------------- Tox Group 1
-            # 'Tox21.jsonl',  # 15589
-            # 'ToxCast.jsonl',  # 306679
-            # 'herg_central_hERG_inhib.jsonl'  # 61379
+            'Tox21.jsonl',  # 15584
+            # 'ToxCast.jsonl',  # 307282
+            'herg_central_hERG_inhib.jsonl'  # 61379
             # --------------------------- Tox Group 2
-            'Skin_Reaction.jsonl',  # 81
-            'hERG.jsonl',  # 131
-            'DILI.jsonl',  # 95
-            'ClinTox.jsonl',  # 296
+            'Skin_Reaction.jsonl',  # 82
+            'hERG.jsonl',  # 132
+            'DILI.jsonl',  # 96
+            'ClinTox.jsonl',  # 297
             # --------------------------- Tox Group 3
-            # 'AMES.jsonl',  # 1456
+            'AMES.jsonl',  # 1457
         ],
         'ADME': [
             # --------------------------- ADME Group 1
-            # 'PAMPA_NCATS.jsonl',  # 407
-            # 'HIA_Hou.jsonl',  # 116
+            'PAMPA_NCATS.jsonl',  # 408
+            'HIA_Hou.jsonl',  # 117
 
-            # 'BBB_Martins.jsonl',  # 406
-            'Pgp_Broccatelli.jsonl',  # 244
+            'BBB_Martins.jsonl',  # 406
+            'Pgp_Broccatelli.jsonl',  # 245
 
             'Bioavailability_Ma.jsonl',  # 128
-            'CYP2C9_Substrate_CarbonMangels.jsonl',  # 134
-            'CYP2D6_Substrate_CarbonMangels.jsonl',  # 133
-            'CYP3A4_Substrate_CarbonMangels.jsonl'  # 134
+            'CYP2C9_Substrate_CarbonMangels.jsonl',  # 135
+            'CYP2D6_Substrate_CarbonMangels.jsonl',  # 135
+            'CYP3A4_Substrate_CarbonMangels.jsonl'  # 135
             # --------------------------- ADME Group 2
-            # 'CYP1A2_Veith.jsonl',  # 2516
-            # 'CYP2C19_Veith.jsonl',  # 2533
-            # 'CYP2C9_Veith.jsonl',  # 2418
+            # 'CYP1A2_Veith.jsonl',  # 2517
+            # 'CYP2C19_Veith.jsonl',  # 2534
+            # 'CYP2C9_Veith.jsonl',  # 2419
             # 'CYP2D6_Veith.jsonl',  # 2626
-            # 'CYP3A4_Veith.jsonl',  # 2466
+            # 'CYP3A4_Veith.jsonl',  # 2467
         ],
-        'HTS': ['HIV.jsonl', 'SARSCoV2_3CLPro_Diamond.jsonl', 'SARSCoV2_Vitro_Touret.jsonl', 'butkiewicz.jsonl'],
-        'Develop': ['SAbDab_Chen.jsonl'],
-        'PPI': ['HuRI.jsonl'],
-        'TCREpitopeBinding': ['Weber.jsonl'],
-        'TrialOutcome': ['phase1.jsonl', 'phase2.jsonl', 'phase3.jsonl'],
-        'PeptideMHC': ['MHC1_IEDB_IMGT_Nielsen.jsonl', 'MHC2_IEDB_Jensen.jsonl']
+        'HTS': [
+            'HIV.jsonl',  # 8225
+            'SARSCoV2_3CLPro_Diamond.jsonl',  # 176
+            'SARSCoV2_Vitro_Touret.jsonl',  # 298
+            'butkiewicz.jsonl'  # 401997
+            ],
+        'Develop': ['SAbDab_Chen.jsonl'],  # 482
+        'PPI': ['HuRI.jsonl'],  # 20282
+        # 'TCREpitopeBinding': ['Weber.jsonl'],  # not in our test set yet
+        'TrialOutcome': [
+            'phase1.jsonl', 
+            'phase2.jsonl', 
+            'phase3.jsonl'
+            ],
+        'PeptideMHC': [
+            'MHC1_IEDB-IMGT_Nielsen.jsonl',  # 37197
+            'MHC2_IEDB_Jensen.jsonl'  # 26856
+            ]
     }
     
     # Check what actually exists in the directory
