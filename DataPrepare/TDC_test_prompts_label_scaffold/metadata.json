@@ -1,0 +1,118 @@
+{
+    "PAMPA_NCATS": {
+        "num_samples": 408,
+        "split_method": "scaffold"
+    },
+    "HIA_Hou": {
+        "num_samples": 117,
+        "split_method": "scaffold"
+    },
+    "Bioavailability_Ma": {
+        "num_samples": 128,
+        "split_method": "scaffold"
+    },
+    "BBB_Martins": {
+        "num_samples": 406,
+        "split_method": "scaffold"
+    },
+    "Pgp_Broccatelli": {
+        "num_samples": 245,
+        "split_method": "scaffold"
+    },
+    "CYP1A2_Veith": {
+        "num_samples": 2517,
+        "split_method": "scaffold"
+    },
+    "CYP2C19_Veith": {
+        "num_samples": 2534,
+        "split_method": "scaffold"
+    },
+    "CYP2C9_Veith": {
+        "num_samples": 2419,
+        "split_method": "scaffold"
+    },
+    "CYP2D6_Veith": {
+        "num_samples": 2626,
+        "split_method": "scaffold"
+    },
+    "CYP3A4_Veith": {
+        "num_samples": 2467,
+        "split_method": "scaffold"
+    },
+    "CYP2C9_Substrate_CarbonMangels": {
+        "num_samples": 135,
+        "split_method": "scaffold"
+    },
+    "CYP2D6_Substrate_CarbonMangels": {
+        "num_samples": 135,
+        "split_method": "scaffold"
+    },
+    "CYP3A4_Substrate_CarbonMangels": {
+        "num_samples": 135,
+        "split_method": "scaffold"
+    },
+    "Skin_Reaction": {
+        "num_samples": 82,
+        "split_method": "scaffold"
+    },
+    "hERG": {
+        "num_samples": 132,
+        "split_method": "scaffold"
+    },
+    "AMES": {
+        "num_samples": 1457,
+        "split_method": "scaffold"
+    },
+    "DILI": {
+        "num_samples": 96,
+        "split_method": "scaffold"
+    },
+    "ClinTox": {
+        "num_samples": 297,
+        "split_method": "scaffold"
+    },
+    "herg_central_hERG_inhib": {
+        "num_samples": 61379,
+        "split_method": "scaffold"
+    },
+    "HIV": {
+        "num_samples": 8225,
+        "split_method": "scaffold"
+    },
+    "SARSCoV2_3CLPro_Diamond": {
+        "num_samples": 176,
+        "split_method": "scaffold"
+    },
+    "SARSCoV2_Vitro_Touret": {
+        "num_samples": 298,
+        "split_method": "scaffold"
+    },
+    "SAbDab_Chen": {
+        "num_samples": 482,
+        "split_method": "random"
+    },
+    "HuRI": {
+        "num_samples": 20282,
+        "split_method": "cold_protein1"
+    },
+    "MHC1_IEDB-IMGT_Nielsen": {
+        "num_samples": 37197,
+        "split_method": "random"
+    },
+    "MHC2_IEDB_Jensen": {
+        "num_samples": 26856,
+        "split_method": "random"
+    },
+    "Tox21": {
+        "num_samples": 15584,
+        "split_method": "scaffold"
+    },
+    "ToxCast": {
+        "num_samples": 307282,
+        "split_method": "scaffold"
+    },
+    "butkiewicz": {
+        "num_samples": 401997,
+        "split_method": "random"
+    }
+}

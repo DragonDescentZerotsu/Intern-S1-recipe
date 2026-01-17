@@ -12,10 +12,39 @@ from tdc.multi_pred.peptidemhc import PeptideMHC
 from tdc.utils import retrieve_label_name_list
 import ast
 
+# 放在文件顶部合适位置（例如 to_prompt 后面）
+SPLIT_RANDOM = {
+    'SAbDab_Chen',                    # Developability
+    'MHC1_IEDB-IMGT_Nielsen',         # Peptide-MHC
+    'MHC2_IEDB_Jensen',
+    # 以 butkiewicz 结尾的一批 HTS 任务也用 random（代码里用后缀判断）
+}
+
+SPLIT_COLD = {
+    # 冷启动：HuRI（PPI）、Weber（TCR-epitope）、临床试验结局
+    'HuRI', 'Weber', 'phase1', 'phase2', 'phase3',
+}
+
+def choose_split_method(task_name, data):
+    """Return the split method string for TDC get_split()."""
+    # butkiewicz 系列 HTS
+    if task_name.endswith('butkiewicz'):
+        return 'random'
+    if task_name in SPLIT_RANDOM:
+        return 'random'
+    if task_name in SPLIT_COLD:
+        # 按加载器的 entity1 决定 cold_ 的后缀（源码要求）
+        ent = getattr(data, 'entity1_name', 'Drug')
+        return f'cold_{ent.lower()}'
+    # 其余默认 Scaffold
+    return 'scaffold'
+
+
+
 def to_prompt(prompt_template, entry, task_name):
     """
     Generate prompt based on task type.
-    Includes <SMILES>/<FASTA> tags to match inference/test contexts.
+    Crucially, do NOT add <SMILES>/<FASTA> tags.
     """
     user_text = ""
     
@@ -27,59 +56,35 @@ def to_prompt(prompt_template, entry, task_name):
             pair = entry 
             
         user_text = prompt_template.replace(
-            '{Antibody heavy chain sequence}', f'<FASTA>{pair[0]}</FASTA>'
+            '{Antibody heavy chain sequence}', f'{pair[0]}'
         ).replace(
-            '{Antibody light chain sequence}', f'<FASTA>{pair[1]}</FASTA>'
+            '{Antibody light chain sequence}', f'{pair[1]}'
         )
     elif task_name == 'HuRI':
         user_text = prompt_template.replace(
-            '{Protein1 amino acid sequence}', f'<FASTA>{entry[0].split("*")[0]}</FASTA>'
+            '{Protein1 amino acid sequence}', f'{entry[0].split("*")[0]}'
         ).replace(
-            '{Protein2 amino acid sequence}', f'<FASTA>{entry[1].split("*")[0]}</FASTA>'
+            '{Protein2 amino acid sequence}', f'{entry[1].split("*")[0]}'
         )
     elif task_name == 'Weber':
         user_text = prompt_template.replace(
-            '{Epitope amino acid sequence}', f'<FASTA>{entry[0]}</FASTA>'
+            '{Epitope amino acid sequence}', f'{entry[0]}'
         ).replace(
-            '{TCR amino acid sequence}', f'<FASTA>{entry[1]}</FASTA>'
+            '{TCR amino acid sequence}', f'{entry[1]}'
         )
     elif task_name in ['MHC1_IEDB-IMGT_Nielsen', 'MHC2_IEDB_Jensen']:
         user_text = prompt_template.replace(
-            '{Peptide amino acid sequence}', f'<FASTA>{entry[0]}</FASTA>'
+            '{Peptide amino acid sequence}', f'{entry[0]}'
         ).replace(
-            '{Possible MHC pseudosequences}', f'<FASTA>{entry[1]}</FASTA>'
+            '{Possible MHC pseudosequences}', f'{entry[1]}'
         )
     else:
         # Standard SMILES task
         user_text = prompt_template.replace(
-            "{Drug SMILES}", f'<SMILES>{entry}</SMILES>'
+            "{Drug SMILES}", f'{entry}'
         )
 
     # Append instruction
-    # Matching the training script's appended instruction, 
-    # but the reference script might inject its own. 
-    # Since we are generating "prompts", we should probably include the instruction 
-    # if it's considered part of the "user_text" for Custom loading.
-    # In intern-vllm...py "Custom" block, it uses the text as is.
-    # In intern-vllm...py standard block, it also does NOT seem to add extra instructions 
-    # in the Custom path? Wait.
-    # In intern-vllm...py line 431: "if INJECT_STEPS_BEFORE_ANSWER:"
-    # It adds instructions DYNAMICALLY.
-    # If we add them here, they will be doubled if intern-vllm adds them again.
-    # However, for "Custom" data in intern-vllm...py, it performs:
-    # user_text = entry (Line 425)
-    # Then line 431 checks INJECT_STEPS_BEFORE_ANSWER and replaces 'Answer:'.
-    # So we should validly generate the "base" prompt (with the template) 
-    # BUT we must check if the template includes "Answer:".
-    # Usually TDC templates end with "Answer:".
-    # The training script APPENDED "\nPlease think step by step..." (Line 59).
-    # If we append it here, and then usage in intern-vllm ALSO replaces 'Answer:', 
-    # it might be fine if the replacement targets "Answer:" which is at the end.
-    
-    # However, to be safe and consistent with "processing test data" (often for simple inference),
-    # I will stick to what the training script did (appending the instruction), 
-    # as the user asked to modify the training script processing logic.
-    
     user_text = user_text.replace(
                                 'Answer:',
                                 'Please think step by step and then put ONLY your final choice ((A) or (B)) after "Answer:"'
@@ -92,7 +97,7 @@ def main():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     logger = logging.getLogger(__name__)
 
-    output_dir = Path("DataPrepare/TDC_test_prompts_label")
+    output_dir = Path("DataPrepare/TDC_test_prompts_label_scaffold")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Load TDC prompts
@@ -118,6 +123,7 @@ def main():
         'ToxCast': [],
         'butkiewicz': []
     }
+    aggregated_split_methods = {}
 
     for group_name in task_groups:
         task_names = []
@@ -189,14 +195,36 @@ def main():
                 
                 if data is None:
                     continue
+                
+                # 原始固定的 split 的方法
+                # split = data.get_split(method='scaffold')
 
-                split = data.get_split()
-                if 'test' not in split:
-                    logger.warning(f"No test split for {task_name}, skipping.")
+                # 新的 split 的方法
+                method = choose_split_method(task_name, data)
+                split = None
+                _last_err = None
+                used_split_method = None
+
+                # 先按规则尝试；不行则回退到 scaffold -> random，保证能跑通
+                for m in [method, 'scaffold', 'random']:
+                    try:
+                        split = data.get_split(method=m)
+                        used_split_method = m
+                        break
+                    except Exception as e:
+                        _last_err = e
+
+                if split is None:
+                    logger.warning(f"get_split failed for {task_name} (tried: {method}, scaffold, random). Last error: {_last_err}. Skipping.")
+                    continue
+
+                
+                if 'train' not in split:
+                    logger.warning(f"No train split for {task_name}, skipping.")
                     continue
                 
                 test_df = split['test']
-                
+                    
                 # 2. Extract inputs and labels
                 inputs = []
                 labels = []
@@ -231,11 +259,16 @@ def main():
                     if base_key in tdc_prompts_json:
                          clean_key = base_key
                     else:
+                         # Attempt to fall back for Tox21/ToxCast if needed, though they shoud use 'Tox21'/'ToxCast' keys ideally?
+                         # TDC prompts json typically has keys like 'Tox21', 'ToxCast'.
+                         # If task_name is 'Tox21_AhR', clean_key is 'Tox21_AhR'.
+                         # If json has 'Tox21', we need to match it.
                          if 'Tox21' in task_name and 'Tox21' in tdc_prompts_json:
                              clean_key = 'Tox21'
                          elif 'ToxCast' in task_name and 'ToxCast' in tdc_prompts_json:
                              clean_key = 'ToxCast'
                          else:
+                             # Try partial match or skip
                              logger.warning(f"Prompt key {clean_key} not found for {task_name}. Skipping.")
                              continue
 
@@ -259,13 +292,17 @@ def main():
                 
                 if agg_target:
                     aggregated_data[agg_target].extend(processed_data)
+                    aggregated_split_methods[agg_target] = used_split_method
                 else:
                     out_filename = f"{task_name}.jsonl"
                     out_path = output_dir / out_filename
                     with open(out_path, 'w', encoding='utf-8') as f:
                         for entry in processed_data:
                             f.write(json.dumps(entry) + '\n')
-                    metadata[task_name] = len(processed_data)
+                    metadata[task_name] = {
+                        "num_samples": len(processed_data),
+                        "split_method": used_split_method
+                    }
                 
             except Exception as e:
                 logger.error(f"Error processing {task_name}: {e}")
@@ -279,7 +316,10 @@ def main():
             with open(out_path, 'w', encoding='utf-8') as f:
                 for entry in data_list:
                     f.write(json.dumps(entry) + '\n')
-            metadata[key] = len(data_list)
+            metadata[key] = {
+                "num_samples": len(data_list),
+                "split_method": aggregated_split_methods.get(key, 'unknown')
+            }
 
     # Save metadata
     with open(output_dir / "metadata.json", "w", encoding='utf-8') as f:

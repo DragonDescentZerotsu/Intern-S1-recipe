@@ -19,7 +19,7 @@ Current_dir = Path(__file__).parent.resolve()
 
 # Load FG cache
 # We use the new precomputed JSONL file
-FG_CACHE_PATH = Current_dir.parent / 'DataPrepare' / 'shared_data' / 'TDC_test_fg_desc_with_attach_points_and_atom_ids.jsonl'  # TODO: 注意这个改了没有，train 还是 test 还是什么别的
+FG_CACHE_PATH = Current_dir.parent / 'DataPrepare' / 'shared_data' / 'TDC_all_fg_desc_with_attach_points_and_atom_ids.jsonl'  # TODO: 注意这个改了没有，train 还是 test 还是什么别的
 FG_CACHE = {}
 if FG_CACHE_PATH.exists():
     with open(FG_CACHE_PATH, 'r', encoding='utf-8') as f:

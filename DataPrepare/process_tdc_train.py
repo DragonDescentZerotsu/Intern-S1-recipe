@@ -12,6 +12,35 @@ from tdc.multi_pred.peptidemhc import PeptideMHC
 from tdc.utils import retrieve_label_name_list
 import ast
 
+# 放在文件顶部合适位置（例如 to_prompt 后面）
+SPLIT_RANDOM = {
+    'SAbDab_Chen',                    # Developability
+    'MHC1_IEDB-IMGT_Nielsen',         # Peptide-MHC
+    'MHC2_IEDB_Jensen',
+    # 以 butkiewicz 结尾的一批 HTS 任务也用 random（代码里用后缀判断）
+}
+
+SPLIT_COLD = {
+    # 冷启动：HuRI（PPI）、Weber（TCR-epitope）、临床试验结局
+    'HuRI', 'Weber', 'phase1', 'phase2', 'phase3',
+}
+
+def choose_split_method(task_name, data):
+    """Return the split method string for TDC get_split()."""
+    # butkiewicz 系列 HTS
+    if task_name.endswith('butkiewicz'):
+        return 'random'
+    if task_name in SPLIT_RANDOM:
+        return 'random'
+    if task_name in SPLIT_COLD:
+        # 按加载器的 entity1 决定 cold_ 的后缀（源码要求）
+        ent = getattr(data, 'entity1_name', 'Drug')
+        return f'cold_{ent.lower()}'
+    # 其余默认 Scaffold
+    return 'scaffold'
+
+
+
 def to_prompt(prompt_template, entry, task_name):
     """
     Generate prompt based on task type.
@@ -68,7 +97,7 @@ def main():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     logger = logging.getLogger(__name__)
 
-    output_dir = Path("DataPrepare/TDC_train_prompts_label")
+    output_dir = Path("DataPrepare/TDC_train_prompts_label_scaffold")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Load TDC prompts
@@ -94,6 +123,7 @@ def main():
         'ToxCast': [],
         'butkiewicz': []
     }
+    aggregated_split_methods = {}
 
     for group_name in task_groups:
         task_names = []
@@ -165,8 +195,30 @@ def main():
                 
                 if data is None:
                     continue
+                
+                # 原始固定的 split 的方法
+                # split = data.get_split(method='scaffold')
 
-                split = data.get_split()
+                # 新的 split 的方法
+                method = choose_split_method(task_name, data)
+                split = None
+                _last_err = None
+                used_split_method = None
+
+                # 先按规则尝试；不行则回退到 scaffold -> random，保证能跑通
+                for m in [method, 'scaffold', 'random']:
+                    try:
+                        split = data.get_split(method=m)
+                        used_split_method = m
+                        break
+                    except Exception as e:
+                        _last_err = e
+
+                if split is None:
+                    logger.warning(f"get_split failed for {task_name} (tried: {method}, scaffold, random). Last error: {_last_err}. Skipping.")
+                    continue
+
+                
                 if 'train' not in split:
                     logger.warning(f"No train split for {task_name}, skipping.")
                     continue
@@ -240,13 +292,17 @@ def main():
                 
                 if agg_target:
                     aggregated_data[agg_target].extend(processed_data)
+                    aggregated_split_methods[agg_target] = used_split_method
                 else:
                     out_filename = f"{task_name}.jsonl"
                     out_path = output_dir / out_filename
                     with open(out_path, 'w', encoding='utf-8') as f:
                         for entry in processed_data:
                             f.write(json.dumps(entry) + '\n')
-                    metadata[task_name] = len(processed_data)
+                    metadata[task_name] = {
+                        "num_samples": len(processed_data),
+                        "split_method": used_split_method
+                    }
                 
             except Exception as e:
                 logger.error(f"Error processing {task_name}: {e}")
@@ -260,7 +316,10 @@ def main():
             with open(out_path, 'w', encoding='utf-8') as f:
                 for entry in data_list:
                     f.write(json.dumps(entry) + '\n')
-            metadata[key] = len(data_list)
+            metadata[key] = {
+                "num_samples": len(data_list),
+                "split_method": aggregated_split_methods.get(key, 'unknown')
+            }
 
     # Save metadata
     with open(output_dir / "metadata.json", "w", encoding='utf-8') as f:

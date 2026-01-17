@@ -107,10 +107,10 @@ def get_all_tdc_smiles():
                 #     # Standard SMILES task usually has 'Drug' column
                 #     if 'Drug' in train_df.columns:
                 #         smiles_set.update(train_df['Drug'].dropna().unique())
-                # TODO: chose 'train' or 'test' to collect SMILES
+                # TODO: chose 'train' or 'test' or 'valid' to collect SMILES
 
-                if 'test' in split:
-                    test_df = split['test']
+                if 'valid' in split:  # 'test'
+                    test_df = split['valid']
                     # Standard SMILES task usually has 'Drug' column
                     if 'Drug' in test_df.columns:
                         smiles_set.update(test_df['Drug'].dropna().unique())
@@ -152,7 +152,7 @@ class NoDaemonContext(type(multiprocessing.get_context())):
 # Since I can't guarantee joblib, I will try to use the NoDaemon logic for Pool.
 
 def main():
-    output_path = current_dir / 'shared_data' / 'TDC_test_fg_desc_with_attach_points_and_atom_ids.jsonl'  # 'TDC_train_fg_desc_with_attach_points_and_atom_ids.jsonl'
+    output_path = current_dir / 'shared_data' / 'TDC_valid_fg_desc_with_attach_points_and_atom_ids.jsonl'  # 'TDC_train_fg_desc_with_attach_points_and_atom_ids.jsonl'
     output_path.parent.mkdir(parents=True, exist_ok=True)
     
     # 1. Collect SMILES

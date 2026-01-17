@@ -7,16 +7,29 @@
 !/DataPrepare/SFT_data/**/*.gitkeep
 /DataPrepare/shared_data/TDC_train_fg_desc_with_attach_points_and_atom_ids.jsonl
 /DataPrepare/shared_data/TDC_test_fg_desc_with_attach_points_and_atom_ids.jsonl
+/DataPrepare/shared_data/TDC_valid_fg_desc_with_attach_points_and_atom_ids.jsonl
+/DataPrepare/shared_data/TDC_all_fg_desc_with_attach_points_and_atom_ids.jsonl
 
-/DataPrepare/TDC_train_prompts_label/*
-!/DataPrepare/TDC_train_prompts_label/*.py
-!/DataPrepare/TDC_train_prompts_label/*.md
-!/DataPrepare/TDC_train_prompts_label/*.json
+/DataPrepare/TDC_train_prompts_label_random/*
+!/DataPrepare/TDC_train_prompts_label_random/*.py
+!/DataPrepare/TDC_train_prompts_label_random/*.md
+!/DataPrepare/TDC_train_prompts_label_random/*.json
 
-/DataPrepare/TDC_test_prompts_label/*
-!/DataPrepare/TDC_test_prompts_label/*.py
-!/DataPrepare/TDC_test_prompts_label/*.md
-!/DataPrepare/TDC_test_prompts_label/*.json
+/DataPrepare/TDC_test_prompts_label_random/*
+!/DataPrepare/TDC_test_prompts_label_random/*.py
+!/DataPrepare/TDC_test_prompts_label_random/*.md
+!/DataPrepare/TDC_test_prompts_label_random/*.json
+
+/DataPrepare/TDC_train_prompts_label_scaffold/*
+!/DataPrepare/TDC_train_prompts_label_scaffold/*.py
+!/DataPrepare/TDC_train_prompts_label_scaffold/*.md
+!/DataPrepare/TDC_train_prompts_label_scaffold/*.json
+
+/DataPrepare/TDC_test_prompts_label_scaffold/*
+!/DataPrepare/TDC_test_prompts_label_scaffold/*.py
+!/DataPrepare/TDC_test_prompts_label_scaffold/*.md
+!/DataPrepare/TDC_test_prompts_label_scaffold/*.json
+
 
 /wandb
 
@@ -30,7 +43,12 @@ data/
 /CIS_5300_HW
 
 # excluding checkpoints
-/checkpoints
+/checkpoints/**
+!/checkpoints/**/
+!/checkpoints/hub_ready/upload.py
+!/checkpoints/convert_to_hub.py
+# !/checkpoints/**/*.md
+!/checkpoints/**/*.gitkeep
 
 # excluding PyCharm cache
 __pycache__/

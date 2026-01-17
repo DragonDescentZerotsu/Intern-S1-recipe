@@ -60,15 +60,15 @@ def get_args():
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'Other', 'all'],
                         help='Task groups to run')
     parser.add_argument('--n-samples', type=int, default=16, help='Number of samples per query')
-    parser.add_argument('--api-base', type=str, default="http://localhost:8005/v1", help='API Base URL')  # TODO: port number | local model: http://localhost:8000/v1 | openrouter: https://openrouter.ai/api/v1 ｜ deepseek: https://api.deepseek.com/v1
-    parser.add_argument('--api-key', type=str, default="EMPTY", help='API Key')  # TODO: API Key | local model: "EMPTY" | openrouter: os.environ["OPENROUTER_API_KEY"] | deepseek: os.environ["DEEPSEEK_API_KEY"]
-    parser.add_argument('--model', type=str, default="", help='Model name (optional, will query server if empty)')  # TODO: model name | local model: "" | openrouter: deepseek/deepseek-v3.2; openai/gpt-5.2; openai/gpt-5-mini | deepseek: deepseek-chat
+    parser.add_argument('--api-base', type=str, default="https://openrouter.ai/api/v1", help='API Base URL')  # TODO: port number | local model: http://localhost:8000/v1 | openrouter: https://openrouter.ai/api/v1 ｜ deepseek: https://api.deepseek.com/v1
+    parser.add_argument('--api-key', type=str, default=os.environ["OPENROUTER_API_KEY"], help='API Key')  # TODO: API Key | local model: "EMPTY" | openrouter: os.environ["OPENROUTER_API_KEY"] | deepseek: os.environ["DEEPSEEK_API_KEY"]
+    parser.add_argument('--model', type=str, default="deepseek/deepseek-v3.2", help='Model name (optional, will query server if empty)')  # TODO: model name | local model: "" | openrouter: deepseek/deepseek-v3.2; openai/gpt-5.2; openai/gpt-5-mini | deepseek: deepseek-chat
     parser.add_argument('--num-processes', type=int, default=32, help='Number of parallel workers')
     parser.add_argument('--data-dir', type=Path, default=current_dir.parent / "DataPrepare/TDC_test_prompts_label", help='Directory containing processed test data')
     parser.add_argument('--thinking', action='store_false', help='Enable thinking parameter for DeepSeek models')  # TODO: 注意这里 thinking 到底是开了还是没开
     parser.add_argument('--enable-tools', action='store_false', help='Enable tool calling')  # TODO: 注意是否使用了 tool ， debug 可能关了
     parser.add_argument('--log-file', action='store_false', help='Save logs to file')  # TODO: 注意这里 log-file 到底是开了还是没开
-    parser.add_argument('--log-file-name', type=str, default="intern-s1-mini_distill_deepseek_v3.2_10000_steps_{t_stamp}_4.log", help='logs file name')   # TODO: log file name
+    parser.add_argument('--log-file-name', type=str, default="OpenRouter_deepseek_v3.2_{t_stamp}_ADME_3.log", help='logs file name')   # TODO: log file name
     parser.add_argument('--langfuse', action='store_true', help='Save traces to langfuse')  # TODO: 注意这里 langfuse trace 到底是开了还是没开
     
     args = parser.parse_args()
@@ -236,17 +236,17 @@ def run_turn_base(client, messages, model_name, thinking=False, tools=None, use_
     while sub_turn <= depth_limit:
         try:
             # TODO: local Intern-S1-mini
-            response = client.chat.completions.create(
-                # name='repaired_QED',  # langfuse
-                model=model_name,
-                messages=messages,
-                tools=tools,
-                max_tokens=6000, # Reduced from 20000 to be safe/faster, usually enough. Important to keep this small other wise retry and slow down the speed.
-                temperature=0.8,
-                top_p=0.8,
-                stream=False,
-                extra_body=dict(spaces_between_special_tokens=False, enable_thinking=True)
-            )
+            # response = client.chat.completions.create(
+            #     # name='repaired_QED',  # langfuse
+            #     model=model_name,
+            #     messages=messages,
+            #     tools=tools,
+            #     max_tokens=6000, # Reduced from 20000 to be safe/faster, usually enough. Important to keep this small other wise retry and slow down the speed.
+            #     temperature=0.8,
+            #     top_p=0.8,
+            #     stream=False,
+            #     extra_body=dict(spaces_between_special_tokens=False, enable_thinking=True)
+            # )
             # TODO: local DeepSeek V3.2
             # response = client.chat.completions.create(
             #     model=model_name,
@@ -266,25 +266,25 @@ def run_turn_base(client, messages, model_name, thinking=False, tools=None, use_
             #     extra_body={ "thinking": { "type": "enabled" } }  # 使用 OpenAI SDK 的 thinking 功能
             # )
             # TODO: OpenRouter
-            # response = client.chat.completions.create(
-            #     model=model_name,
-            #     messages=messages,
-            #     tools=tools,
-            #     extra_body={ 
-            #         "reasoning": {   # 使用 OpenAI SDK 的 reasoning 功能
-            #             # "effort": "high",  # TODO: Turn this OFF for OpenRouter offered DeepSeek models
-            #             # "summary": "auto"  # TODO: Turn this OFF for OpenRouter offered DeepSeek models
-            #             "enabled": True  # TODO: Turn this ON for OpenRouter offered DeepSeek models
-            #         },
-            #         "usage": {"include": True},
-            #         **({  # 在用 DeepSeek 的时候指定模型提供商，别的时候暂时不指定
-            #             "provider":{
-            #                 "only":["DeepSeek"],
-            #                 "allow_fallbacks": False  # 严格只使用 DeepSeek 更便宜
-            #             }
-            #         } if 'deepseek' in model_name else {})
-            #     },  
-            # )
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                tools=tools,
+                extra_body={ 
+                    "reasoning": {   # 使用 OpenAI SDK 的 reasoning 功能
+                        # "effort": "high",  # TODO: Turn this OFF for OpenRouter offered DeepSeek models
+                        # "summary": "auto"  # TODO: Turn this OFF for OpenRouter offered DeepSeek models
+                        "enabled": True  # TODO: Turn this ON for OpenRouter offered DeepSeek models
+                    },
+                    "usage": {"include": True},
+                    **({  # 在用 DeepSeek 的时候指定模型提供商，别的时候暂时不指定
+                        "provider":{
+                            "only":["DeepSeek"],
+                            "allow_fallbacks": False  # 严格只使用 DeepSeek 更便宜
+                        }
+                    } if 'deepseek' in model_name else {})
+                },  
+            )
             # TODO: OpenAI official API (not implemented yet)
 
         except Exception as e:
@@ -436,10 +436,10 @@ def load_tasks_map(data_dir):
             # 'HIA_Hou.jsonl',  # 116
 
             # 'BBB_Martins.jsonl',  # 406
-            # 'Pgp_Broccatelli.jsonl',  # 244
+            'Pgp_Broccatelli.jsonl',  # 244
 
-            # 'Bioavailability_Ma.jsonl',  # 128
-            # 'CYP2C9_Substrate_CarbonMangels.jsonl',  # 134
+            'Bioavailability_Ma.jsonl',  # 128
+            'CYP2C9_Substrate_CarbonMangels.jsonl',  # 134
             'CYP2D6_Substrate_CarbonMangels.jsonl',  # 133
             'CYP3A4_Substrate_CarbonMangels.jsonl'  # 134
             # --------------------------- ADME Group 2
