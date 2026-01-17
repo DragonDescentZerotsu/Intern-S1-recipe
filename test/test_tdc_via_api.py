@@ -56,7 +56,7 @@ def get_tools_for_task(task_name):
 def get_args():
     parser = argparse.ArgumentParser(description='Run TDC benchmark tasks via OpenAI-compatible API')
     
-    parser.add_argument('--task-groups', nargs='+', default=['ADME'],  # TODO: test tasks
+    parser.add_argument('--task-groups', nargs='+', default=['Tox', 'ADME', 'HTS'],  # TODO: test tasks
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'Other', 'all'],
                         help='Task groups to run')
     parser.add_argument('--n-samples', type=int, default=16, help='Number of samples per query')
@@ -64,11 +64,11 @@ def get_args():
     parser.add_argument('--api-key', type=str, default=os.environ["OPENROUTER_API_KEY"], help='API Key')  # TODO: API Key | local model: "EMPTY" | openrouter: os.environ["OPENROUTER_API_KEY"] | deepseek: os.environ["DEEPSEEK_API_KEY"]
     parser.add_argument('--model', type=str, default="deepseek/deepseek-v3.2", help='Model name (optional, will query server if empty)')  # TODO: model name | local model: "" | openrouter: deepseek/deepseek-v3.2; openai/gpt-5.2; openai/gpt-5-mini | deepseek: deepseek-chat
     parser.add_argument('--num-processes', type=int, default=32, help='Number of parallel workers')
-    parser.add_argument('--data-dir', type=Path, default=current_dir.parent / "DataPrepare/TDC_test_prompts_label", help='Directory containing processed test data')
+    parser.add_argument('--data-dir', type=Path, default=current_dir.parent / "DataPrepare/TDC_test_prompts_label_scaffold", help='Directory containing processed test data')
     parser.add_argument('--thinking', action='store_false', help='Enable thinking parameter for DeepSeek models')  # TODO: 注意这里 thinking 到底是开了还是没开
     parser.add_argument('--enable-tools', action='store_false', help='Enable tool calling')  # TODO: 注意是否使用了 tool ， debug 可能关了
     parser.add_argument('--log-file', action='store_false', help='Save logs to file')  # TODO: 注意这里 log-file 到底是开了还是没开
-    parser.add_argument('--log-file-name', type=str, default="OpenRouter_deepseek_v3.2_{t_stamp}_ADME_3.log", help='logs file name')   # TODO: log file name
+    parser.add_argument('--log-file-name', type=str, default="OpenRouter_deepseek_v3.2_more_test_data_{t_stamp}_Tox_ADME_HTS_0.log", help='logs file name')   # TODO: log file name
     parser.add_argument('--langfuse', action='store_true', help='Save traces to langfuse')  # TODO: 注意这里 langfuse trace 到底是开了还是没开
     
     args = parser.parse_args()
@@ -443,11 +443,11 @@ def load_tasks_map(data_dir):
             'CYP2D6_Substrate_CarbonMangels.jsonl',  # 135
             'CYP3A4_Substrate_CarbonMangels.jsonl'  # 135
             # --------------------------- ADME Group 2
-            # 'CYP1A2_Veith.jsonl',  # 2517
-            # 'CYP2C19_Veith.jsonl',  # 2534
-            # 'CYP2C9_Veith.jsonl',  # 2419
-            # 'CYP2D6_Veith.jsonl',  # 2626
-            # 'CYP3A4_Veith.jsonl',  # 2467
+            'CYP1A2_Veith.jsonl',  # 2517
+            'CYP2C19_Veith.jsonl',  # 2534
+            'CYP2C9_Veith.jsonl',  # 2419
+            'CYP2D6_Veith.jsonl',  # 2626
+            'CYP3A4_Veith.jsonl',  # 2467
         ],
         'HTS': [
             'HIV.jsonl',  # 8225
