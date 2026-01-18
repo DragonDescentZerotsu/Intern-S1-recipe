@@ -353,8 +353,8 @@ def get_3d_exposed_polar_surface(smiles: str):
             and boltz["polar_fraction_boltz"] is not None
         ):
             return (
-                f"3D conformation based PSA: {boltz["polar_sasa_boltz"]:.2f}\n"
-                f"3D conformation based Polar Fraction: {boltz["polar_fraction_boltz"]:.2f}"
+                f"3D conformation based PSA: {boltz['polar_sasa_boltz']:.2f}\n"
+                f"3D conformation based Polar Fraction: {boltz['polar_fraction_boltz']:.2f}"
             )
 
         # ✅ Boltz 不可用：只返回 mean（stats）

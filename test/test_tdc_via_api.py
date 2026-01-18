@@ -10,7 +10,7 @@ import multiprocessing
 import numpy as np
 from sklearn.metrics import roc_auc_score
 from openai import OpenAI  # use this when don't need langfuse
-import logfire
+# import logfire
 # from langfuse.openai import OpenAI  # langfuse
 from langfuse import observe, get_client
 import atexit
@@ -56,19 +56,19 @@ def get_tools_for_task(task_name):
 def get_args():
     parser = argparse.ArgumentParser(description='Run TDC benchmark tasks via OpenAI-compatible API')
     
-    parser.add_argument('--task-groups', nargs='+', default=['Tox'],  # TODO: test tasks
+    parser.add_argument('--task-groups', nargs='+', default=['ADME'],  # TODO: test tasks
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'Other', 'all'],
                         help='Task groups to run')
     parser.add_argument('--n-samples', type=int, default=8, help='Number of samples per query')
     parser.add_argument('--api-base', type=str, default="https://openrouter.ai/api/v1", help='API Base URL')  # TODO: port number | local model: http://localhost:8000/v1 | openrouter: https://openrouter.ai/api/v1 ｜ deepseek: https://api.deepseek.com/v1
-    parser.add_argument('--api-key', type=str, default=os.environ["OPENROUTER_API_KEY_Mark_1"], help='API Key')  # TODO: API Key | local model: "EMPTY" | openrouter: os.environ["OPENROUTER_API_KEY_Haydn"], os.environ["OPENROUTER_API_KEY_Mark"] | deepseek: os.environ["DEEPSEEK_API_KEY"]
+    parser.add_argument('--api-key', type=str, default=os.environ["OPENROUTER_API_KEY_Mark_2"], help='API Key')  # TODO: API Key | local model: "EMPTY" | openrouter: os.environ["OPENROUTER_API_KEY_Haydn"], os.environ["OPENROUTER_API_KEY_Mark"] | deepseek: os.environ["DEEPSEEK_API_KEY"]
     parser.add_argument('--model', type=str, default="deepseek/deepseek-v3.2", help='Model name (optional, will query server if empty)')  # TODO: model name | local model: "" | openrouter: deepseek/deepseek-v3.2; openai/gpt-5.2; openai/gpt-5-mini | deepseek: deepseek-chat
-    parser.add_argument('--num-processes', type=int, default=256, help='Number of parallel workers')
+    parser.add_argument('--num-processes', type=int, default=128, help='Number of parallel workers')
     parser.add_argument('--data-dir', type=Path, default=current_dir.parent / "DataPrepare/TDC_test_prompts_label_scaffold", help='Directory containing processed test data')
     parser.add_argument('--thinking', action='store_false', help='Enable thinking parameter for DeepSeek models')  # TODO: 注意这里 thinking 到底是开了还是没开
     parser.add_argument('--enable-tools', action='store_true', help='Enable tool calling')  # TODO: 注意是否使用了 tool ， debug 可能关了
     parser.add_argument('--log-file', action='store_false', help='Save logs to file')  # TODO: 注意这里 log-file 到底是开了还是没开
-    parser.add_argument('--log-file-name', type=str, default="OpenRouter_deepseek_v3.2_more_test_data_no_tools_{t_stamp}_Tox_ADME_HTS_low_data_tasks.log", help='logs file name')   # TODO: log file name
+    parser.add_argument('--log-file-name', type=str, default="OpenRouter_deepseek_v3.2_more_test_data_no_tools_{t_stamp}_CYP_0.log", help='logs file name')   # TODO: log file name
     parser.add_argument('--langfuse', action='store_true', help='Save traces to langfuse')  # TODO: 注意这里 langfuse trace 到底是开了还是没开
     
     args = parser.parse_args()
@@ -81,7 +81,7 @@ def init_worker(api_base, api_key, use_langfuse, task_name):
         base_url=api_base,
         # 让问题暴露得更明显，避免一直重试掩盖根因
         max_retries=1,          # 或 1/2
-        # timeout=120.0           # 视你模型速度调整
+        timeout=180.0           # 视你模型速度调整
     )
 
     _RUN_TURN = get_run_turn(use_langfuse, task_name)
@@ -419,40 +419,40 @@ def load_tasks_map(data_dir):
     mapping = {  # TODO: Detailed Task selection
         'Tox': [
             # --------------------------- Tox Group 1
-            # 'Tox21.jsonl',  # 15584
+            'Tox21.jsonl',  # 15584
             # 'ToxCast.jsonl',  # 307282
-            # 'herg_central_hERG_inhib.jsonl'  # 61379
+            'herg_central_hERG_inhib.jsonl'  # 61379
             # --------------------------- Tox Group 2
-            'Skin_Reaction.jsonl',  # 82
-            'hERG.jsonl',  # 132
-            'DILI.jsonl',  # 96
-            'ClinTox.jsonl',  # 297
+            # 'Skin_Reaction.jsonl',  # 82
+            # 'hERG.jsonl',  # 132
+            # 'DILI.jsonl',  # 96
+            # 'ClinTox.jsonl',  # 297
             # --------------------------- Tox Group 3
-            'AMES.jsonl',  # 1457
+            # 'AMES.jsonl',  # 1457
         ],
         'ADME': [
             # --------------------------- ADME Group 1
-            'PAMPA_NCATS.jsonl',  # 408
-            'HIA_Hou.jsonl',  # 117
+            # 'PAMPA_NCATS.jsonl',  # 408
+            # 'HIA_Hou.jsonl',  # 117
 
-            'BBB_Martins.jsonl',  # 406
-            'Pgp_Broccatelli.jsonl',  # 245
+            # 'BBB_Martins.jsonl',  # 406
+            # 'Pgp_Broccatelli.jsonl',  # 245
 
-            'Bioavailability_Ma.jsonl',  # 128
-            'CYP2C9_Substrate_CarbonMangels.jsonl',  # 135
-            'CYP2D6_Substrate_CarbonMangels.jsonl',  # 135
-            'CYP3A4_Substrate_CarbonMangels.jsonl'  # 135
+            # 'Bioavailability_Ma.jsonl',  # 128
+            # 'CYP2C9_Substrate_CarbonMangels.jsonl',  # 135
+            # 'CYP2D6_Substrate_CarbonMangels.jsonl',  # 135
+            # 'CYP3A4_Substrate_CarbonMangels.jsonl'  # 135
             # --------------------------- ADME Group 2
-            # 'CYP1A2_Veith.jsonl',  # 2517
-            # 'CYP2C19_Veith.jsonl',  # 2534
+            'CYP1A2_Veith.jsonl',  # 2517
+            'CYP2C19_Veith.jsonl',  # 2534
             # 'CYP2C9_Veith.jsonl',  # 2419
             # 'CYP2D6_Veith.jsonl',  # 2626
             # 'CYP3A4_Veith.jsonl',  # 2467
         ],
         'HTS': [
             # 'HIV.jsonl',  # 8225
-            'SARSCoV2_3CLPro_Diamond.jsonl',  # 176
-            'SARSCoV2_Vitro_Touret.jsonl',  # 298
+            # 'SARSCoV2_3CLPro_Diamond.jsonl',  # 176
+            # 'SARSCoV2_Vitro_Touret.jsonl',  # 298
             # 'butkiewicz.jsonl'  # 401997
             ],
         'Develop': ['SAbDab_Chen.jsonl'],  # 482
