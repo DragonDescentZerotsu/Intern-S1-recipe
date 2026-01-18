@@ -81,7 +81,7 @@ def init_worker(api_base, api_key, use_langfuse, task_name):
         base_url=api_base,
         # 让问题暴露得更明显，避免一直重试掩盖根因
         max_retries=1,          # 或 1/2
-        # timeout=120.0           # 视你模型速度调整
+        timeout=180.0           # 视你模型速度调整
     )
 
     _RUN_TURN = get_run_turn(use_langfuse, task_name)
@@ -423,8 +423,8 @@ def load_tasks_map(data_dir):
             # 'ToxCast.jsonl',  # 307282
             # 'herg_central_hERG_inhib.jsonl'  # 61379
             # --------------------------- Tox Group 2
-            'Skin_Reaction.jsonl',  # 82
-            'hERG.jsonl',  # 132
+            # 'Skin_Reaction.jsonl',  # 82
+            # 'hERG.jsonl',  # 132
             'DILI.jsonl',  # 96
             'ClinTox.jsonl',  # 297
             # --------------------------- Tox Group 3
