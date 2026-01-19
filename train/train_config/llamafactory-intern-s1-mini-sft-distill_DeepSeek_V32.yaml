@@ -19,11 +19,11 @@ deepspeed: train/train_config/ds_z3_config.json
 flash_attn: fa2
 
 ### dataset
-dataset_dir: DataPrepare/SFT_data/DeepSeek_V32_distill_agent_data/TDC_train_Alpaca_merged  # SFT_data/SFT_data for TDC
+dataset_dir: DataPrepare/SFT_data/DeepSeek_V32_distill_agent_data/TDC_train_Alpaca_merged_scaffold_split  # SFT_data/SFT_data for TDC
 dataset: TDC_train_Alpaca_merged  # TDC_SFT_data_all_tasks for TDC // ChemCoT_SFT_data_all_tasks for ChemCoT
 template: empty  # DeepSeek_V32 注意用这个 empty 的格式
 cutoff_len: 55000
-tokenized_path: DataPrepare/SFT_data/DeepSeek_V32_distill_agent_data/TDC_train_Alpaca_merged/tokenzied
+tokenized_path: DataPrepare/SFT_data/DeepSeek_V32_distill_agent_data/TDC_train_Alpaca_merged_scaffold_split/tokenzied
 max_samples: null
 overwrite_cache: false
 preprocessing_num_workers: 16
@@ -31,24 +31,24 @@ dataloader_num_workers: 16
 # enable_thinking: true  # false for TDC
 
 ### output
-output_dir: checkpoints/Intern-S1-mini/full/sft-distill_DeepSeek_V32-TDC-train-set_less_save_interval
+output_dir: checkpoints/Intern-S1-mini/full/sft-distill_DeepSeek_V32-TDC-train-set-scaffold
 logging_steps: 100
-save_steps: 3000
+save_steps: 5000
 plot_loss: true
 overwrite_output_dir: true
 save_only_model: false
 report_to: wandb  # choices: [none, wandb, tensorboard, swanlab, mlflow]
-run_name: Intern-S1-mini_full_distill_sft_DeepSeekV32_TDC
+run_name: Intern-S1-mini_full_distill_sft_DeepSeekV32_TDC_scaffold
 include_effective_tokens_per_second: true
 
 
 ### train
 per_device_train_batch_size: 1 # 4
 gradient_accumulation_steps: 1
-learning_rate: 5.0e-6
-num_train_epochs: 0.5
+learning_rate: 1e-5
+num_train_epochs: 1
 lr_scheduler_type: cosine
-warmup_ratio: 0.4
+warmup_ratio: 0.05
 bf16: true
 ddp_timeout: 180000000
 resume_from_checkpoint: null

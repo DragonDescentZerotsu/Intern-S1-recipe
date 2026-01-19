@@ -36,7 +36,7 @@ def merge_jsonl_files(source_dir, output_file):
     print(f"Total lines written: {total_lines}")
 
 if __name__ == "__main__":
-    source_directory = current_dir / "TDC_train_Alpaca_per_task"
-    output_filepath = current_dir / "TDC_train_Alpaca_merged/TDC_train_Alpaca_merged.jsonl"
+    source_directory = current_dir / "intern-s1-mini_TDC_train_Alpaca_per_task_scaffold_filtered"
+    output_filepath = current_dir / "TDC_train_Alpaca_merged_scaffold_split/TDC_train_Alpaca_merged.jsonl"
     
     merge_jsonl_files(source_directory, output_filepath)
