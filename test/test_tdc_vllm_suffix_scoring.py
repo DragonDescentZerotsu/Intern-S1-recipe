@@ -9,7 +9,7 @@ os.environ.setdefault("VLLM_USE_V1", "1")
 mp.set_start_method("spawn", force=True)
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'  # TODO: device GPU #
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'  # TODO: device GPU #
 
 import re
 import inspect
@@ -24,6 +24,7 @@ from math import isfinite
 import numpy as np
 import argparse
 from pathlib import Path
+from datetime import datetime
 import logging
 
 # Setup logging
@@ -35,8 +36,9 @@ def get_args():
     parser = argparse.ArgumentParser(description='Test TDC tasks with vLLM using preprocessed data')
 
     parser.add_argument('--model-path', type=str,
-                        default='nvidia/NVIDIA-Nemotron-Nano-9B-v2',  # "checkpoints/Intern-S1-mini/full/sft-distill_DeepSeek_V32-TDC-train-set_less_save_interval/checkpoint-3000"
+                        default='mistralai/Mistral-7B-Instruct-v0.3',  # "checkpoints/Intern-S1-mini/full/sft-distill_DeepSeek_V32-TDC-train-set_less_save_interval/checkpoint-3000" # TODO: model name
                         help='Path to the model checkpoint')
+                        # internlm/Intern-S1-mini
                         # Qwen/Qwen3-8B
                         # nvidia/NVIDIA-Nemotron-Nano-9B-v2
                         # mistralai/Mistral-7B-Instruct-v0.3
@@ -45,21 +47,23 @@ def get_args():
                         default="checkpoints/Intern-S1-mini/lora/sft/checkpoint-180000",
                         help='Path to LoRA adapter')
     parser.add_argument('--data-dir', type=Path,
-                        default=Path(__file__).parent.parent / "DataPrepare/TDC_test_prompts_label_random",
+                        default=Path(__file__).parent.parent / "DataPrepare/TDC_test_prompts_label_scaffold",
                         help='Directory containing preprocessed test data')
     parser.add_argument('--task-groups', nargs='+',
-                        default=['Tox'],
+                        default=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'PeptideMHC'],
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding',
                                  'TrialOutcome', 'PeptideMHC', 'all'],
                         help='Task groups to run')
     parser.add_argument('--max-model-len', type=int, default=1024 * 2, help='Max model length')
     parser.add_argument('--tensor-parallel-size', type=int, default=1, help='Tensor parallel size')
     parser.add_argument('--gpu-memory-utilization', type=float, default=0.92, help='GPU memory utilization')
-    parser.add_argument('--max-num-seqs', type=int, default=768, help='Max number of sequences')
+    parser.add_argument('--max-num-seqs', type=int, default=512, help='Max number of sequences')
     parser.add_argument('--max-logprobs', type=int, default=1024, help='Max logprobs to return')
-    parser.add_argument('--device', type=str, default='2', help='CUDA device ID')
-    parser.add_argument('--strip-smiles-tags', action='store_false',
+    # parser.add_argument('--device', type=str, default='2', help='CUDA device ID')
+    parser.add_argument('--strip-smiles-tags', action='store_false',s
                         help='Remove <SMILES> and </SMILES> from prompts before inference')
+    parser.add_argument('--log-file', action='store_false', help='Enable logging to file')
+    parser.add_argument('--log-file-name', type=str, default="test_TDC_single_token_vllm_suffix_scoring_Mistral-7B_{t_stamp}.log", help='Log file name pattern')  # TODO: log file name
 
     args = parser.parse_args()
     return args
@@ -212,7 +216,20 @@ def main():
     args = get_args()
 
     # Set CUDA device
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.device
+    # os.environ['CUDA_VISIBLE_DEVICES'] = args.device
+
+    # Configure File Handler if log_file is provided
+    if args.log_file:
+        current_dir = Path(__file__).parent.resolve()
+        log_dir = current_dir.parent / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_path = log_dir / args.log_file_name.format(t_stamp=timestamp)
+        
+        fh = logging.FileHandler(log_path)
+        fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        logging.getLogger().addHandler(fh)
+        logger.info(f"Logging to file: {log_path}")
 
     # ===================== 模型 & tokenizer =====================
     logger.info(f"Loading model from {args.model_path}")
@@ -377,51 +394,51 @@ def main():
 
             # ===================== 评估指标计算 =====================
             if len(probs) > 0:
-                print("\n" + "=" * 80)
-                print(f"{task_name} EVALUATION RESULTS")
-                print("=" * 80)
-                print('Score: p = sigmoid( score_B - score_A ), where score is SUM of suffix token logprobs')
-                print(f"Valid samples: {len(valid_idx)}/{len(base_prompts)}")
+                logger.info("\n" + "=" * 80)
+                logger.info(f"{task_name} EVALUATION RESULTS")
+                logger.info("=" * 80)
+                logger.info('Score: p = sigmoid( score_B - score_A ), where score is SUM of suffix token logprobs')
+                logger.info(f"Valid samples: {len(valid_idx)}/{len(base_prompts)}")
 
                 # 计算 AUROC
                 if len(set(valid_labels)) > 1:
                     auroc = roc_auc_score(valid_labels, probs)
-                    print(f"AUROC: {auroc:.4f}")
+                    logger.info(f"AUROC: {auroc:.4f}")
                     all_results[group][task_name] = auroc
                 else:
-                    print("Cannot compute AUROC: only one class in valid samples.")
+                    logger.warning("Cannot compute AUROC: only one class in valid samples.")
                     all_results[group][task_name] = None
 
-                print("=" * 80 + "\n")
+                logger.info("=" * 80 + "\n")
             else:
                 logger.warning(f"No valid samples for {task_name}")
                 all_results[group][task_name] = None
 
     # ===================== 打印汇总结果 =====================
-    print("\n" + "=" * 80)
-    print("SUMMARY RESULTS")
-    print("=" * 80)
-    print(f"Model: {args.model_path}")
-    print()
+    logger.info("\n" + "=" * 80)
+    logger.info("SUMMARY RESULTS")
+    logger.info("=" * 80)
+    logger.info(f"Model: {args.model_path}")
+    logger.info("")
 
     for group in groups_to_run:
         if group not in all_results or not all_results[group]:
             continue
-        print(f"\n{group} Tasks:")
-        print("-" * 40)
+        logger.info(f"\n{group} Tasks:")
+        logger.info("-" * 40)
 
         group_aurocs = []
         for task_name, auroc in all_results[group].items():
             if auroc is not None:
-                print(f"  {task_name}: {auroc:.4f}")
+                logger.info(f"  {task_name}: {auroc:.4f}")
                 group_aurocs.append(auroc)
             else:
-                print(f"  {task_name}: N/A")
+                logger.info(f"  {task_name}: N/A")
 
         if group_aurocs:
-            print(f"  Average: {np.mean(group_aurocs):.4f}")
+            logger.info(f"  Average: {np.mean(group_aurocs):.4f}")
 
-    print("=" * 80 + "\n")
+    logger.info("=" * 80 + "\n")
 
 
 if __name__ == "__main__":
