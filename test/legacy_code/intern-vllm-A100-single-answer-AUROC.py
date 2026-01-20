@@ -15,7 +15,7 @@ os.environ.setdefault("VLLM_USE_V1", "1")
 mp.set_start_method("spawn", force=True)
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '2'  # TODO: device GPU #
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # TODO: device GPU #
 
 from transformers import AutoProcessor, AutoTokenizer
 from vllm import LLM, SamplingParams
@@ -37,8 +37,8 @@ import ast
 
 def main():
     # ===================== 配置 =====================
-    # MODEL_NAME = "internlm/Intern-S1-mini"
-    MODEL_NAME = "checkpoints/Intern-S1-mini/full/sft-distill_DeepSeek_V32-TDC-train-set_less_save_interval/checkpoint-3000"
+    MODEL_NAME = "internlm/Intern-S1-mini"
+    # MODEL_NAME = "checkpoints/Intern-S1-mini/full/sft-distill_DeepSeek_V32-TDC-train-set_less_save_interval/checkpoint-3000"
     # MODEL_NAME = "checkpoints/Intern-S1-mini/full/sft"
     USE_LORA = False
     LORA_PATH = "checkpoints/Intern-S1-mini/lora/sft/checkpoint-180000"  # 你的 LoRA 目录
@@ -53,7 +53,7 @@ def main():
         max_num_batched_tokens=1024 * 24,
         # quantization="fp8",
         dtype="bfloat16",
-        tensor_parallel_size=1 if 'Intern-S1-mini' in MODEL_NAME else 8,
+        tensor_parallel_size=1,   #  if 'Intern-S1-mini' in MODEL_NAME else 8,  # TODO: 记得修改 tensor_parallel_size
         trust_remote_code=True,
         gpu_memory_utilization=0.92,
         max_num_seqs=256,
@@ -77,7 +77,7 @@ def main():
                                lora_int_id=1,
                                lora_path=LORA_PATH) # 你的 LoRA 目录
 
-    TASK_GROUP_NAMEs = ['ADME'] # 'ADME'/'Tox'/'HTS'/'Develop'/'PPI'/'TCREpitopeBinding'/'TrialOutcome'/'PeptideMHC'
+    TASK_GROUP_NAMEs = ['Tox'] # 'ADME'/'Tox'/'HTS'/'Develop'/'PPI'/'TCREpitopeBinding'/'TrialOutcome'/'PeptideMHC'
 
     AUTO_FASTA = True
     if not AUTO_FASTA:
