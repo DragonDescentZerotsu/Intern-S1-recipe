@@ -9,7 +9,7 @@ os.environ.setdefault("VLLM_USE_V1", "1")
 mp.set_start_method("spawn", force=True)
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # TODO: device GPU #
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'  # TODO: device GPU #
 
 import re
 import inspect
@@ -36,12 +36,13 @@ def get_args():
     parser = argparse.ArgumentParser(description='Test TDC tasks with vLLM using preprocessed data')
 
     parser.add_argument('--model-path', type=str,
-                        default='Qwen/Qwen3-8B',  # "checkpoints/Intern-S1-mini/full/sft-distill_DeepSeek_V32-TDC-train-set_less_save_interval/checkpoint-3000" # TODO: model name
+                        default='deepseek-ai/DeepSeek-R1-Distill-Qwen-7B',  # "checkpoints/Intern-S1-mini/full/sft-distill_DeepSeek_V32-TDC-train-set_less_save_interval/checkpoint-3000" # TODO: model name
                         help='Path to the model checkpoint')
                         # internlm/Intern-S1-mini
                         # Qwen/Qwen3-8B
                         # nvidia/NVIDIA-Nemotron-Nano-9B-v2
                         # mistralai/Mistral-7B-Instruct-v0.3
+                        # deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
     parser.add_argument('--use-lora', action='store_true', help='Use LoRA adapter')
     parser.add_argument('--lora-path', type=str,
                         default="checkpoints/Intern-S1-mini/lora/sft/checkpoint-180000",
@@ -50,11 +51,11 @@ def get_args():
                         default=Path(__file__).parent.parent / "DataPrepare/TDC_test_prompts_label_scaffold",
                         help='Directory containing preprocessed test data')
     parser.add_argument('--task-groups', nargs='+',
-                        default=['PPI', 'PeptideMHC'],
+                        default=['ADME', 'Tox', 'HTS', 'Develop'],
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding',
                                  'TrialOutcome', 'PeptideMHC', 'all'],
                         help='Task groups to run')
-    parser.add_argument('--max-model-len', type=int, default=1024 * 24, help='Max model length')
+    parser.add_argument('--max-model-len', type=int, default=1024 * 2, help='Max model length')
     parser.add_argument('--tensor-parallel-size', type=int, default=1, help='Tensor parallel size')
     parser.add_argument('--gpu-memory-utilization', type=float, default=0.92, help='GPU memory utilization')
     parser.add_argument('--max-num-seqs', type=int, default=512, help='Max number of sequences')
@@ -62,7 +63,7 @@ def get_args():
     # parser.add_argument('--device', type=str, default='2', help='CUDA device ID')
     parser.add_argument('--strip-smiles-tags', action='store_false', help='Remove <SMILES> and </SMILES> from prompts before inference') # TODO: 去掉 <SMILES>
     parser.add_argument('--log-file', action='store_false', help='Enable logging to file')
-    parser.add_argument('--log-file-name', type=str, default="test_TDC_single_token_vllm_suffix_scoring_Qwen3-8B_{t_stamp}.log", help='Log file name pattern')  # TODO: log file name
+    parser.add_argument('--log-file-name', type=str, default="test_TDC_single_token_vllm_suffix_scoring_DeepSeek-R1-Distill-Qwen-7B_{t_stamp}.log", help='Log file name pattern')  # TODO: log file name
 
     args = parser.parse_args()
     return args
@@ -140,6 +141,10 @@ def to_prompt_user_block(text: str, tokenizer, model_name: str = None) -> str:
 
     if 'Nemotron' in model_name:
         messages.append({"role": "system", "content": "/no_think"})
+        messages.append({"role": "user", "content": text})
+    elif 'deepseek' in model_name:
+        kwargs['add_generation_prompt'] = True
+        kwargs["enable_thinking"] = False
         messages.append({"role": "user", "content": text})
     elif "Qwen" in model_name or "Intern" in model_name: # Simple heuristic example, adjust as needed or keep as just passing it through
         kwargs["enable_thinking"] = False
@@ -274,8 +279,8 @@ def main():
 
     # suffix 候选：尽量覆盖常见格式（空格/换行）
     # 注意：这里的 suffix 是加在 assistant 生成位点之后，不会和 "Answer:" 发生 token merge 的坑
-    A_SUFFIXES = ["(A"]#, " (A)", "\n(A)", "\n (A)"]
-    B_SUFFIXES = ["(B"]#, " (B)", "\n(B)", "\n (B)"]B
+    A_SUFFIXES = ["(A"] if 'deepseek' not in args.model_path else ["\n</think>\n(A"]#, " (A)", "\n(A)", "\n (A)"]
+    B_SUFFIXES = ["(B"] if 'deepseek' not in args.model_path else ["\n</think>\n(B"]#, " (B)", "\n(B)", "\n (B)"]B
     # ===================== 数据加载 =====================
     data_path = args.data_dir
     if not data_path.exists():
