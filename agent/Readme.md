@@ -1,35 +1,35 @@
 ### 1. vLLM serving Intern-S1-mini (1 x A100):
 ```bash
-vllm serve internlm/Intern-S1-mini \
+CUDA_VISIBLE_DEVICES=0 vllm serve internlm/Intern-S1-mini \
   --host 0.0.0.0 \
-  --port 23333 \
+  --port 8000 \
   --api-key EMPTY \
   --dtype auto \
-  --served-model-name local-model \
+  --served-model-name Intern-S1-mini \
   --max-model-len 32768 \
   --tensor-parallel-size 1 \
   --trust-remote-code \
   --enable-auto-tool-choice \
-  --tool-parser-plugin /data1/tianang/Projects/Intern-S1/agent/tool_parser/intern_s1_parser.py \
+  --tool-parser-plugin agent/tool_parser/intern_s1_parser.py \
   --tool-call-parser interns1 \
-  --chat-template /data1/tianang/Projects/Intern-S1/agent/chat_templates/chat_template_intern-s1.jinja
+  --chat-template agent/chat_templates/chat_template_intern-s1_modified.jinja
 ```
 
 ### 2. vLLM serving Intern-S1 (8 x A100):
 ```bash
 vllm serve internlm/Intern-S1 \
   --host 0.0.0.0 \
-  --port 23333 \
+  --port 8000 \
   --api-key EMPTY \
   --dtype auto \
-  --served-model-name local-model \
+  --served-model-name Intern-s1 \
   --max-model-len 32768 \
   --tensor-parallel-size 8 \
   --trust-remote-code \
   --enable-auto-tool-choice \
-  --tool-parser-plugin /data1/tianang/Projects/Intern-S1/agent/tool_parser/intern_s1_parser.py \
+  --tool-parser-plugin agent/tool_parser/intern_s1_parser.py \
   --tool-call-parser interns1 \
-  --chat-template /data1/tianang/Projects/Intern-S1/agent/chat_templates/chat_template_intern-s1.jinja
+  --chat-template agent/chat_templates/chat_template_intern-s1_modified.jinja
 ```
 
 ### 3. vLLM serving DeepSeek V3.2 (on Parcc, 4 x GB200):
