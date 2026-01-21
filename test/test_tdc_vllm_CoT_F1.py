@@ -24,7 +24,7 @@ from transformers import AutoTokenizer
 
 from utils.TDC_answer_parser import extract_answer, parse_answer
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '4'  # TODO: device GPU #
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'  # TODO: device GPU #
 
 
 # Setup logging
@@ -61,7 +61,7 @@ def get_args():
 
     parser.add_argument('--strip-smiles-tags', action='store_false', help='Remove <SMILES> and </SMILES> from prompts before inference')
     parser.add_argument('--log-file', action='store_false', help='Enable logging to file')
-    parser.add_argument('--log-file-name', type=str, default="test_TDC_vllm_CoT_F1_{model_name}_{t_stamp}_0.log", help='Log file name pattern')  # TODO: log file name 
+    parser.add_argument('--log-file-name', type=str, default="test_TDC_vllm_CoT_F1_{model_name}_{t_stamp}_3.log", help='Log file name pattern')  # TODO: log file name 
 
     args = parser.parse_args()
     return args
@@ -73,13 +73,13 @@ def load_tasks_map(data_dir):
     """
     mapping = {
         'Tox': [
-            'Skin_Reaction.jsonl',  # 82
-            'hERG.jsonl',  # 132
-            'DILI.jsonl',  # 96
-            'ClinTox.jsonl',  # 297
-            'AMES.jsonl',  # 1457
-            'Tox21.jsonl',  # 15584
-            'herg_central_hERG_inhib.jsonl',  # 61379
+            # 'Skin_Reaction.jsonl',  # 82
+            # 'hERG.jsonl',  # 132
+            # 'DILI.jsonl',  # 96
+            # 'ClinTox.jsonl',  # 297
+            # 'AMES.jsonl',  # 1457
+            # 'Tox21.jsonl',  # 15584
+            # 'herg_central_hERG_inhib.jsonl',  # 61379
             # -----------------------------------------
             # 'ToxCast.jsonl'  # 307282
         ],
@@ -103,7 +103,7 @@ def load_tasks_map(data_dir):
             # 'SARSCoV2_3CLPro_Diamond.jsonl',  # 176
             # 'SARSCoV2_Vitro_Touret.jsonl',  # 298
             # -----------------------------------------
-            # 'butkiewicz.jsonl'  # 401997
+            'butkiewicz.jsonl'  # 401997
         ],
         'Develop': ['SAbDab_Chen.jsonl'],  # 482
         'PPI': ['HuRI.jsonl'],  # 20282
@@ -138,10 +138,10 @@ def to_prompt_user_block(text: str, tokenizer, model_name: str = None) -> str:
     kwargs = dict(tokenize=False, add_generation_prompt=True)
 
     if model_name and 'Nemotron' in model_name:
-        messages.append({"role": "system", "content": "/no_think"})
+        messages.append({"role": "system", "content": "/think"})  # 打开 think 模式
         messages.append({"role": "user", "content": text})
     elif model_name and ("Qwen" in model_name or "Intern" in model_name):
-        kwargs["enable_thinking"] = True 
+        kwargs["enable_thinking"] = True   # 打开 think 模式
         messages.append({"role": "user", "content": text})
     else:
         messages.append({"role": "user", "content": text})
