@@ -9,7 +9,7 @@ os.environ.setdefault("VLLM_USE_V1", "1")
 mp.set_start_method("spawn", force=True)
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '2'  # TODO: device GPU #
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # TODO: device GPU #
 
 import re
 import inspect
@@ -36,7 +36,7 @@ def get_args():
     parser = argparse.ArgumentParser(description='Test TDC tasks with vLLM using preprocessed data')
 
     parser.add_argument('--model-path', type=str,
-                        default='mistralai/Mistral-7B-Instruct-v0.3',  # "checkpoints/Intern-S1-mini/full/sft-distill_DeepSeek_V32-TDC-train-set_less_save_interval/checkpoint-3000" # TODO: model name
+                        default='Qwen/Qwen3-8B',  # "checkpoints/Intern-S1-mini/full/sft-distill_DeepSeek_V32-TDC-train-set_less_save_interval/checkpoint-3000" # TODO: model name
                         help='Path to the model checkpoint')
                         # internlm/Intern-S1-mini
                         # Qwen/Qwen3-8B
@@ -50,20 +50,19 @@ def get_args():
                         default=Path(__file__).parent.parent / "DataPrepare/TDC_test_prompts_label_scaffold",
                         help='Directory containing preprocessed test data')
     parser.add_argument('--task-groups', nargs='+',
-                        default=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'PeptideMHC'],
+                        default=['PPI', 'PeptideMHC'],
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding',
                                  'TrialOutcome', 'PeptideMHC', 'all'],
                         help='Task groups to run')
-    parser.add_argument('--max-model-len', type=int, default=1024 * 2, help='Max model length')
+    parser.add_argument('--max-model-len', type=int, default=1024 * 24, help='Max model length')
     parser.add_argument('--tensor-parallel-size', type=int, default=1, help='Tensor parallel size')
     parser.add_argument('--gpu-memory-utilization', type=float, default=0.92, help='GPU memory utilization')
     parser.add_argument('--max-num-seqs', type=int, default=512, help='Max number of sequences')
     parser.add_argument('--max-logprobs', type=int, default=1024, help='Max logprobs to return')
     # parser.add_argument('--device', type=str, default='2', help='CUDA device ID')
-    parser.add_argument('--strip-smiles-tags', action='store_false',s
-                        help='Remove <SMILES> and </SMILES> from prompts before inference')
+    parser.add_argument('--strip-smiles-tags', action='store_false', help='Remove <SMILES> and </SMILES> from prompts before inference') # TODO: 去掉 <SMILES>
     parser.add_argument('--log-file', action='store_false', help='Enable logging to file')
-    parser.add_argument('--log-file-name', type=str, default="test_TDC_single_token_vllm_suffix_scoring_Mistral-7B_{t_stamp}.log", help='Log file name pattern')  # TODO: log file name
+    parser.add_argument('--log-file-name', type=str, default="test_TDC_single_token_vllm_suffix_scoring_Qwen3-8B_{t_stamp}.log", help='Log file name pattern')  # TODO: log file name
 
     args = parser.parse_args()
     return args
