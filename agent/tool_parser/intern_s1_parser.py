@@ -18,7 +18,13 @@ from vllm.entrypoints.openai.protocol import (
     ToolCall,
 )
 from vllm.logger import init_logger
-from vllm.tokenizers import TokenizerLike
+
+# TokenizerLike import varies by vLLM version
+try:
+    from vllm.tokenizers import TokenizerLike
+except ModuleNotFoundError:
+    # vLLM 0.11.x - use typing.Any as fallback
+    from typing import Any as TokenizerLike
 
 try:
     # vLLM 0.9+ / 0.12.0 这类版本
