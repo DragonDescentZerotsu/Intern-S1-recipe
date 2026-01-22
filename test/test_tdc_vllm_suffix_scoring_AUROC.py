@@ -52,11 +52,11 @@ def get_args():
                         default=Path(__file__).parent.parent / "DataPrepare/TDC_test_prompts_label_scaffold",
                         help='Directory containing preprocessed test data')
     parser.add_argument('--task-groups', nargs='+',
-                        default=['ADME', 'Tox', 'HTS', 'Develop'],
+                        default=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'PeptideMHC'],
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding',
                                  'TrialOutcome', 'PeptideMHC', 'all'],
                         help='Task groups to run')
-    parser.add_argument('--max-model-len', type=int, default=1024 * 2, help='Max model length')
+    parser.add_argument('--max-model-len', type=int, default=1024 * 8, help='Max model length')
     parser.add_argument('--tensor-parallel-size', type=int, default=1, help='Tensor parallel size')
     parser.add_argument('--gpu-memory-utilization', type=float, default=0.92, help='GPU memory utilization')
     parser.add_argument('--max-num-seqs', type=int, default=512, help='Max number of sequences')
@@ -76,37 +76,37 @@ def load_tasks_map(data_dir):
     """
     mapping = {
         'Tox': [
-            'Skin_Reaction.jsonl',
-            'hERG.jsonl',
-            'DILI.jsonl',
-            'ClinTox.jsonl',
-            'AMES.jsonl',
-            'Tox21.jsonl',
-            'ToxCast.jsonl',
-            'herg_central_hERG_inhib.jsonl'
+            # 'Skin_Reaction.jsonl',
+            # 'hERG.jsonl',
+            # 'DILI.jsonl',
+            # 'ClinTox.jsonl',
+            # 'AMES.jsonl',
+            # 'Tox21.jsonl',
+            # 'ToxCast.jsonl',
+            # 'herg_central_hERG_inhib.jsonl'
         ],
         'ADME': [
-            'PAMPA_NCATS.jsonl',
-            'HIA_Hou.jsonl',
-            'BBB_Martins.jsonl',
-            'Pgp_Broccatelli.jsonl',
-            'Bioavailability_Ma.jsonl',
-            'CYP2C9_Substrate_CarbonMangels.jsonl',
-            'CYP2D6_Substrate_CarbonMangels.jsonl',
-            'CYP3A4_Substrate_CarbonMangels.jsonl',
-            'CYP1A2_Veith.jsonl',
-            'CYP2C19_Veith.jsonl',
-            'CYP2C9_Veith.jsonl',
-            'CYP2D6_Veith.jsonl',
-            'CYP3A4_Veith.jsonl',
+            # 'PAMPA_NCATS.jsonl',
+            # 'HIA_Hou.jsonl',
+            # 'BBB_Martins.jsonl',
+            # 'Pgp_Broccatelli.jsonl',
+            # 'Bioavailability_Ma.jsonl',
+            # 'CYP2C9_Substrate_CarbonMangels.jsonl',
+            # 'CYP2D6_Substrate_CarbonMangels.jsonl',
+            # 'CYP3A4_Substrate_CarbonMangels.jsonl',
+            # 'CYP1A2_Veith.jsonl',
+            # 'CYP2C19_Veith.jsonl',
+            # 'CYP2C9_Veith.jsonl',
+            # 'CYP2D6_Veith.jsonl',
+            # 'CYP3A4_Veith.jsonl',
         ],
         'HTS': [
-            'HIV.jsonl',
-            'SARSCoV2_3CLPro_Diamond.jsonl',
-            'SARSCoV2_Vitro_Touret.jsonl',
-            'butkiewicz.jsonl'
+            # 'HIV.jsonl',
+            # 'SARSCoV2_3CLPro_Diamond.jsonl',
+            # 'SARSCoV2_Vitro_Touret.jsonl',
+            # 'butkiewicz.jsonl'
         ],
-        'Develop': ['SAbDab_Chen.jsonl'],
+        # 'Develop': ['SAbDab_Chen.jsonl'],
         'PPI': ['HuRI.jsonl'],
         'TrialOutcome': [
             'phase1.jsonl',
