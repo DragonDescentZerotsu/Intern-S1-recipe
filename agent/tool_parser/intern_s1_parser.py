@@ -38,6 +38,61 @@ except ModuleNotFoundError:
 
 logger = init_logger(__name__)
 
+
+_VALID_JSON_ESC = set(['"', "\\", "/", "b", "f", "n", "r", "t", "u"])
+
+def repair_invalid_json_escapes(s: str) -> str:
+    r'''
+    修复 JSON 字符串内部的非法转义，比如把 \C 变成 \\C
+    - 只修复字符串内部
+    - 不破坏合法的转义序列 \\ \n \" \uXXXX 等
+    '''
+    out = []
+    in_str = False
+    i = 0
+    while i < len(s):
+        c = s[i]
+
+        if not in_str:
+            if c == '"':
+                in_str = True
+            out.append(c)
+            i += 1
+            continue
+
+        # in string
+        if c == '"':
+            in_str = False
+            out.append(c)
+            i += 1
+            continue
+
+        if c == "\\":
+            if i + 1 >= len(s):
+                # 字符串末尾孤立的 "\" -> 变成字面量 "\\"
+                out.append("\\\\")
+                i += 1
+                continue
+
+            nxt = s[i + 1]
+            if nxt in _VALID_JSON_ESC:
+                # 合法 escape，原样保留
+                out.append("\\")
+                out.append(nxt)
+                i += 2
+            else:
+                # 非法 escape，例如 \C -> 把 "\" 变成字面量 "\\"
+                out.append("\\\\")
+                i += 1
+            continue
+
+        out.append(c)
+        i += 1
+
+    return "".join(out)
+
+
+
 @ToolParserManager.register_module(["interns1"])
 class InternS1ToolParser(ToolParser):
     def __init__(self, tokenizer: TokenizerLike):
@@ -234,11 +289,24 @@ class InternS1ToolParser(ToolParser):
 
             try:
                 action_dict = json.loads(action)
+            except json.JSONDecodeError as ex:
+                if "Invalid \\escape" in str(ex):
+                    try:
+                        action_fixed = repair_invalid_json_escapes(action)
+                        action_dict = json.loads(action_fixed)
+                    except Exception:
+                        content_parts.append(text[s:e + len(END)])
+                        pos = e + len(END)
+                        continue
+                else:
+                    content_parts.append(text[s:e + len(END)])
+                    pos = e + len(END)
+                    continue
             except Exception:
-                # JSON 解析失败：保守起见当普通文本
                 content_parts.append(text[s:e + len(END)])
                 pos = e + len(END)
                 continue
+
 
             name = action_dict.get("name")
             args_obj = action_dict.get("parameters", action_dict.get("arguments", {}))
@@ -265,3 +333,13 @@ class InternS1ToolParser(ToolParser):
             )
 
         return ExtractedToolCallInformation(tools_called=False, tool_calls=[], content=text)
+
+
+if __name__ == "__main__":
+    
+    SMILES = r'CO[C@H]1C[C@@H]2CC[C@@H](C)[C@@](O)(O2)C(=O)C(=O)N2CCCC[C@H]2C(=O)O[C@H]([C@H](C)C[C@@H]2CC[C@@H](OCCO)[C@H](OC)C2)CC(=O)[C@H](C)/C=C(\C)[C@@H](O)[C@@H](OC)C(=O)[C@H](C)C[C@H](C)/C=C\C=C\C=C\1C'
+    bad_json = f'{{"name":"describe_high_level_fg_fragments","parameters":{{"smiles":"{SMILES}"}}}}'
+    fixed_json = repair_invalid_json_escapes(bad_json)
+
+    obj = json.loads(fixed_json)  # ✅ 应该成功
+    print(obj["parameters"]["smiles"] == SMILES)  # ✅ True
