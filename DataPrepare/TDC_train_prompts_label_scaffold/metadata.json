@@ -92,8 +92,12 @@
         "split_method": "random"
     },
     "HuRI": {
-        "num_samples": 74195,
+        "num_samples": 74343,
         "split_method": "cold_protein1"
+    },
+    "Weber": {
+        "num_samples": 33028,
+        "split_method": "random"
     },
     "MHC1_IEDB-IMGT_Nielsen": {
         "num_samples": 130190,

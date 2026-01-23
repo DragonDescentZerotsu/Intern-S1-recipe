@@ -255,9 +255,12 @@ def main():
                 clean_key = prompt_key.replace('-', '_')
                 
                 if clean_key not in tdc_prompts_json:
-                    base_key = clean_key.split('_')[0] 
+                    base_key = clean_key.split('_')[0]
+                    lower_base_key = base_key.lower()
                     if base_key in tdc_prompts_json:
                          clean_key = base_key
+                    elif lower_base_key in tdc_prompts_json:
+                         clean_key = lower_base_key
                     else:
                          # Attempt to fall back for Tox21/ToxCast if needed, though they shoud use 'Tox21'/'ToxCast' keys ideally?
                          # TDC prompts json typically has keys like 'Tox21', 'ToxCast'.
