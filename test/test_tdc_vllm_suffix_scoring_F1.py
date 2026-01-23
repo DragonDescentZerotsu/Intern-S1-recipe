@@ -36,7 +36,7 @@ def get_args():
     parser = argparse.ArgumentParser(description='Test TDC tasks with vLLM using preprocessed data')
 
     parser.add_argument('--model-path', type=str,
-                        default='google/gemma-2-9b-it',  # "checkpoints/Intern-S1-mini/full/sft-distill_DeepSeek_V32-TDC-train-set_less_save_interval/checkpoint-3000" # TODO: model name
+                        default='checkpoints/Intern-S1-mini/full/sft-all-TDC-binary-scaffold',  # "checkpoints/Intern-S1-mini/full/sft-distill_DeepSeek_V32-TDC-train-set_less_save_interval/checkpoint-3000" # TODO: model name
                         help='Path to the model checkpoint')
                         # internlm/Intern-S1-mini
                         # Qwen/Qwen3-8B
@@ -52,11 +52,11 @@ def get_args():
                         default=Path(__file__).parent.parent / "DataPrepare/TDC_test_prompts_label_scaffold",
                         help='Directory containing preprocessed test data')
     parser.add_argument('--task-groups', nargs='+',
-                        default=['ADME', 'Tox', 'HTS', 'Develop'],  #['PPI', 'PeptideMHC'],
+                        default=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'PeptideMHC'],
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding',
                                  'TrialOutcome', 'PeptideMHC', 'all'],
                         help='Task groups to run')
-    parser.add_argument('--max-model-len', type=int, default=1024 * 2, help='Max model length')
+    parser.add_argument('--max-model-len', type=int, default=1024 * 24, help='Max model length')
     parser.add_argument('--tensor-parallel-size', type=int, default=1, help='Tensor parallel size')
     parser.add_argument('--gpu-memory-utilization', type=float, default=0.92, help='GPU memory utilization')
     parser.add_argument('--max-num-seqs', type=int, default=512, help='Max number of sequences')
@@ -64,7 +64,7 @@ def get_args():
     # parser.add_argument('--device', type=str, default='2', help='CUDA device ID')
     parser.add_argument('--strip-smiles-tags', action='store_false', help='Remove <SMILES> and </SMILES> from prompts before inference') # TODO: 去掉 <SMILES>
     parser.add_argument('--log-file', action='store_false', help='Enable logging to file')
-    parser.add_argument('--log-file-name', type=str, default="test_TDC_single_token_vllm_suffix_scoring_F1_gemma-2-9b-it_{t_stamp}.log", help='Log file name pattern')  # TODO: log file name
+    parser.add_argument('--log-file-name', type=str, default="test_TDC_single_token_vllm_suffix_scoring_F1_Intern-S1-mini-all-TDC-binary-SFTed_{t_stamp}_protein.log", help='Log file name pattern')  # TODO: log file name
 
     args = parser.parse_args()
     return args
@@ -76,35 +76,35 @@ def load_tasks_map(data_dir):
     """
     mapping = {
         'Tox': [
-            'Skin_Reaction.jsonl',  # 82
-            'hERG.jsonl',  # 132
-            'DILI.jsonl',  # 96
-            'ClinTox.jsonl',  # 297
-            'AMES.jsonl',  # 1457
-            'Tox21.jsonl',  # 15584
-            'ToxCast.jsonl',  # 307282
-            'herg_central_hERG_inhib.jsonl'  # 61379
+            # 'Skin_Reaction.jsonl',  # 82
+            # 'hERG.jsonl',  # 132
+            # 'DILI.jsonl',  # 96
+            # 'ClinTox.jsonl',  # 297
+            # 'AMES.jsonl',  # 1457
+            # 'Tox21.jsonl',  # 15584
+            # 'ToxCast.jsonl',  # 307282
+            # 'herg_central_hERG_inhib.jsonl'  # 61379
         ],
         'ADME': [
-            'PAMPA_NCATS.jsonl',  # 408
-            'HIA_Hou.jsonl',  # 117
-            'BBB_Martins.jsonl',  # 406
-            'Pgp_Broccatelli.jsonl',  # 245
-            'Bioavailability_Ma.jsonl',  # 128
-            'CYP2C9_Substrate_CarbonMangels.jsonl',  # 135
-            'CYP2D6_Substrate_CarbonMangels.jsonl',  # 135
-            'CYP3A4_Substrate_CarbonMangels.jsonl',  # 135
-            'CYP1A2_Veith.jsonl',  # 2517
-            'CYP2C19_Veith.jsonl',  # 2534
-            'CYP2C9_Veith.jsonl',  # 2419
-            'CYP2D6_Veith.jsonl',  # 2626
-            'CYP3A4_Veith.jsonl',  # 2467
+            # 'PAMPA_NCATS.jsonl',  # 408
+            # 'HIA_Hou.jsonl',  # 117
+            # 'BBB_Martins.jsonl',  # 406
+            # 'Pgp_Broccatelli.jsonl',  # 245
+            # 'Bioavailability_Ma.jsonl',  # 128
+            # 'CYP2C9_Substrate_CarbonMangels.jsonl',  # 135
+            # 'CYP2D6_Substrate_CarbonMangels.jsonl',  # 135
+            # 'CYP3A4_Substrate_CarbonMangels.jsonl',  # 135
+            # 'CYP1A2_Veith.jsonl',  # 2517
+            # 'CYP2C19_Veith.jsonl',  # 2534
+            # 'CYP2C9_Veith.jsonl',  # 2419
+            # 'CYP2D6_Veith.jsonl',  # 2626
+            # 'CYP3A4_Veith.jsonl',  # 2467
         ],
         'HTS': [
-            'HIV.jsonl',  # 8225
-            'SARSCoV2_3CLPro_Diamond.jsonl',  # 176
-            'SARSCoV2_Vitro_Touret.jsonl',  # 298
-            'butkiewicz.jsonl'  # 401997
+            # 'HIV.jsonl',  # 8225
+            # 'SARSCoV2_3CLPro_Diamond.jsonl',  # 176
+            # 'SARSCoV2_Vitro_Touret.jsonl',  # 298
+            # 'butkiewicz.jsonl'  # 401997
         ],
         'Develop': ['SAbDab_Chen.jsonl'],  # 482
         'PPI': ['HuRI.jsonl'],  # 20282

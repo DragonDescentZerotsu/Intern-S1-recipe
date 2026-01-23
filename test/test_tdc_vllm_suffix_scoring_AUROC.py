@@ -36,7 +36,7 @@ def get_args():
     parser = argparse.ArgumentParser(description='Test TDC tasks with vLLM using preprocessed data')
 
     parser.add_argument('--model-path', type=str,
-                        default='google/gemma-2-9b-it',  # "checkpoints/Intern-S1-mini/full/sft-distill_DeepSeek_V32-TDC-train-set_less_save_interval/checkpoint-3000" # TODO: model name
+                        default='checkpoints/Intern-S1-mini/full/sft-all-TDC-binary-scaffold',  # "checkpoints/Intern-S1-mini/full/sft-distill_DeepSeek_V32-TDC-train-set_less_save_interval/checkpoint-3000" # TODO: model name
                         help='Path to the model checkpoint')
                         # internlm/Intern-S1-mini
                         # Qwen/Qwen3-8B
@@ -56,7 +56,7 @@ def get_args():
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding',
                                  'TrialOutcome', 'PeptideMHC', 'all'],
                         help='Task groups to run')
-    parser.add_argument('--max-model-len', type=int, default=1024 * 8, help='Max model length')
+    parser.add_argument('--max-model-len', type=int, default=1024 * 24, help='Max model length')
     parser.add_argument('--tensor-parallel-size', type=int, default=1, help='Tensor parallel size')
     parser.add_argument('--gpu-memory-utilization', type=float, default=0.92, help='GPU memory utilization')
     parser.add_argument('--max-num-seqs', type=int, default=512, help='Max number of sequences')
@@ -64,7 +64,7 @@ def get_args():
     # parser.add_argument('--device', type=str, default='2', help='CUDA device ID')
     parser.add_argument('--strip-smiles-tags', action='store_false', help='Remove <SMILES> and </SMILES> from prompts before inference') # TODO: 去掉 <SMILES>
     parser.add_argument('--log-file', action='store_false', help='Enable logging to file')
-    parser.add_argument('--log-file-name', type=str, default="test_TDC_single_token_vllm_suffix_scoring_gemma-2-9b-it_{t_stamp}.log", help='Log file name pattern')  # TODO: log file name
+    parser.add_argument('--log-file-name', type=str, default="test_TDC_single_token_vllm_suffix_scoring_Intern-S1-mini-all-TDC-binary-SFTed_{t_stamp}_proteins.log", help='Log file name pattern')  # TODO: log file name
 
     args = parser.parse_args()
     return args
