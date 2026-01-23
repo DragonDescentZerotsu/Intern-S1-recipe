@@ -24,7 +24,7 @@ from transformers import AutoTokenizer
 
 from utils.TDC_answer_parser import extract_answer, parse_answer
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'  # TODO: device GPU #
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # TODO: device GPU #
 
 
 # Setup logging
@@ -46,7 +46,7 @@ def get_args():
                         default=Path(__file__).parent.parent / "DataPrepare/TDC_test_prompts_label_scaffold",
                         help='Directory containing preprocessed test data')
     parser.add_argument('--task-groups', nargs='+',
-                        default=['ADME', 'Tox', 'HTS'],
+                        default=['ADME', 'Tox', 'HTS', 'Develop'],
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding',
                                  'TrialOutcome', 'PeptideMHC', 'all'],
                         help='Task groups to run')
@@ -61,7 +61,7 @@ def get_args():
 
     parser.add_argument('--strip-smiles-tags', action='store_false', help='Remove <SMILES> and </SMILES> from prompts before inference')
     parser.add_argument('--log-file', action='store_false', help='Enable logging to file')
-    parser.add_argument('--log-file-name', type=str, default="test_TDC_vllm_CoT_F1_{model_name}_{t_stamp}_3.log", help='Log file name pattern')  # TODO: log file name 
+    parser.add_argument('--log-file-name', type=str, default="test_TDC_vllm_CoT_F1_{model_name}_{t_stamp}_SAbDab_Chen.log", help='Log file name pattern')  # TODO: log file name 
 
     args = parser.parse_args()
     return args
@@ -103,7 +103,7 @@ def load_tasks_map(data_dir):
             # 'SARSCoV2_3CLPro_Diamond.jsonl',  # 176
             # 'SARSCoV2_Vitro_Touret.jsonl',  # 298
             # -----------------------------------------
-            'butkiewicz.jsonl'  # 401997
+            # 'butkiewicz.jsonl'  # 401997
         ],
         'Develop': ['SAbDab_Chen.jsonl'],  # 482
         'PPI': ['HuRI.jsonl'],  # 20282
