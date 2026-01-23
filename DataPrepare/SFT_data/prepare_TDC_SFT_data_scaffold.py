@@ -9,10 +9,10 @@ def main():
     current_dir = Path(__file__).parent.resolve() # DataPrepare/SFT_data
     project_root = current_dir.parent.parent # /data1/tianang/Projects/Intern-S1/
     
-    input_dir = project_root / 'DataPrepare' / 'TDC_train_prompts_label_scaffold'
+    input_dir = project_root / 'DataPrepare' / 'TDC_test_prompts_label_scaffold_wo_herg-c_ToxCast_butkiewicz'
     # Output to SFT_data/SFT_data/TDC_SFT_data_scaffold_all.jsonl
-    output_dir = current_dir / 'SFT_data'
-    output_file = output_dir / 'TDC_SFT_data_scaffold_all.jsonl'
+    output_dir = current_dir / 'SFT_data' / 'TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'
+    output_file = output_dir / 'TDC_SFT_data_scaffold_wo_herg-c_ToxCast_butkiewicz.jsonl'
     
     # Ensure output directory exists (though SFT_data should exist)
     output_dir.mkdir(parents=True, exist_ok=True)
