@@ -11,6 +11,7 @@ from tdc.multi_pred.trialoutcome import TrialOutcome
 from tdc.multi_pred.peptidemhc import PeptideMHC
 from tdc.utils import retrieve_label_name_list
 import ast
+import argparse
 
 # 放在文件顶部合适位置（例如 to_prompt 后面）
 SPLIT_RANDOM = {
@@ -26,18 +27,24 @@ SPLIT_COLD = {
 }
 
 def choose_split_method(task_name, data):
-    """Return the split method string for TDC get_split()."""
     # butkiewicz 系列 HTS
     if task_name.endswith('butkiewicz'):
-        return 'random'
+        return "random", {}
+
     if task_name in SPLIT_RANDOM:
-        return 'random'
+        return "random", {}
+
     if task_name in SPLIT_COLD:
-        # 按加载器的 entity1 决定 cold_ 的后缀（源码要求）
-        ent = getattr(data, 'entity1_name', 'Drug')
-        return f'cold_{ent.lower()}'
-    # 其余默认 Scaffold
-    return 'scaffold'
+        # ✅ multi_pred 冷启动统一用 cold_split
+        if task_name == "Weber":
+            return "cold_split", {"column_name": ["tcr"]}  # or only "tcr"
+        if task_name == "HuRI":
+            return "cold_split", {"column_name": ["Protein1", 'Protein2']}  # 也可只放一个
+        # phase1/2/3 取决于 loader 实际列名（Drug / Disease / etc.）
+        return "cold_split", {"column_name": "Drug"}
+
+    # 默认 Scaffold
+    return "scaffold", {}
 
 
 
@@ -93,11 +100,15 @@ def to_prompt(prompt_template, entry, task_name):
     return user_text
 
 def main():
+    parser = argparse.ArgumentParser(description="Process TDC data for a specific split.")
+    parser.add_argument("--target-split", type=str, default="train", choices=["train", "test", "valid"], help="Target split to process (train, test, valid)")
+    args = parser.parse_args()
+    target_split = args.target_split
     # Setup logging
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     logger = logging.getLogger(__name__)
 
-    output_dir = Path("DataPrepare/TDC_test_prompts_label_scaffold")
+    output_dir = Path(f"DataPrepare/TDC_{target_split}_prompts_label_scaffold")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Load TDC prompts
@@ -136,9 +147,19 @@ def main():
             
         elif group_name == 'ADME':
             task_names = [
-                'PAMPA_NCATS', 'HIA_Hou', 'Bioavailability_Ma', 'BBB_Martins', 'Pgp_Broccatelli',
-                'CYP1A2_Veith', 'CYP2C19_Veith', 'CYP2C9_Veith', 'CYP2D6_Veith', 'CYP3A4_Veith',
-                'CYP2C9_Substrate_CarbonMangels', 'CYP2D6_Substrate_CarbonMangels', 'CYP3A4_Substrate_CarbonMangels'
+                'PAMPA_NCATS', 
+                'HIA_Hou', 
+                'Bioavailability_Ma', 
+                'BBB_Martins', 
+                'Pgp_Broccatelli',
+                'CYP1A2_Veith', 
+                'CYP2C19_Veith', 
+                'CYP2C9_Veith', 
+                'CYP2D6_Veith', 
+                'CYP3A4_Veith',
+                'CYP2C9_Substrate_CarbonMangels', 
+                'CYP2D6_Substrate_CarbonMangels', 
+                'CYP3A4_Substrate_CarbonMangels'
             ]
         elif group_name == 'HTS':
             task_names = [
@@ -200,16 +221,16 @@ def main():
                 # split = data.get_split(method='scaffold')
 
                 # 新的 split 的方法
-                method = choose_split_method(task_name, data)
+                method, kwargs = choose_split_method(task_name, data)
                 split = None
                 _last_err = None
                 used_split_method = None
 
                 # 先按规则尝试；不行则回退到 scaffold -> random，保证能跑通
-                for m in [method, 'scaffold', 'random']:
+                for (m, kw) in [(method, kwargs), ("scaffold", {}), ("random", {})]:
                     try:
-                        split = data.get_split(method=m)
-                        used_split_method = m
+                        split = data.get_split(method=m, **kw)
+                        used_split_method = f"{m}:{kw}" if kw else m
                         break
                     except Exception as e:
                         _last_err = e
@@ -219,31 +240,31 @@ def main():
                     continue
 
                 
-                if 'train' not in split:
-                    logger.warning(f"No train split for {task_name}, skipping.")
+                if target_split not in split:
+                    logger.warning(f"No {target_split} split for {task_name}, skipping.")
                     continue
                 
-                test_df = split['test']
+                split_df = split[target_split]
                     
                 # 2. Extract inputs and labels
                 inputs = []
                 labels = []
                 
                 if task_name == 'SAbDab_Chen':
-                     inputs = test_df['Antibody'].values
-                     labels = test_df['Y'].values
+                     inputs = split_df['Antibody'].values
+                     labels = split_df['Y'].values
                 elif task_name == 'HuRI':
-                     inputs = test_df[['Protein1', 'Protein2']].values
-                     labels = test_df['Y'].values
+                     inputs = split_df[['Protein1', 'Protein2']].values
+                     labels = split_df['Y'].values
                 elif task_name == 'Weber':
-                     inputs = test_df[['epitope_aa', 'tcr']].values
-                     labels = test_df['label'].values
+                     inputs = split_df[['epitope_aa', 'tcr']].values
+                     labels = split_df['label'].values
                 elif task_name in ['MHC1_IEDB-IMGT_Nielsen', 'MHC2_IEDB_Jensen']:
-                     inputs = test_df[['Peptide', 'MHC']].values
-                     labels = test_df['Y'].values
+                     inputs = split_df[['Peptide', 'MHC']].values
+                     labels = split_df['Y'].values
                 else:
-                     inputs = test_df['Drug'].values
-                     labels = test_df['Y'].values
+                     inputs = split_df['Drug'].values
+                     labels = split_df['Y'].values
 
                 # 3. Generate Prompts
                 processed_data = []
