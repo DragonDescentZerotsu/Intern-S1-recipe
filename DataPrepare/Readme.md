@@ -1,6 +1,16 @@
-### To initialize test and train data to fill [TDC_test_prompts_label](TDC_test_prompts_label) and [TDC_train_prompts_label](TDC_train_prompts_label), run:
+### To initialize test and train data to fill [TDC_test_prompts_label_scaffold](TDC_test_prompts_label_scaffold) and [TDC_train_prompts_label_scaffold](TDC_train_prompts_label_scaffold). 
+
+Run:
 ```bash
-python process_tdc_test.py
-python process_tdc_train.py
+python DataPrepare/process_tdc_train_test_split.py --target-split train
+python DataPrepare/process_tdc_train_test_split.py --target-split test
 ```
-The saved data is already CoT prompt.
+The saved data is already **CoT prompt**.
+
+### Save TDC training prompts and labels by tasks in jsonl format:
+```json
+{
+    "text": "",  # prompt
+    "Y": ""     # label
+}
+```

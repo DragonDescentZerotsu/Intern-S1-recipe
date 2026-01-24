@@ -9,7 +9,8 @@
     },
     "Bioavailability_Ma": {
         "num_samples": 128,
-        "split_method": "scaffold"
+        "split_method": "scaffold",
+        "match": false
     },
     "BBB_Martins": {
         "num_samples": 406,
@@ -92,8 +93,12 @@
         "split_method": "random"
     },
     "HuRI": {
-        "num_samples": 20282,
-        "split_method": "cold_protein1"
+        "num_samples": 4211,
+        "split_method": "cold_split:{'column_name': ['Protein1', 'Protein2']}"
+    },
+    "Weber": {
+        "num_samples": 9412,
+        "split_method": "cold_split:{'column_name': ['tcr']}"
     },
     "MHC1_IEDB-IMGT_Nielsen": {
         "num_samples": 37197,
