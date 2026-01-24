@@ -1,4 +1,22 @@
 
+"""
+This script prepares SFT (Supervised Fine-Tuning) data for TDC (Therapeutics Data Commons) tasks.
+
+It processes JSONL files from a specific input directory (TDC_test_prompts_label_scaffold_wo_herg-c_ToxCast_butkiewicz),
+converting binary labels into a multiple-choice format ((A) vs (B)).
+The script standardizes the prompts by removing specific Chain-of-Thought (CoT) suffixes and outputs
+the data in Alpaca-style JSONL format (instruction, input, output) suitable for training.
+
+
+该脚本用于为 TDC(Therapeutics Data Commons)任务 准备 SFT(监督微调,Supervised Fine-Tuning) 数据。
+
+它会从指定的输入目录
+TDC_test_prompts_label_scaffold_wo_herg-c_ToxCast_butkiewicz
+中读取并处理 JSONL 文件,将原本的二分类标签转换为多项选择格式((A) vs (B))。
+
+此外,该脚本还会通过移除特定的 Chain-of-Thought(CoT)后缀 来统一(标准化)prompt 的格式,并最终将数据输出为 Alpaca 风格的 JSONL 格式(包含 instruction、input、output 字段),以便用于模型训练。
+"""
+
 import json
 import os
 from pathlib import Path
@@ -9,7 +27,7 @@ def main():
     current_dir = Path(__file__).parent.resolve() # DataPrepare/SFT_data
     project_root = current_dir.parent.parent # /data1/tianang/Projects/Intern-S1/
     
-    input_dir = project_root / 'DataPrepare' / 'TDC_test_prompts_label_scaffold_wo_herg-c_ToxCast_butkiewicz'
+    input_dir = project_root / 'DataPrepare' / 'TDC_train_prompts_label_scaffold_wo_herg-c_ToxCast_butkiewicz'
     # Output to SFT_data/SFT_data/TDC_SFT_data_scaffold_all.jsonl
     output_dir = current_dir / 'SFT_data' / 'TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'
     output_file = output_dir / 'TDC_SFT_data_scaffold_wo_herg-c_ToxCast_butkiewicz.jsonl'

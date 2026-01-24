@@ -30,10 +30,10 @@
 !/DataPrepare/TDC_test_prompts_label_scaffold/*.md
 !/DataPrepare/TDC_test_prompts_label_scaffold/*.json
 
-/DataPrepare/TDC_test_prompts_label_scaffold_wo_herg-c_ToxCast_butkiewicz/*
-!/DataPrepare/TDC_test_prompts_label_scaffold_wo_herg-c_ToxCast_butkiewicz/*.py
-!/DataPrepare/TDC_test_prompts_label_scaffold_wo_herg-c_ToxCast_butkiewicz/*.md
-!/DataPrepare/TDC_test_prompts_label_scaffold_wo_herg-c_ToxCast_butkiewicz/*.json
+/DataPrepare/TDC_train_prompts_label_scaffold_wo_herg-c_ToxCast_butkiewicz/*
+!/DataPrepare/TDC_train_prompts_label_scaffold_wo_herg-c_ToxCast_butkiewicz/*.py
+!/DataPrepare/TDC_train_prompts_label_scaffold_wo_herg-c_ToxCast_butkiewicz/*.md
+!/DataPrepare/TDC_train_prompts_label_scaffold_wo_herg-c_ToxCast_butkiewicz/*.json
 
 
 /wandb

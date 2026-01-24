@@ -19,30 +19,31 @@ freeze_language_model: false
 flash_attn: fa2
 
 ### dataset
-dataset_dir: DataPrepare/SFT_data/SFT_data/TDC_SFT_data_all_binary_Scaffold  # SFT_data/SFT_data for TDC
-dataset: TDC_SFT_data_scaffold_all  # TDC_SFT_data_all_tasks for TDC // ChemCoT_SFT_data_all_tasks for ChemCoT
-template: intern_s1
+dataset_dir: DataPrepare/SFT_data/SFT_data/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz  # SFT_data/SFT_data for TDC
+dataset: TDC_SFT_data_scaffold_wo_herg-c_ToxCast_butkiewicz  # TDC_SFT_data_all_tasks for TDC // ChemCoT_SFT_data_all_tasks for ChemCoT
+template: intern_s1  # TODO: change model name
 cutoff_len: 24570
-tokenized_path: DataPrepare/SFT_data/SFT_data/TDC_SFT_data_all_binary_Scaffold/tokenzied
+tokenized_path: DataPrepare/SFT_data/SFT_data/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz/tokenzied-intern-s1  # TODO: change model name
 max_samples: null
 overwrite_cache: true
-preprocessing_num_workers: 8
-dataloader_num_workers: 8
+preprocessing_num_workers: 32
+dataloader_num_workers: 32
 enable_thinking: true  # false for TDC
 
 ### output
-output_dir: checkpoints/Intern-S1-mini/full/sft-all-TDC-binary-scaffold-temp
+output_dir: checkpoints/Intern-S1-mini/full/sft-wo-herg-c_ToxCast_butkiewicz-TDC-binary-scaffold  # TODO: change model name
 logging_steps: 100
-save_steps: 1500000
+save_strategy: epoch
+# save_steps: 1500000
 plot_loss: true
 overwrite_output_dir: true
 save_only_model: false
 report_to: wandb  # choices: [none, wandb, tensorboard, swanlab, mlflow]
-run_name: Intern-S1-mini_full_sft_TDC_scaffold_all_binary
+run_name: Intern-S1-mini_full_sft_TDC_scaffold_wo_herg-c_ToxCast_butkiewicz_binary  # TODO: change model name
 include_effective_tokens_per_second: true
 
 ### train
-per_device_train_batch_size: 2 # 4
+per_device_train_batch_size: 1 # TODO: fit model size
 gradient_accumulation_steps: 1
 learning_rate: 1.0e-5
 num_train_epochs: 1.0
