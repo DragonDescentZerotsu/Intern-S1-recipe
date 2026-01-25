@@ -15,6 +15,22 @@ srun --partition=dgx-b200 \
      --container-workdir=/workdir \
      bash
 ```
+```bash
+P="$(pwd)"
+
+srun --partition=dgx-b200-old-driver \
+     --pty \
+     --nodes=1 \
+     --gpus=8 \
+     --cpus-per-task=64 \
+     --mem=512G \
+     --container-writable \
+     --container-image=docker://nishikigi/updated-nemo:25.09-main-v3 \
+     --container-mounts=$P:$P,$HOME:$HOME,/vast:/vast:rw \
+     --container-workdir="$P" \
+     --export=ALL,HOME="$HOME" \
+     bash -l
+```
 Then deactivate all conda envs:
 ```bash
 conda deactivate

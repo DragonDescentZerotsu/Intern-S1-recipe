@@ -18,6 +18,7 @@ import torch
 from megatron.bridge.training.gpt_step import forward_step
 from megatron.bridge.training.initialize import destroy_global_state
 from megatron.core.transformer.enums import AttnBackend
+from megatron.bridge.recipes.utils.optimizer_utils import distributed_fused_adam_with_cosine_annealing
 
 from megatron.bridge.recipes.gpt_oss import gpt_oss_20b_pretrain_config
 
@@ -67,7 +68,7 @@ def parse_args():
     # Model configuration
     parser.add_argument("--moe_model", action="store_true", default=True,
                         help="Whether to use MoE model")
-    parser.add_argument("--seq_length", type=int, default=4096,
+    parser.add_argument("--seq_length", type=int, default=2048,
                         help="Sequence length")
     parser.add_argument("--attn_backend", type=str, default="auto", choices=["auto", "fused", "flash"],
                         help="Attention backend to use")
@@ -77,7 +78,7 @@ def parse_args():
                         help="Tensor model parallel size (default: 4 for MoE, 1 otherwise)")
     parser.add_argument("--pp", type=int, default=1,
                         help="Pipeline model parallel size")
-    parser.add_argument("--ep", type=int, default=4,
+    parser.add_argument("--ep", type=int, default=8,
                         help="Expert model parallel size (default: 4 for MoE, 1 otherwise)")
     parser.add_argument("--etp", type=int, default=1,
                         help="Expert tensor parallel size")
@@ -85,7 +86,7 @@ def parse_args():
     # Training configuration
     parser.add_argument("--micro_batch_size", type=int, default=1,
                         help="Micro batch size")
-    parser.add_argument("--global_batch_size", type=int, default=1,
+    parser.add_argument("--global_batch_size", type=int, default=8,
                         help="Global batch size")
     parser.add_argument("--train_iters", type=int, default=5,
                         help="Number of training iterations")
@@ -127,14 +128,30 @@ def main():
     print("NVTE_FUSED_ATTN =", os.environ.get("NVTE_FUSED_ATTN"))
     print("NVTE_UNFUSED_ATTN =", os.environ.get("NVTE_UNFUSED_ATTN"))
 
-    logger_cfg = LoggerConfig(
-        log_interval=100, 
-        # tensorboard_dir=tensorboard_dir, 
-        # log_timers_to_tensorboard=True, 
-        wandb_project='gpt-oss-tdc', 
-        wandb_entity='reasonv', 
-        wandb_exp_name='gpt-oss-tdc-sft', 
+    sample_count_dict = count_train_valid_test_samples(Path(args.data_root))
+    train_samples = sample_count_dict['training.jsonl']
+    # valid_samples = sample_count_dict['valid']
+    # test_samples = sample_count_dict['test']
+
+    one_epoch_iters = train_samples // args.global_batch_size
+
+    # logger_cfg = LoggerConfig(
+    #     log_interval=1, 
+    #     # tensorboard_dir=tensorboard_dir, 
+    #     # log_timers_to_tensorboard=True, 
+    #     wandb_project='gpt-oss-tdc', 
+    #     wandb_entity='reasonv', 
+    #     wandb_exp_name='gpt-oss-tdc-sft', 
+    # )
+
+    opt_config, scheduler = distributed_fused_adam_with_cosine_annealing(
+        lr_warmup_iters=int(one_epoch_iters * 0.05),
+        lr_decay_iters=int(one_epoch_iters * 0.95),
+        max_lr=5e-6,
+        min_lr=0.0,
     )
+    
+    # args.train_iters = one_epoch_iters
 
     # data_cfg = MockGPTDatasetConfig(random_seed=42,
     #                                 sequence_length=1024,
@@ -148,8 +165,8 @@ def main():
         dataset_root=args.data_root,
         seq_length=args.seq_length,
         dataloader_type="batch",
-        do_validation=True,
-        do_test=True,
+        do_validation=False,
+        do_test=False,
         memmap_workers=20,
         dataset_kwargs=dict(
             answer_only_loss=True,
@@ -177,8 +194,26 @@ def main():
         use_null_tokenizer=False,
     )
     config = gpt_oss_20b_pretrain_config(dataset=data_cfg, **kwargs)
+    attn_mode = AttnBackend.unfused
+    config.model.attention_backend = attn_mode  # 可能会支持 FP8 (fused) / auto 用
 
-    config.logger = logger_cfg
+    # config.logger.use_wandb = True
+    config.logger.wandb_project = 'gpt-oss-tdc'
+    config.logger.wandb_entity = 'reasonv'
+    config.logger.wandb_exp_name = 'gpt-oss-tdc-sft'
+    config.logger.log_interval = 1
+    config.logger.log_timers_to_tensorboard = True
+
+    config.optimizer = opt_config
+    config.scheduler = scheduler
+
+    config.train.train_iters = one_epoch_iters
+    config.train.global_batch_size = args.global_batch_size
+    # config.train.eval_iters = args.eval_iters
+    # config.train.eval_interval = args.eval_interval
+
+    config.checkpoint.save_interval = one_epoch_iters // 2 + 2
+
 
     config.model.seq_length = args.seq_length  # TODO: 注意这里要和 dataset 的长度一样
 
