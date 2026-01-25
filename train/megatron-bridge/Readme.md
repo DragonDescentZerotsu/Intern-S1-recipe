@@ -27,6 +27,23 @@ docker run --rm -it -w /workdir -v $(pwd):/workdir \
   --ipc=host \
   nishikigi/updated-nemo:25.09-main-v3
 ```
+### To share more content between docker container and the host:
+```bash
+P="$(pwd)"
+docker run --rm -it \
+  -u "$(id -u)":"$(id -g)" \
+  -v /data2/tianang:/data2/tianang \
+  -v /etc/passwd:/etc/passwd:ro \
+  -v /etc/group:/etc/group:ro \
+  -v "$HOME":"$HOME" \
+  -v "$P":"$P" \
+  -e HOME="$HOME" \
+  -w "$P" \
+  --entrypoint bash \
+  --gpus all \
+  --ipc=host \
+  nishikigi/updated-nemo:25.09-main-v3
+```
 
 
 ## 2. Download data (TDC train/valid/test)
