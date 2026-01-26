@@ -62,7 +62,7 @@ def parse_args():
                         help="Whether to save the Megatron model")
     # Data paths
     parser.add_argument("--data_root", type=str,
-                        default=str(current_dir.parent.parent / 'DataPrepare/SFT_data/SFT_data/GPT/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'),
+                        default=str(current_dir.parent.parent / 'DataPrepare/SFT_data/SFT_data/GPT/gpt-oss-20b/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'),
                         help="Root directory for training data")
 
     # Model configuration

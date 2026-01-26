@@ -20,7 +20,7 @@ from megatron.bridge.training.initialize import destroy_global_state
 from megatron.core.transformer.enums import AttnBackend
 from megatron.bridge.recipes.utils.optimizer_utils import distributed_fused_adam_with_cosine_annealing
 
-from megatron.bridge.recipes.gpt_oss import gpt_oss_20b_pretrain_config
+from megatron.bridge.recipes.nemotronh import nemotron_3_nano_finetune_config
 
 current_dir = Path(__file__).parent.resolve()
 
@@ -78,7 +78,7 @@ def parse_args():
                         help="Tensor model parallel size (default: 4 for MoE, 1 otherwise)")
     parser.add_argument("--pp", type=int, default=1,
                         help="Pipeline model parallel size")
-    parser.add_argument("--ep", type=int, default=8,
+    parser.add_argument("--ep", type=int, default=4,
                         help="Expert model parallel size (default: 4 for MoE, 1 otherwise)")
     parser.add_argument("--etp", type=int, default=1,
                         help="Expert tensor parallel size")
@@ -188,24 +188,29 @@ def main():
     )
     kwargs = dict(
         pipeline_model_parallel_size=args.pp,
-        expert_model_parallel_size=args.ep,
+        expert_model_parallelism=args.ep,
 
         dir=args.megatron_model_save_dir,
-        use_null_tokenizer=False,
+        # use_null_tokenizer=False,
     )
-    config = gpt_oss_20b_pretrain_config(dataset=data_cfg, **kwargs)
+    config = nemotron_3_nano_finetune_config(**kwargs)
+
+    config.dataset = data_cfg
+    
     attn_mode = AttnBackend.unfused
     config.model.attention_backend = attn_mode  # 可能会支持 FP8 (fused) / auto 用
 
     # config.logger.use_wandb = True
-    config.logger.wandb_project = 'gpt-oss-tdc'
+    config.logger.wandb_project = 'nemotron-30B-tdc'
     config.logger.wandb_entity = 'reasonv'
-    config.logger.wandb_exp_name = 'gpt-oss-tdc-sft'
+    config.logger.wandb_exp_name = 'nemotron-30B-tdc-sft'
     config.logger.log_interval = 1
     config.logger.log_timers_to_tensorboard = True
 
     config.optimizer = opt_config
     config.scheduler = scheduler
+
+    config.peft=None
 
     config.train.train_iters = one_epoch_iters
     config.train.global_batch_size = args.global_batch_size

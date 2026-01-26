@@ -34,17 +34,18 @@ def main():
     
     # Configuration
     DATA_STYLE = 'GPT'  # 'GPT' or 'Alpaca'
-    model_name = "openai/gpt-oss-20b"
+    model_name = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16"
                  # "openai/gpt-oss-20b"
                  # "internlm/Intern-S1-mini"
+                 # "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16"
     ENABLE_THINKING = False
 
     # Output details
     if DATA_STYLE == 'Alpaca':
-        output_subdir = 'Alpaca/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'
+        output_subdir = f'Alpaca/{model_name.split("/")[-1]}/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'
         output_filename = 'TDC_SFT_data_scaffold_wo_herg-c_ToxCast_butkiewicz.jsonl'
     elif DATA_STYLE == 'GPT':
-        output_subdir = 'GPT/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'
+        output_subdir = f'GPT/{model_name.split("/")[-1]}/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'
         output_filename = 'training.jsonl'
         
         # Load tokenizer for GPT format
@@ -123,6 +124,16 @@ def main():
                                     # enable_thinking=ENABLE_THINKING
                                 )
                                 split_mark = 'assistant<|channel|>final<|message|>'
+                                input_text = rendered.split(split_mark)[0] + split_mark
+                                answer_text = rendered.split(split_mark)[1]
+                            elif model_name == "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16":
+                                rendered = tokenizer.apply_chat_template(
+                                    message,
+                                    tokenize=False,
+                                    add_generation_prompt=False,
+                                    enable_thinking=ENABLE_THINKING
+                                )
+                                split_mark = 'assistant\n<think></think>'
                                 input_text = rendered.split(split_mark)[0] + split_mark
                                 answer_text = rendered.split(split_mark)[1]
                             data_entry = {"input": input_text, "output": answer_text}

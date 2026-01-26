@@ -2,7 +2,7 @@
 
 ## 1. Pull my latest modified NeMo docker image
 ### On slurm cluster, use:
-```bash
+<!-- ```bash
 srun --partition=dgx-b200 \
      --pty \
      --nodes=1 \
@@ -14,7 +14,7 @@ srun --partition=dgx-b200 \
      --container-mounts=$(pwd):/workdir,/vast:/vast:rw \
      --container-workdir=/workdir \
      bash
-```
+``` -->
 ```bash
 P="$(pwd)"
 
@@ -26,6 +26,23 @@ srun --partition=dgx-b200-old-driver \
      --mem=512G \
      --container-writable \
      --container-image=docker://nishikigi/updated-nemo:25.09-main-v3 \
+     --container-mounts=$P:$P,$HOME:$HOME,/vast:/vast:rw \
+     --container-workdir="$P" \
+     --export=ALL,HOME="$HOME" \
+     bash -l
+```
+### For Nemotron 3 Nano, use a specialized docker image
+```bash
+P="$(pwd)"
+
+srun --partition=dgx-b200-old-driver \
+     --pty \
+     --nodes=1 \
+     --gpus=8 \
+     --cpus-per-task=64 \
+     --mem=512G \
+     --container-writable \
+     --container-image=docker://nvcr.io/nvidia/nemo:25.11.nemotron_3_nano \
      --container-mounts=$P:$P,$HOME:$HOME,/vast:/vast:rw \
      --container-workdir="$P" \
      --export=ALL,HOME="$HOME" \
@@ -60,7 +77,7 @@ docker run --rm -it \
   --ipc=host \
   nishikigi/updated-nemo:25.09-main-v3
 ```
-### For Nemotron 3 Nano
+### For Nemotron 3 Nano, use a specialized docker image
 ```bash
 P="$(pwd)"
 docker run --rm -it \
@@ -87,11 +104,11 @@ python utils/HF_data_download.py
 ## 3. Train the big MoE model with Megatron Bridge
 1. Step 1, convert HF model to Megatron Version and save. (**this will finally stop with Error of CUDA OOM, ignore it**)
 ```bash
-CUDA_DEVICE_MAX_CONNECTIONS=1 torchrun --nproc_per_node 8 megatron-bridge/bridge-finetune-s1-mini.py \
+CUDA_DEVICE_MAX_CONNECTIONS=1 torchrun --nproc_per_node 8 train/megatron-bridge/bridge-finetune-s1-mini.py \
     --hf_model_save_dir Kiria-Nozan/Intern-S1-Qwen-3-MoE \
     --save_megatron_model
 ```
 2. Step 2, train model with Megatron Bridge.
 ```bash
-CUDA_DEVICE_MAX_CONNECTIONS=1 torchrun --nproc_per_node 8 megatron-bridge/bridge-finetune-s1-mini.py
+CUDA_DEVICE_MAX_CONNECTIONS=1 torchrun --nproc_per_node 8 train/megatron-bridge/bridge-finetune-s1-mini.py
 ```
