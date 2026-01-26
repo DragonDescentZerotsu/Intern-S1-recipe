@@ -1,6 +1,6 @@
 ## 1. Prepare Data
 
-### To pre-process and store the TDC training and test datasets and populate [DataPrepare/TDC_test_prompts_label_scaffold](DataPrepare/TDC_test_prompts_label_scaffold) and [DataPrepare/TDC_train_prompts_label_scaffold](DataPrepare/TDC_train_prompts_label_scaffold). 
+### To pre-process and cache the TDC training and test datasets and populate [DataPrepare/TDC_test_prompts_label_scaffold](DataPrepare/TDC_test_prompts_label_scaffold) and [DataPrepare/TDC_train_prompts_label_scaffold](DataPrepare/TDC_train_prompts_label_scaffold). 
 
 run the following commands:
 ```bash
