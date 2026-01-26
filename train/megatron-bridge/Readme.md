@@ -60,7 +60,23 @@ docker run --rm -it \
   --ipc=host \
   nishikigi/updated-nemo:25.09-main-v3
 ```
-
+### For Nemotron 3 Nano
+```bash
+P="$(pwd)"
+docker run --rm -it \
+  -u "$(id -u)":"$(id -g)" \
+  -v /data2/tianang:/data2/tianang \
+  -v /etc/passwd:/etc/passwd:ro \
+  -v /etc/group:/etc/group:ro \
+  -v "$HOME":"$HOME" \
+  -v "$P":"$P" \
+  -e HOME="$HOME" \
+  -w "$P" \
+  --entrypoint bash \
+  --gpus all \
+  --ipc=host \
+  nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
+```
 
 ## 2. Download data (TDC train/valid/test)
 ### 2.1 Download data from HuggingFace
