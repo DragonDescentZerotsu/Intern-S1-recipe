@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=intern-s1-mini___TDC-scaffold-binary-SFT-wo-herg-c_ToxCast_butkiewicz
+#SBATCH --job-name=Qwen3-8B___TDC-scaffold-binary-SFT-wo-herg-c_ToxCast_butkiewicz
 #SBATCH --partition=dgx-b200-old-driver
 #SBATCH --gpus=8
 #SBATCH --ntasks=1
@@ -38,4 +38,4 @@ cd /vast/projects/xia6/apex-gen/tianang/projects/Intern-S1
 # 用 srun 启动，确保资源绑定到该作业步
 #srun python intern-vllm-A100-CoT-multi-sample.py
 # srun --gpus=8 --ntasks=1 --cpus-per-task=32 llamafactory-cli train train_config/llamafactory-intern-s1-mini-sft.yaml
-llamafactory-cli train train/train_config/llamafactory-TDC-SFT-binary-wo-herg-c_ToxCast_butkiewicz-intern-s1-mini.yaml
+llamafactory-cli train train/train_config/llamafactory-TDC-SFT-binary-wo-herg-c_ToxCast_butkiewicz-Qwen3-8B.yaml
