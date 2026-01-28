@@ -18,7 +18,7 @@ from vllm import LLM, SamplingParams
 from vllm.lora.request import LoRARequest
 import torch
 import json
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import f1_score, classification_report, roc_auc_score
 from tqdm import tqdm
 from math import isfinite
 import numpy as np
@@ -33,10 +33,10 @@ logger = logging.getLogger(__name__)
 
 
 def get_args():
-    parser = argparse.ArgumentParser(description='Test TDC tasks with vLLM using preprocessed data')
+    parser = argparse.ArgumentParser(description='Test TDC tasks with vLLM using preprocessed data (Merged F1 & AUROC)')
 
     parser.add_argument('--model-path', type=str,
-                        default='nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16',  # "checkpoints/Intern-S1-mini/full/sft-distill_DeepSeek_V32-TDC-train-set_less_save_interval/checkpoint-3000" # TODO: model name
+                        default='Kiria-Nozan/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16-1-epoch-TDC-binary-wo-hergC_ToxCast_butkiewicz',  # Default from F1 script
                         help='Path to the model checkpoint')
                         # internlm/Intern-S1-mini
                         # Qwen/Qwen3-8B
@@ -44,6 +44,7 @@ def get_args():
                         # mistralai/Mistral-7B-Instruct-v0.3
                         # deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
                         # google/gemma-2-9b-it
+                        # nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16
     parser.add_argument('--use-lora', action='store_true', help='Use LoRA adapter')
     parser.add_argument('--lora-path', type=str,
                         default="checkpoints/Intern-S1-mini/lora/sft/checkpoint-180000",
@@ -62,9 +63,9 @@ def get_args():
     parser.add_argument('--max-num-seqs', type=int, default=512, help='Max number of sequences')
     parser.add_argument('--max-logprobs', type=int, default=1024, help='Max logprobs to return')
     # parser.add_argument('--device', type=str, default='2', help='CUDA device ID')
-    parser.add_argument('--strip-smiles-tags', action='store_false', help='Remove <SMILES> and </SMILES> from prompts before inference') # TODO: 去掉 <SMILES>
+    parser.add_argument('--strip-smiles-tags', action='store_false', help='Remove <SMILES> and </SMILES> from prompts before inference') 
     parser.add_argument('--log-file', action='store_false', help='Enable logging to file')
-    parser.add_argument('--log-file-name', type=str, default="single_token_vllm_suffix_scoring_NVIDIA-Nemotron-3-Nano-30B-A3B-BF16_{t_stamp}.log", help='Log file name pattern')  # TODO: log file name
+    parser.add_argument('--log-file-name', type=str, default="single_token_vllm_suffix_scoring_NVIDIA-Nemotron-3-Nano-30B-A3B-BF16-finetuned_{t_stamp}.log", help='Log file name pattern')
 
     args = parser.parse_args()
     return args
@@ -140,26 +141,32 @@ def to_prompt_user_block(text: str, tokenizer, model_name: str = None) -> str:
     messages = []
     kwargs = dict(tokenize=False, add_generation_prompt=True)
 
-    if 'Nemotron' in model_name:
+    if model_name and 'Nemotron' in model_name and 'v2' in model_name:
+        # kwargs["enable_thinking"] = False
         messages.append({"role": "system", "content": "/no_think"})
         messages.append({"role": "user", "content": text})
-    elif 'deepseek' in model_name:
+    elif model_name and 'deepseek' in model_name:
         kwargs['add_generation_prompt'] = True
         kwargs["enable_thinking"] = False
         messages.append({"role": "user", "content": text})
-    elif "Qwen" in model_name or "Intern" in model_name: # Simple heuristic example, adjust as needed or keep as just passing it through
+    elif model_name and ("Qwen" in model_name or "Intern" in model_name): # Simple heuristic example, adjust as needed or keep as just passing it through
         kwargs["enable_thinking"] = False
         messages.append({"role": "user", "content": text})
-    elif "Mistral" in model_name:
+    elif model_name and "Mistral" in model_name:
         messages.append({"role": "user", "content": text})
-    elif "gemma" in model_name:
+    elif model_name and "gemma" in model_name:
         # ✅ Gemma2 instruct: 直接 user + add_generation_prompt=True
         # chat template 会自动追加 <start_of_turn>model ... 作为生成位点
         messages.append({"role": "user", "content": text})
+    elif model_name and 'Nemotron-3' in model_name:
+        kwargs["enable_thinking"] = False
+        # messages.append({"role": "system", "content": "/no_think"})
+        messages.append({"role": "user", "content": text})
+    else:
+        # Fallback
+        kwargs["enable_thinking"] = False
+        messages.append({"role": "user", "content": text})
     
-    # Original logic was specifically disabling it, let's keep it safe but allow future expansion
-   
-
     return tokenizer.apply_chat_template(messages, **kwargs)
 
 
@@ -284,7 +291,7 @@ def main():
     # suffix 候选：尽量覆盖常见格式（空格/换行）
     # 注意：这里的 suffix 是加在 assistant 生成位点之后，不会和 "Answer:" 发生 token merge 的坑
     A_SUFFIXES = ["(A"] if 'deepseek' not in args.model_path else ["\n</think>\n(A"]#, " (A)", "\n(A)", "\n (A)"]
-    B_SUFFIXES = ["(B"] if 'deepseek' not in args.model_path else ["\n</think>\n(B"]#, " (B)", "\n(B)", "\n (B)"]B
+    B_SUFFIXES = ["(B"] if 'deepseek' not in args.model_path else ["\n</think>\n(B"]#, " (B)", "\n(B)", "\n (B)"]
     # ===================== 数据加载 =====================
     data_path = args.data_dir
     if not data_path.exists():
@@ -387,40 +394,66 @@ def main():
                 else:
                     bestB[idx] = lp if bestB[idx] is None else max(bestB[idx], lp)
 
-            # ===================== 聚合：p(B)=sigmoid(scoreB-scoreA) =====================
-            probs, valid_labels, valid_idx = [], [], []
+            # ===================== 聚合：Calculations for Both F1 and AUROC =====================
+            preds = []
+            probs_for_B = []
+            valid_labels_f1 = []
+            valid_labels_auc = [] # Generally same as f1, but kept for clarity if logic diverges (it won't here for valid samples)
+            
+            # Temporary storage to align them
+            valid_indices = []
 
             for i in range(len(base_prompts)):
                 lpA, lpB = bestA[i], bestB[i]
                 if lpA is None or lpB is None:
                     continue
+                
+                # F1 Logic: (A) -> 0, (B) -> 1
+                # If lpA > lpB -> choose A (0)
+                # Else -> choose B (1)
+                if lpA > lpB:
+                    pred = 0
+                else:
+                    pred = 1
+                
+                # AUROC Logic: p(B) = sigmoid(scoreB - scoreA)
                 pB = float(torch.sigmoid(torch.tensor(lpB - lpA)))
+                
                 if isfinite(pB):
-                    probs.append(pB)
-                    valid_labels.append(int(test_labels[i]))
-                    valid_idx.append(i)
+                    preds.append(pred)
+                    probs_for_B.append(pB)
+                    valid_labels_f1.append(int(test_labels[i]))
+                    valid_indices.append(i)
 
             # ===================== 评估指标计算 =====================
-            if len(probs) > 0:
+            if len(valid_indices) > 0:
                 logger.info("\n" + "=" * 80)
                 logger.info(f"{task_name} EVALUATION RESULTS")
                 logger.info("=" * 80)
-                logger.info('Score: p = sigmoid( score_B - score_A ), where score is SUM of suffix token logprobs')
-                logger.info(f"Valid samples: {len(valid_idx)}/{len(base_prompts)}")
+                logger.info(f"Valid samples: {len(valid_indices)}/{len(base_prompts)}")
 
-                # 计算 AUROC
-                if len(set(valid_labels)) > 1:
-                    auroc = roc_auc_score(valid_labels, probs)
-                    logger.info(f"AUROC: {auroc:.4f}")
-                    all_results[group][task_name] = auroc
+                # --- F1 Report ---
+                logger.info(f"Classification Report:\n{classification_report(valid_labels_f1, preds, digits=4)}")
+                f1_val = f1_score(valid_labels_f1, preds, average='macro')  # average='binary' for regular F1 score
+                logger.info(f"F1 Score: {f1_val:.4f}")
+
+                # --- AUROC Report ---
+                if len(set(valid_labels_f1)) > 1:
+                    auroc_val = roc_auc_score(valid_labels_f1, probs_for_B)
+                    logger.info(f"AUROC: {auroc_val:.4f}")
                 else:
                     logger.warning("Cannot compute AUROC: only one class in valid samples.")
-                    all_results[group][task_name] = None
+                    auroc_val = None
+
+                all_results[group][task_name] = {
+                    'f1': f1_val,
+                    'auroc': auroc_val
+                }
 
                 logger.info("=" * 80 + "\n")
             else:
                 logger.warning(f"No valid samples for {task_name}")
-                all_results[group][task_name] = None
+                all_results[group][task_name] = {'f1': None, 'auroc': None}
 
     # ===================== 打印汇总结果 =====================
     logger.info("\n" + "=" * 80)
@@ -434,17 +467,30 @@ def main():
             continue
         logger.info(f"\n{group} Tasks:")
         logger.info("-" * 40)
+        logger.info(f"{'Task Name':<40} | {'F1':<10} | {'AUROC':<10}")
+        logger.info("-" * 66)
 
+        group_f1s = []
         group_aurocs = []
-        for task_name, auroc in all_results[group].items():
-            if auroc is not None:
-                logger.info(f"  {task_name}: {auroc:.4f}")
-                group_aurocs.append(auroc)
-            else:
-                logger.info(f"  {task_name}: N/A")
 
-        if group_aurocs:
-            logger.info(f"  Average: {np.mean(group_aurocs):.4f}")
+        for task_name, scores in all_results[group].items():
+            f1 = scores['f1']
+            auroc = scores['auroc']
+            
+            f1_str = f"{f1:.4f}" if f1 is not None else "N/A"
+            auroc_str = f"{auroc:.4f}" if auroc is not None else "N/A"
+            
+            logger.info(f"{task_name:<40} | {f1_str:<10} | {auroc_str:<10}")
+
+            if f1 is not None:
+                group_f1s.append(f1)
+            if auroc is not None:
+                group_aurocs.append(auroc)
+
+        logger.info("-" * 66)
+        avg_f1 = f"{np.mean(group_f1s):.4f}" if group_f1s else "N/A"
+        avg_auroc = f"{np.mean(group_aurocs):.4f}" if group_aurocs else "N/A"
+        logger.info(f"{'Average':<40} | {avg_f1:<10} | {avg_auroc:<10}")
 
     logger.info("=" * 80 + "\n")
 

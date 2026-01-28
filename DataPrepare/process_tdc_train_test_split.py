@@ -163,11 +163,11 @@ def main():
             ]
         elif group_name == 'HTS':
             task_names = [
+                'HIV', 'SARSCoV2_3CLPro_Diamond', 'SARSCoV2_Vitro_Touret', 
                 'cav3_t-type_calcium_channels_butkiewicz', 'tyrosyl-dna_phosphodiesterase_butkiewicz',
-                'HIV', 'SARSCoV2_3CLPro_Diamond', 'SARSCoV2_Vitro_Touret', 'orexin1_receptor_butkiewicz',
                 'm1_muscarinic_receptor_agonists_butkiewicz', 'm1_muscarinic_receptor_antagonists_butkiewicz',
                 'potassium_ion_channel_kir2.1_butkiewicz', 'kcnq2_potassium_channel_butkiewicz',
-                'choline_transporter_butkiewicz', 'serine_threonine_kinase_33_butkiewicz'
+                'orexin1_receptor_butkiewicz', 'choline_transporter_butkiewicz', 'serine_threonine_kinase_33_butkiewicz'
             ]
         elif group_name == 'Develop':
             task_names = ['SAbDab_Chen']

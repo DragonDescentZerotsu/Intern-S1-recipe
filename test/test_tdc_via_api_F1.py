@@ -60,16 +60,17 @@ def get_args():
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'Other', 'all'],
                         help='Task groups to run')
     parser.add_argument('--n-samples', type=int, default=1, help='Number of samples per query')  # sample only once for F1 score
-    parser.add_argument('--api-base', type=str, default="http://localhost:8005/v1", help='API Base URL')  # TODO: port number | local model: http://localhost:8000/v1 | openrouter: https://openrouter.ai/api/v1 ｜ deepseek: https://api.deepseek.com/v1
+    parser.add_argument('--api-base', type=str, default="http://localhost:8003/v1", help='API Base URL')  # TODO: port number | local model: http://localhost:8000/v1 | openrouter: https://openrouter.ai/api/v1 ｜ deepseek: https://api.deepseek.com/v1
     parser.add_argument('--api-key', type=str, default="EMPTY", help='API Key')  # TODO: API Key | local model: "EMPTY" | openrouter: os.environ["OPENROUTER_API_KEY_Haydn"], os.environ["OPENROUTER_API_KEY_Mark"] | deepseek: os.environ["DEEPSEEK_API_KEY"]
     parser.add_argument('--model', type=str, default="", help='Model name (optional, will query server if empty)')  # TODO: model name | local model: "" | openrouter: deepseek/deepseek-v3.2; openai/gpt-5.2; openai/gpt-5-mini | deepseek: deepseek-chat
-    parser.add_argument('--num-processes', type=int, default=64, help='Number of parallel workers')
+    parser.add_argument('--num-processes', type=int, default=64, help='Number of parallel workers')  # 64
     parser.add_argument('--data-dir', type=Path, default=current_dir.parent / "DataPrepare/TDC_test_prompts_label_scaffold", help='Directory containing processed test data')
     parser.add_argument('--thinking', action='store_false', help='Enable thinking parameter for DeepSeek models')  # TODO: 注意这里 thinking 到底是开了还是没开
     parser.add_argument('--enable-tools', action='store_false', help='Enable tool calling')  # TODO: 注意是否使用了 tool ， debug 可能关了
     parser.add_argument('--log-file', action='store_false', help='Save logs to file')  # TODO: 注意这里 log-file 到底是开了还是没开
-    parser.add_argument('--log-file-name', type=str, default="test_TDC_CoT_with_tools_intern-s1-mini_{t_stamp}_F1_5.log", help='logs file name')   # TODO: log file name
+    parser.add_argument('--log-file-name', type=str, default="Tools_intern-s1-mini-SFTed-on-all-TDC-binary-then-DeepSeek-Distill_{t_stamp}_F1_3.log", help='logs file name')   # TODO: log file name
     parser.add_argument('--langfuse', action='store_true', help='Save traces to langfuse')  # TODO: 注意这里 langfuse trace 到底是开了还是没开
+    parser.add_argument('--max-retry', type=int, default=4, help='Max retries for answer parsing failure')
     
     args = parser.parse_args()
     return args
@@ -81,7 +82,7 @@ def init_worker(api_base, api_key, use_langfuse, task_name):
         base_url=api_base,
         # 让问题暴露得更明显，避免一直重试掩盖根因
         max_retries=1,          # 或 1/2
-        timeout=180.0           # 视你模型速度调整
+        timeout=60.0           # 视你模型速度调整
     )
 
     _RUN_TURN = get_run_turn(use_langfuse, task_name)
@@ -372,12 +373,12 @@ def run_turn_base(client, messages, model_name, thinking=False, tools=None, use_
 
 def worker_process_sample(args):
     """
-    Args: (index, text, label_dummy, api_base, api_key, model_name, thinking, enable_tools, task_name)
+    Args: (index, text, label_dummy, api_base, api_key, model_name, thinking, enable_tools, task_name, max_retry)
     Returns: (index, prediction_int_or_None)
     """
     global _CLIENT, _RUN_TURN
 
-    index, text, _, api_base, api_key, model_name, thinking, enable_tools, task_name, use_langfuse = args
+    index, text, _, api_base, api_key, model_name, thinking, enable_tools, task_name, use_langfuse, max_retry = args
     
     # client = OpenAI(
     #     api_key=api_key,
@@ -392,24 +393,33 @@ def worker_process_sample(args):
     if enable_tools:
         tools = get_tools_for_task(task_name)
     
-    try:
-        response_text, tool_count = _RUN_TURN(client, messages, model_name, thinking, tools, use_langfuse)
-        if response_text:
-            # parsing logic
-            # Ensure extract_answer and parse_answer are available
-            from utils.TDC_answer_parser import extract_answer, parse_answer
+    for attempt in range(max_retry):
+        try:
+            # We need to make a copy of messages because _RUN_TURN might append to it (though in current impl it appends, but if we retry we want fresh start? 
+            # Actually _RUN_TURN appends to the passed list. If we retry, we should reset messages to original state or just pass a fresh copy.
+            # unique messages for each attempt to avoid accumulating history from failed attempts if that's desired?
+            # Usually for retry we want a fresh start.
+            current_messages = [m.copy() for m in messages]
             
-            ans_txt, fmt_ok = extract_answer(response_text)
-            prediction = parse_answer(ans_txt, fmt_ok, think_is_on=thinking) # Assuming thinking affects parsing logic?
-            # Note: parse_answer signature might vary. 
-            # In skin-reaction.py: parse_answer(ans_txt, fmt_ok, think_is_on=True)
-            
-            return (index, prediction, tool_count)
-    except Exception as e:
-        # logger.error(f"Worker error: {e}")
-        pass
+            response_text, tool_count = _RUN_TURN(client, current_messages, model_name, thinking, tools, use_langfuse)
+            if response_text:
+                # parsing logic
+                # Ensure extract_answer and parse_answer are available
+                from utils.TDC_answer_parser import extract_answer, parse_answer
+                
+                ans_txt, fmt_ok = extract_answer(response_text)
+                prediction = parse_answer(ans_txt, fmt_ok, think_is_on=thinking) # Assuming thinking affects parsing logic?
+                # Note: parse_answer signature might vary. 
+                # In skin-reaction.py: parse_answer(ans_txt, fmt_ok, think_is_on=True)
+                
+                if prediction is not None:
+                    return (index, prediction, tool_count)
+        except Exception as e:
+            # logger.error(f"Worker error attempt {attempt}: {e}")
+            pass
         
     return (index, None, 0)
+
 
 def load_tasks_map(data_dir):
     """
@@ -424,9 +434,9 @@ def load_tasks_map(data_dir):
             # 'ClinTox.jsonl',  # 297
             # 'AMES.jsonl',  # 1457
             # 'Tox21.jsonl',  # 15584
-            # 'herg_central_hERG_inhib.jsonl',  # 61379
+            # 'herg_central_hERG_inhib.jsonl',  # 61379    leave out
             # -----------------------------------------
-            # 'ToxCast.jsonl'  # 307282
+            # 'ToxCast.jsonl'  # 307282    leave out
         ],
         'ADME': [
             # 'PAMPA_NCATS.jsonl',  # 408
@@ -439,16 +449,16 @@ def load_tasks_map(data_dir):
             # 'CYP3A4_Substrate_CarbonMangels.jsonl',  # 135
             # 'CYP1A2_Veith.jsonl',  # 2517
             # 'CYP2C19_Veith.jsonl',  # 2534
-            # 'CYP2C9_Veith.jsonl',  # 2419
-            # 'CYP2D6_Veith.jsonl',  # 2626
-            # 'CYP3A4_Veith.jsonl',  # 2467
+            'CYP2C9_Veith.jsonl',  # 2419
+            'CYP2D6_Veith.jsonl',  # 2626
+            'CYP3A4_Veith.jsonl',  # 2467
         ],
         'HTS': [
-            'HIV.jsonl',  # 8225
-            'SARSCoV2_3CLPro_Diamond.jsonl',  # 176
-            'SARSCoV2_Vitro_Touret.jsonl',  # 298
+            # 'HIV.jsonl',  # 8225
+            # 'SARSCoV2_3CLPro_Diamond.jsonl',  # 176
+            # 'SARSCoV2_Vitro_Touret.jsonl',  # 298
             # -----------------------------------------
-            # 'butkiewicz.jsonl'  # 401997
+            # 'butkiewicz.jsonl'  # 401997    leave out
         ],
         # 'Develop': ['SAbDab_Chen.jsonl'],  # 482
         'PPI': ['HuRI.jsonl'],  # 20282
@@ -549,7 +559,7 @@ def main():
             # tasks[i] = (index, text, label, ...)
             worker_tasks = []
             for idx, item in enumerate(raw_data):
-                task_tuple = (idx, item['text'], item['Y'], args.api_base, args.api_key, args.model, args.thinking, args.enable_tools, task_name, args.langfuse)
+                task_tuple = (idx, item['text'], item['Y'], args.api_base, args.api_key, args.model, args.thinking, args.enable_tools, task_name, args.langfuse, args.max_retry)
                 for _ in range(args.n_samples):
                     worker_tasks.append(task_tuple)
             
