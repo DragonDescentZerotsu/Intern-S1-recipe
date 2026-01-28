@@ -42,7 +42,9 @@ def main():
 
     # Output details
     if DATA_STYLE == 'Alpaca':
-        output_subdir = f'Alpaca/{model_name.split("/")[-1]}/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'
+        # Alpaca style is for llamafactory use, all the models should be the same 
+        # output_subdir = f'Alpaca/{model_name.split("/")[-1]}/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'
+        output_subdir = f'Alpaca/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'
         output_filename = 'TDC_SFT_data_scaffold_wo_herg-c_ToxCast_butkiewicz.jsonl'
     elif DATA_STYLE == 'GPT':
         output_subdir = f'GPT/{model_name.split("/")[-1]}/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'
