@@ -9,8 +9,7 @@
     },
     "Bioavailability_Ma": {
         "num_samples": 448,
-        "split_method": "scaffold",
-        "match": false
+        "split_method": "scaffold"
     },
     "BBB_Martins": {
         "num_samples": 1421,
@@ -93,7 +92,7 @@
         "split_method": "random"
     },
     "HuRI": {
-        "num_samples": 50699,
+        "num_samples": 50751,
         "split_method": "cold_split:{'column_name': ['Protein1', 'Protein2']}"
     },
     "Weber": {
