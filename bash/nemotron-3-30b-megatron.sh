@@ -19,6 +19,14 @@ echo "Node: $SLURM_NODELIST"
 echo "Workdir: $P"
 echo "Start time: $(date)"
 
+export ENROOT_BASE=/vast/projects/xia6/apex-gen/tianang/enroot_cache
+
+export ENROOT_CACHE_PATH=$ENROOT_BASE/cache
+export ENROOT_DATA_PATH=$ENROOT_BASE/data
+export ENROOT_RUNTIME_PATH=$ENROOT_BASE/runtime
+export TMPDIR=$ENROOT_BASE/tmp
+export XDG_CACHE_HOME=$ENROOT_BASE/xdg_cache
+
 # 在 batch 里用 srun 进入容器并执行命令
 srun \
   --container-writable \
@@ -38,7 +46,7 @@ srun \
     conda deactivate
     cd /vast/projects/xia6/apex-gen/tianang/projects/Intern-S1
     
-    torchrun --nproc_per_node 8 train/megatron-bridge/bridge-finetune-nemotron-3-30b.py
+    torchrun --nproc_per_node 8 train/megatron-bridge/bridge-finetune-nemotron-3-30B.py
   "
 
 echo "End time: $(date)"

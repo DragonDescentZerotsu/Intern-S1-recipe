@@ -54,6 +54,7 @@ data/
 !/checkpoints/convert_to_hub.py
 # !/checkpoints/**/*.md
 !/checkpoints/**/*.gitkeep
+!checkpoints/megatron/*.py
 
 # excluding PyCharm cache
 __pycache__/

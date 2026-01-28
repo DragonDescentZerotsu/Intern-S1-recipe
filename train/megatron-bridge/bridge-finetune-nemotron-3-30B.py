@@ -56,13 +56,13 @@ def parse_args():
                         default=str(current_dir.parent / "checkpoints" / "megatron" / "hf_version" / "intern_s1_text_llm"),
                         help="HuggingFace model save directory")
     parser.add_argument("--megatron_model_save_dir", type=str,
-                        default=str(current_dir.parent.parent / "checkpoints" / "megatron" / "megatron_version" / "gpt-oss-20b" / 'TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'),
+                        default=str(current_dir.parent.parent / "checkpoints" / "megatron" / "megatron_version" / "nemotron-3-30B" / 'TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'),
                         help="Megatron model save directory")
     parser.add_argument("--save_megatron_model", action="store_true",
                         help="Whether to save the Megatron model")
     # Data paths
     parser.add_argument("--data_root", type=str,
-                        default=str(current_dir.parent.parent / 'DataPrepare/SFT_data/SFT_data/GPT/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'),
+                        default=str(current_dir.parent.parent / 'DataPrepare/SFT_data/SFT_data/GPT/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'),
                         help="Root directory for training data")
 
     # Model configuration
@@ -78,7 +78,7 @@ def parse_args():
                         help="Tensor model parallel size (default: 4 for MoE, 1 otherwise)")
     parser.add_argument("--pp", type=int, default=1,
                         help="Pipeline model parallel size")
-    parser.add_argument("--ep", type=int, default=4,
+    parser.add_argument("--ep", type=int, default=8,
                         help="Expert model parallel size (default: 4 for MoE, 1 otherwise)")
     parser.add_argument("--etp", type=int, default=1,
                         help="Expert tensor parallel size")
@@ -186,6 +186,13 @@ def main():
         #     # packed_metadata_path=pack_root / "packed_meta_1024.json",
         # )
     )
+    tokenizer_cfg = TokenizerConfig(
+        tokenizer_type="HuggingFaceTokenizer",
+        tokenizer_model="nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16",
+        hf_tokenizer_kwargs={"trust_remote_code": True,
+                             # "use_fast": True
+                             },
+    )
     kwargs = dict(
         pipeline_model_parallel_size=args.pp,
         expert_model_parallelism=args.ep,
@@ -209,6 +216,8 @@ def main():
 
     config.optimizer = opt_config
     config.scheduler = scheduler
+
+    config.tokenizer = tokenizer_cfg
 
     config.peft=None
 

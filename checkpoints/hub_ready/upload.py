@@ -7,8 +7,8 @@ from huggingface_hub import HfApi
 
 def main():
     parser = argparse.ArgumentParser(description="Upload checkpoint to Hugging Face Hub")
-    parser.add_argument("--local_dir", help="Path to the local directory to upload", type=str, default='checkpoints/hub_ready/Intern-S1-mini-sft-distill-ckpt30000')  # TODO: weights to upload
-    parser.add_argument("--repo_id", help="Repository ID (e.g., username/repo-name)", type=str, default='Kiria-Nozan/Intern-s1-mini-distill-dsv32-11k-samples')  # TODO: change to destination
+    parser.add_argument("--local_dir", help="Path to the local directory to upload", type=str, default='checkpoints/hub_ready/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16')  # TODO: weights to upload
+    parser.add_argument("--repo_id", help="Repository ID (e.g., username/repo-name)", type=str, default='Kiria-Nozan/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16-1-epoch-TDC-binary-wo-hergC_ToxCast_butkiewicz')  # TODO: change to destination
     parser.add_argument("--create_repo", action="store_false", help="Create the repo if it doesn't exist")
     parser.add_argument("--private", action="store_true", help="Make the repo private if creating it")
     args = parser.parse_args()

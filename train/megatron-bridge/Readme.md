@@ -1,7 +1,7 @@
 # This folder is for Megatron Bridge setup
 
 ## 1. Pull my latest modified NeMo docker image
-### On slurm cluster, use:
+### On slurm cluster, first switch enroot cache path to avoid OOM:
 <!-- ```bash
 srun --partition=dgx-b200 \
      --pty \
@@ -15,6 +15,17 @@ srun --partition=dgx-b200 \
      --container-workdir=/workdir \
      bash
 ``` -->
+
+```bash
+export ENROOT_BASE=/vast/projects/xia6/apex-gen/tianang/enroot_cache
+
+export ENROOT_CACHE_PATH=$ENROOT_BASE/cache
+export ENROOT_DATA_PATH=$ENROOT_BASE/data
+export ENROOT_RUNTIME_PATH=$ENROOT_BASE/runtime
+export TMPDIR=$ENROOT_BASE/tmp
+export XDG_CACHE_HOME=$ENROOT_BASE/xdg_cache
+```
+### Then for gpt-oss-20b and other regular models, run:
 ```bash
 P="$(pwd)"
 
@@ -24,6 +35,7 @@ srun --partition=dgx-b200-old-driver \
      --gpus=8 \
      --cpus-per-task=64 \
      --mem=512G \
+     --time=1-00:00:00 \
      --container-writable \
      --container-image=docker://nishikigi/updated-nemo:25.09-main-v3 \
      --container-mounts=$P:$P,$HOME:$HOME,/vast:/vast:rw \
@@ -41,6 +53,7 @@ srun --partition=dgx-b200-old-driver \
      --gpus=8 \
      --cpus-per-task=64 \
      --mem=512G \
+     --time=1-00:00:00 \
      --container-writable \
      --container-image=docker://nvcr.io/nvidia/nemo:25.11.nemotron_3_nano \
      --container-mounts=$P:$P,$HOME:$HOME,/vast:/vast:rw \
@@ -111,4 +124,21 @@ CUDA_DEVICE_MAX_CONNECTIONS=1 torchrun --nproc_per_node 8 train/megatron-bridge/
 2. Step 2, train model with Megatron Bridge.
 ```bash
 CUDA_DEVICE_MAX_CONNECTIONS=1 torchrun --nproc_per_node 8 train/megatron-bridge/bridge-finetune-s1-mini.py
+```
+
+## 4. Transfer Megatron Bridge checkpoint to HuggingFace Version
+For Nemotron 3 Nano, use the nano-v3 docker image (nvcr.io/nvidia/nemo:25.11.nemotron_3_nano)
+```bash
+python checkpoints/megatron/megatron_to_hf.py export\
+     --hf-model nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16\
+     --megatron-path checkpoints/megatron/megatron_version/nemotron-3-30B/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz/default/checkpoints/iter_0056459\
+     --hf-path checkpoints/hub_ready/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16
+```
+For gpt-oss-20b, use the updated-nemo docker image (docker://nishikigi/updated-nemo:25.09-main-v3)  
+Be careful that the **openai/gpt-oss-20b** model is FP8 and Megatron can't do quantization now, so we need to use the **unsloth/gpt-oss-20b-BF16** as the Huggingface version.
+```bash
+python checkpoints/megatron/megatron_to_hf.py export\
+     --hf-model unsloth/gpt-oss-20b-BF16\
+     --megatron-path checkpoints/megatron/megatron_version/gpt-oss-20b/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz/default/checkpoints/iter_0056459\
+     --hf-path checkpoints/hub_ready/gpt-oss-20b
 ```

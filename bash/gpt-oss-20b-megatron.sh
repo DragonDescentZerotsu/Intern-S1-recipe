@@ -19,6 +19,8 @@ echo "Node: $SLURM_NODELIST"
 echo "Workdir: $P"
 echo "Start time: $(date)"
 
+# export ENROOT_BASE=/vast/projects/xia6/apex-gen/tianang/enroot_cache
+
 # 在 batch 里用 srun 进入容器并执行命令
 srun \
   --container-writable \
