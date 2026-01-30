@@ -56,13 +56,13 @@ def parse_args():
                         default=str(current_dir.parent / "checkpoints" / "megatron" / "hf_version" / "intern_s1_text_llm"),
                         help="HuggingFace model save directory")
     parser.add_argument("--megatron_model_save_dir", type=str,
-                        default=str(current_dir.parent.parent / "checkpoints" / "megatron" / "megatron_version" / "nemotron-3-30B" / 'TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'),
+                        default=str(current_dir.parent.parent / "checkpoints" / "megatron" / "megatron_version" / "nemotron-3-30B" / 'TDC_SFT_data_binary_sm_wo_herg-c_ToxCast_butkiewicz'),
                         help="Megatron model save directory")
     parser.add_argument("--save_megatron_model", action="store_true",
                         help="Whether to save the Megatron model")
     # Data paths
     parser.add_argument("--data_root", type=str,
-                        default=str(current_dir.parent.parent / 'DataPrepare/SFT_data/SFT_data/GPT/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'),
+                        default=str(current_dir.parent.parent / 'DataPrepare/SFT_data/SFT_data/GPT/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16/TDC_SFT_data_binary_sm_wo_herg-c_ToxCast_butkiewicz'),
                         help="Root directory for training data")
 
     # Model configuration
@@ -74,11 +74,11 @@ def parse_args():
                         help="Attention backend to use")
 
     # Parallelism configuration
-    parser.add_argument("--tp", type=int, default=None,
+    parser.add_argument("--tp", type=int, default=4,
                         help="Tensor model parallel size (default: 4 for MoE, 1 otherwise)")
     parser.add_argument("--pp", type=int, default=1,
                         help="Pipeline model parallel size")
-    parser.add_argument("--ep", type=int, default=8,
+    parser.add_argument("--ep", type=int, default=4,
                         help="Expert model parallel size (default: 4 for MoE, 1 otherwise)")
     parser.add_argument("--etp", type=int, default=1,
                         help="Expert tensor parallel size")
@@ -196,6 +196,7 @@ def main():
     kwargs = dict(
         pipeline_model_parallel_size=args.pp,
         expert_model_parallelism=args.ep,
+        tensor_model_parallel_size=args.tp,
 
         dir=args.megatron_model_save_dir,
         # use_null_tokenizer=False,
@@ -227,6 +228,7 @@ def main():
     # config.train.eval_interval = args.eval_interval
 
     config.checkpoint.save_interval = one_epoch_iters // 2 + 2
+    config.model.sequence_parallel = True
 
 
     config.model.seq_length = args.seq_length  # TODO: 注意这里要和 dataset 的长度一样

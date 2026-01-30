@@ -144,7 +144,7 @@ def main():
     
     # Configuration
     DATA_STYLE = 'GPT'  # 'GPT' or 'Alpaca'
-    model_name = "openai/gpt-oss-20b"
+    model_name = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16"
                  # "openai/gpt-oss-20b"
                  # "internlm/Intern-S1-mini"
                  # "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16"
