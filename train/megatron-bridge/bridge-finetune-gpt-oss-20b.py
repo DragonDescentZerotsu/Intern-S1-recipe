@@ -68,17 +68,17 @@ def parse_args():
     # Model configuration
     parser.add_argument("--moe_model", action="store_true", default=True,
                         help="Whether to use MoE model")
-    parser.add_argument("--seq_length", type=int, default=300,
+    parser.add_argument("--seq_length", type=int, default=8,
                         help="Sequence length")
     parser.add_argument("--attn_backend", type=str, default="auto", choices=["auto", "fused", "flash"],
                         help="Attention backend to use")
 
     # Parallelism configuration
-    parser.add_argument("--tp", type=int, default=4,
+    parser.add_argument("--tp", type=int, default=1,
                         help="Tensor model parallel size (default: 4 for MoE, 1 otherwise)")
     parser.add_argument("--pp", type=int, default=1,
                         help="Pipeline model parallel size")
-    parser.add_argument("--ep", type=int, default=4,
+    parser.add_argument("--ep", type=int, default=1,
                         help="Expert model parallel size (default: 4 for MoE, 1 otherwise)")
     parser.add_argument("--etp", type=int, default=1,
                         help="Expert tensor parallel size")
@@ -215,7 +215,7 @@ def main():
     config.train.eval_interval = args.eval_interval
 
     config.checkpoint.save_interval = one_train_epoch_iters  # // 2 + 2
-    config.model.sequence_parallel = True
+    config.model.sequence_parallel = (args.tp > 1)
 
 
     config.model.seq_length = args.seq_length  # TODO: 注意这里要和 dataset 的长度一样
