@@ -139,7 +139,7 @@ def main():
     for group_name in task_groups:
         task_names = []
         if group_name == 'Tox':
-            task_names = ['Skin_Reaction'] 
+            task_names = ['Skin_Reaction', "hERG_Karim", "Carcinogens_Lagunin"]
             task_names += ['hERG', 'AMES', 'DILI', 'ClinTox']
             task_names += ['Tox21_' + label for label in retrieve_label_name_list('Tox21')]
             task_names += ['herg_central_' + retrieve_label_name_list('herg_central')[-1]] 

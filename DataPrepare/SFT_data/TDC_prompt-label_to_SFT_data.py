@@ -25,55 +25,40 @@ from pathlib import Path
 from tqdm import tqdm
 from transformers import AutoTokenizer
 
-def main():
-    # Define directories
-    current_dir = Path(__file__).parent.resolve() # DataPrepare/SFT_data
-    project_root = current_dir.parent.parent # /data1/tianang/Projects/Intern-S1/
+def process_dataset(input_dir, output_file, data_style, model_name, tokenizer, enable_thinking):
+    """
+    Process a single dataset (train/test/valid) and write to output file.
     
-    input_dir = project_root / 'DataPrepare' / 'TDC_train_prompts_label_scaffold_wo_herg-c_ToxCast_butkiewicz'
+    Args:
+        input_dir: Path to input directory containing JSONL files
+        output_file: Path to output JSONL file
+        data_style: 'GPT' or 'Alpaca'
+        model_name: Model name for GPT style processing
+        tokenizer: Tokenizer for GPT style processing (can be None for Alpaca)
+        enable_thinking: Whether to enable thinking for chat template
     
-    # Configuration
-    DATA_STYLE = 'GPT'  # 'GPT' or 'Alpaca'
-    model_name = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16"
-                 # "openai/gpt-oss-20b"
-                 # "internlm/Intern-S1-mini"
-                 # "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16"
-    ENABLE_THINKING = False
-
-    # Output details
-    if DATA_STYLE == 'Alpaca':
-        # Alpaca style is for llamafactory use, all the models should be the same 
-        # output_subdir = f'Alpaca/{model_name.split("/")[-1]}/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'
-        output_subdir = f'Alpaca/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'
-        output_filename = 'TDC_SFT_data_scaffold_wo_herg-c_ToxCast_butkiewicz.jsonl'
-    elif DATA_STYLE == 'GPT':
-        output_subdir = f'GPT/{model_name.split("/")[-1]}/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'
-        output_filename = 'training.jsonl'
-        
-        # Load tokenizer for GPT format
-        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-
-    output_dir = current_dir / 'SFT_data' / output_subdir
-    output_file = output_dir / output_filename
-    
-    # Ensure output directory exists (though SFT_data should exist)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    print(f"Input Directory: {input_dir}")
-    print(f"Output File: {output_file}")
+    Returns:
+        Number of samples processed
+    """
+    print(f"\nProcessing Dataset:")
+    print(f"  Input Directory: {input_dir}")
+    print(f"  Output File: {output_file}")
     
     if not input_dir.exists():
-        print(f"Error: Input directory {input_dir} does not exist.")
-        return
+        print(f"  Warning: Input directory {input_dir} does not exist. Skipping.")
+        return 0
 
     # Get list of all jsonl files
     jsonl_files = list(input_dir.glob('*.jsonl'))
+    print(f"  Found {len(jsonl_files)} JSONL files to process.")
     
-    print(f"Found {len(jsonl_files)} JSONL files to process.")
+    if len(jsonl_files) == 0:
+        print(f"  No JSONL files found. Skipping.")
+        return 0
     
     total_samples = 0
     with open(output_file, 'w', encoding='utf-8') as f_out:
-        for input_file in tqdm(jsonl_files, desc="Processing files"):
+        for input_file in tqdm(jsonl_files, desc=f"Processing {output_file.name}"):
             with open(input_file, 'r', encoding='utf-8') as f_in:
                 for line in f_in:
                     line = line.strip()
@@ -98,13 +83,13 @@ def main():
                             print(f"Warning: Unexpected label {y_label} in file {input_file.name}. Skipping line.")
                             continue
                             
-                        if DATA_STYLE == 'Alpaca':
+                        if data_style == 'Alpaca':
                             data_entry = {
                                 "instruction": text,
                                 "input": "",
                                 "output": output_val
                             }
-                        elif DATA_STYLE == 'GPT':
+                        elif data_style == 'GPT':
                             message = [
                                 {"role": "user", "content": text},
                                 {"role": "assistant", "content": output_val}
@@ -114,7 +99,7 @@ def main():
                                     message,
                                     tokenize=False,
                                     add_generation_prompt=False,
-                                    enable_thinking=ENABLE_THINKING
+                                    enable_thinking=enable_thinking
                                 )
                                 input_text = rendered.split("assistant")[0] + "assistant"
                                 answer_text = rendered.split("assistant")[1]
@@ -123,7 +108,7 @@ def main():
                                     message,
                                     tokenize=False,
                                     add_generation_prompt=False,
-                                    # enable_thinking=ENABLE_THINKING
+                                    # enable_thinking=enable_thinking
                                 )
                                 split_mark = 'assistant<|channel|>final<|message|>'
                                 input_text = rendered.split(split_mark)[0] + split_mark
@@ -133,7 +118,7 @@ def main():
                                     message,
                                     tokenize=False,
                                     add_generation_prompt=False,
-                                    enable_thinking=ENABLE_THINKING
+                                    enable_thinking=enable_thinking
                                 )
                                 split_mark = 'assistant\n<think></think>'
                                 input_text = rendered.split(split_mark)[0] + split_mark
@@ -146,9 +131,88 @@ def main():
                     except json.JSONDecodeError:
                         print(f"Warning: Failed to decode JSON in file {input_file.name}. Skipping line.")
                     except Exception as e:
-                         print(f"Error processing line in {input_file.name}: {e}")
+                        print(f"Error processing line in {input_file.name}: {e}")
 
-    print(f"Processing complete. Total {total_samples} samples saved to {output_file}")
+    print(f"  Completed: {total_samples} samples saved to {output_file}")
+    return total_samples
+
+
+def main():
+    # Define directories
+    current_dir = Path(__file__).parent.resolve() # DataPrepare/SFT_data
+    project_root = current_dir.parent.parent # /data1/tianang/Projects/Intern-S1/
+    
+    # Configuration
+    DATA_STYLE = 'GPT'  # 'GPT' or 'Alpaca'
+    model_name = "openai/gpt-oss-20b"
+                 # "openai/gpt-oss-20b"
+                 # "internlm/Intern-S1-mini"
+                 # "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16"
+    ENABLE_THINKING = False
+
+    # Define dataset configurations for GPT style
+    # Maps: (input_dir_suffix, output_filename)
+    # input_dir_suffix: train, test, valid
+    # output_filename: training.jsonl, test.jsonl, validation.jsonl
+    gpt_dataset_configs = [
+        ('train', 'training.jsonl'),
+        ('test', 'test.jsonl'),
+        # ('valid', 'validation.jsonl'),
+    ]
+
+    tokenizer = None
+
+    # Output details
+    if DATA_STYLE == 'Alpaca':
+        # Alpaca style is for llamafactory use, all the models should be the same 
+        # output_subdir = f'Alpaca/{model_name.split("/")[-1]}/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'
+        output_subdir = f'Alpaca/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz'
+        output_filename = 'TDC_SFT_data_scaffold_wo_herg-c_ToxCast_butkiewicz.jsonl'
+        
+        input_dir = project_root / 'DataPrepare' / 'TDC_train_prompts_label_scaffold_wo_herg-c_ToxCast_butkiewicz'
+        output_dir = current_dir / 'SFT_data' / output_subdir
+        output_file = output_dir / output_filename
+        
+        # Ensure output directory exists
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Process single dataset for Alpaca style
+        total_samples = process_dataset(
+            input_dir, output_file, DATA_STYLE, model_name, tokenizer, ENABLE_THINKING
+        )
+        print(f"\n{'='*60}")
+        print(f"Processing complete. Total {total_samples} samples saved.")
+        
+    elif DATA_STYLE == 'GPT':
+        output_subdir = f'GPT/{model_name.split("/")[-1]}/TDC_SFT_data_binary_sm_wo_herg-c_ToxCast_butkiewicz'
+        
+        # Load tokenizer for GPT format
+        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+        
+        output_dir = current_dir / 'SFT_data' / output_subdir
+        
+        # Ensure output directory exists
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        print(f"Output Directory: {output_dir}")
+        print(f"Processing {len(gpt_dataset_configs)} datasets (train/test/valid)...")
+        
+        grand_total = 0
+        for split_name, output_filename in gpt_dataset_configs:
+            # Construct input directory path
+            # train -> TDC_train_prompts_label_scaffold_wo_herg-c_ToxCast_butkiewicz
+            # test -> TDC_test_prompts_label_scaffold_wo_herg-c_ToxCast_butkiewicz
+            # valid -> TDC_valid_prompts_label_scaffold_wo_herg-c_ToxCast_butkiewicz
+            input_dir = project_root / 'DataPrepare' / f'TDC_{split_name}_prompts_label_sm_wo_herg-c_ToxCast_butkiewicz'
+            output_file = output_dir / output_filename
+            
+            samples = process_dataset(
+                input_dir, output_file, DATA_STYLE, model_name, tokenizer, ENABLE_THINKING
+            )
+            grand_total += samples
+        
+        print(f"\n{'='*60}")
+        print(f"All processing complete. Grand total: {grand_total} samples saved.")
 
 if __name__ == "__main__":
     main()

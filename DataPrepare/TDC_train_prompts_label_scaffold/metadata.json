@@ -55,6 +55,14 @@
         "num_samples": 282,
         "split_method": "scaffold"
     },
+    "hERG_Karim": {
+        "num_samples": 9411,
+        "split_method": "scaffold"
+    },
+    "Carcinogens_Lagunin": {
+        "num_samples": 196,
+        "split_method": "scaffold"
+    },
     "hERG": {
         "num_samples": 458,
         "split_method": "scaffold"
@@ -92,7 +100,7 @@
         "split_method": "random"
     },
     "HuRI": {
-        "num_samples": 50751,
+        "num_samples": 50516,
         "split_method": "cold_split:{'column_name': ['Protein1', 'Protein2']}"
     },
     "Weber": {
