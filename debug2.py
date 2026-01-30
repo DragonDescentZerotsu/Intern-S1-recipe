@@ -8,7 +8,7 @@ os.environ.setdefault("VLLM_USE_V1", "1")
 mp.set_start_method("spawn", force=True)
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '4,5,6,7'  # TODO: 根据需要调整 GPU
+os.environ['CUDA_VISIBLE_DEVICES'] = '4'  # TODO: 根据需要调整 GPU
 
 from vllm import LLM, SamplingParams
 from transformers import AutoTokenizer
@@ -17,11 +17,11 @@ from pathlib import Path
 import argparse
 
 # Configuration
-MODEL_NAME = "Kiria-Nozan/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16-1-epoch-TDC-binary-wo-hergC_ToxCast_butkiewicz"
+MODEL_NAME = "checkpoints/Intern-S1-mini/full/sft-wo-herg-c_ToxCast_butkiewicz-TDC-binary-scaffold"
 TEMPERATURE = 0.7
 TOP_P = 1.0
 MAX_TOKENS = 512
-TENSOR_PARALLEL_SIZE = 4
+TENSOR_PARALLEL_SIZE = 1
 GPU_MEMORY_UTILIZATION = 0.92
 MAX_MODEL_LEN = 1024 * 24
 

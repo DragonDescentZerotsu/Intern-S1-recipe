@@ -9,7 +9,7 @@ os.environ.setdefault("VLLM_USE_V1", "1")
 mp.set_start_method("spawn", force=True)
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '4,5,6,7'  # TODO: device GPU #
+os.environ['CUDA_VISIBLE_DEVICES'] = '6,7'  # TODO: device GPU #
 
 import re
 import inspect
@@ -36,7 +36,7 @@ def get_args():
     parser = argparse.ArgumentParser(description='Test TDC tasks with vLLM using preprocessed data (Merged F1 & AUROC)')
 
     parser.add_argument('--model-path', type=str,
-                        default='Kiria-Nozan/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16-1-epoch-TDC-binary-wo-hergC_ToxCast_butkiewicz',  # Default from F1 script
+                        default='nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16',  # Default from F1 script
                         help='Path to the model checkpoint')
                         # internlm/Intern-S1-mini
                         # Qwen/Qwen3-8B
@@ -45,6 +45,8 @@ def get_args():
                         # deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
                         # google/gemma-2-9b-it
                         # nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16
+                        # Kiria-Nozan/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16-1-epoch-TDC-binary-wo-hergC_ToxCast_butkiewicz
+                        # openai/gpt-oss-20b
     parser.add_argument('--use-lora', action='store_true', help='Use LoRA adapter')
     parser.add_argument('--lora-path', type=str,
                         default="checkpoints/Intern-S1-mini/lora/sft/checkpoint-180000",
@@ -57,15 +59,15 @@ def get_args():
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding',
                                  'TrialOutcome', 'PeptideMHC', 'all'],
                         help='Task groups to run')
-    parser.add_argument('--max-model-len', type=int, default=1024 * 24, help='Max model length')
-    parser.add_argument('--tensor-parallel-size', type=int, default=4, help='Tensor parallel size')
+    parser.add_argument('--max-model-len', type=int, default=1024 * 12, help='Max model length')
+    parser.add_argument('--tensor-parallel-size', type=int, default=2, help='Tensor parallel size')
     parser.add_argument('--gpu-memory-utilization', type=float, default=0.92, help='GPU memory utilization')
     parser.add_argument('--max-num-seqs', type=int, default=512, help='Max number of sequences')
     parser.add_argument('--max-logprobs', type=int, default=1024, help='Max logprobs to return')
     # parser.add_argument('--device', type=str, default='2', help='CUDA device ID')
     parser.add_argument('--strip-smiles-tags', action='store_false', help='Remove <SMILES> and </SMILES> from prompts before inference') 
     parser.add_argument('--log-file', action='store_false', help='Enable logging to file')
-    parser.add_argument('--log-file-name', type=str, default="single_token_vllm_suffix_scoring_NVIDIA-Nemotron-3-Nano-30B-A3B-BF16-finetuned_{t_stamp}.log", help='Log file name pattern')
+    parser.add_argument('--log-file-name', type=str, default="single_token_vllm_suffix_scoring_NVIDIA-Nemotron-3-Nano-30B-A3B-BF16_{t_stamp}.log", help='Log file name pattern')
 
     args = parser.parse_args()
     return args
@@ -77,38 +79,38 @@ def load_tasks_map(data_dir):
     """
     mapping = {
         'Tox': [
-            'Skin_Reaction.jsonl',
-            'hERG.jsonl',
-            'DILI.jsonl',
-            'ClinTox.jsonl',
-            'AMES.jsonl',
-            'Tox21.jsonl',
-            'ToxCast.jsonl',
-            'herg_central_hERG_inhib.jsonl'
+            # 'Skin_Reaction.jsonl',
+            # 'hERG.jsonl',
+            # 'DILI.jsonl',
+            # 'ClinTox.jsonl',
+            # 'AMES.jsonl',
+            # 'Tox21.jsonl',
+            # 'ToxCast.jsonl',
+            # 'herg_central_hERG_inhib.jsonl'
         ],
         'ADME': [
-            'PAMPA_NCATS.jsonl',
-            'HIA_Hou.jsonl',
-            'BBB_Martins.jsonl',
-            'Pgp_Broccatelli.jsonl',
-            'Bioavailability_Ma.jsonl',
-            'CYP2C9_Substrate_CarbonMangels.jsonl',
-            'CYP2D6_Substrate_CarbonMangels.jsonl',
-            'CYP3A4_Substrate_CarbonMangels.jsonl',
-            'CYP1A2_Veith.jsonl',
-            'CYP2C19_Veith.jsonl',
-            'CYP2C9_Veith.jsonl',
-            'CYP2D6_Veith.jsonl',
-            'CYP3A4_Veith.jsonl',
+            # 'PAMPA_NCATS.jsonl',
+            # 'HIA_Hou.jsonl',
+            # 'BBB_Martins.jsonl',
+            # 'Pgp_Broccatelli.jsonl',
+            # 'Bioavailability_Ma.jsonl',
+            # 'CYP2C9_Substrate_CarbonMangels.jsonl',
+            # 'CYP2D6_Substrate_CarbonMangels.jsonl',
+            # 'CYP3A4_Substrate_CarbonMangels.jsonl',
+            # 'CYP1A2_Veith.jsonl',
+            # 'CYP2C19_Veith.jsonl',
+            # 'CYP2C9_Veith.jsonl',
+            # 'CYP2D6_Veith.jsonl',
+            # 'CYP3A4_Veith.jsonl',
         ],
         'HTS': [
-            'HIV.jsonl',
-            'SARSCoV2_3CLPro_Diamond.jsonl',
-            'SARSCoV2_Vitro_Touret.jsonl',
-            'butkiewicz.jsonl'
+            # 'HIV.jsonl',
+            # 'SARSCoV2_3CLPro_Diamond.jsonl',
+            # 'SARSCoV2_Vitro_Touret.jsonl',
+            # 'butkiewicz.jsonl'
         ],
-        'Develop': ['SAbDab_Chen.jsonl'],
-        'PPI': ['HuRI.jsonl'],
+        # 'Develop': ['SAbDab_Chen.jsonl'],
+        # 'PPI': ['HuRI.jsonl'],
         'TrialOutcome': [
             'phase1.jsonl',
             'phase2.jsonl',
