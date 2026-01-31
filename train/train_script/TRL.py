@@ -37,7 +37,7 @@ def parse_args():
 
     p.add_argument("--model_name_or_path", type=str, default="zai-org/GLM-4.7-Flash")
     p.add_argument("--train_file", type=str, default='DataPrepare/SFT_data/SFT_data/GPT/GLM-4.7-Flash/TDC_SFT_data_binary_sm_wo_herg-c_ToxCast_butkiewicz/training.jsonl')
-    p.add_argument("--eval_file", type=str, default='DataPrepare/SFT_data/SFT_data/GPT/GLM-4.7-Flash/TDC_SFT_data_binary_sm_wo_herg-c_ToxCast_butkiewicz/test_debug.jsonl')
+    p.add_argument("--eval_file", type=str, default='DataPrepare/SFT_data/SFT_data/GPT/GLM-4.7-Flash/TDC_SFT_data_binary_sm_wo_herg-c_ToxCast_butkiewicz/test.jsonl')
 
     p.add_argument("--output_dir", type=str, default='checkpoints/GLM-4.7-Flash/TDC_binary_sm_wo_herg-c_ToxCast_butkiewica')
     p.add_argument("--max_seq_length", type=int, default=512)
@@ -47,7 +47,7 @@ def parse_args():
     p.add_argument("--per_device_eval_batch_size", type=int, default=1)
     p.add_argument("--gradient_accumulation_steps", type=int, default=8)
     p.add_argument("--learning_rate", type=float, default=5e-6)
-    p.add_argument("--num_train_epochs", type=float, default=8.0)
+    p.add_argument("--num_train_epochs", type=float, default=1.0)  # 8
     p.add_argument("--logging_steps", type=int, default=10)
     p.add_argument("--save_total_limit", type=int, default=2)
     p.add_argument("--warmup_steps", type=int, default=20)
@@ -185,7 +185,7 @@ def main():
         packing=args.packing,
         max_seq_length=args.max_seq_length,
         # DeepSpeed ZeRO-3 for model sharding across GPUs
-        deepspeed=args.deepspeed,
+        # deepspeed=args.deepspeed,
         # Gradient checkpointing to reduce memory usage
         gradient_checkpointing=True,
         gradient_checkpointing_kwargs={"use_reentrant": False},
@@ -211,8 +211,8 @@ def main():
     steps_per_epoch_estimate = num_train_samples_after_packing // (args.per_device_train_batch_size * args.gradient_accumulation_steps)
     eval_steps = max(1, steps_per_epoch_estimate // 2)  # 0.5 epoch
 
-    trainer.args.eval_steps = 5 # eval_steps
-    trainer.args.save_steps = 5 # eval_steps
+    trainer.args.eval_steps = 50000000 # eval_steps
+    trainer.args.save_steps = 50000000 # eval_steps
 
     # print(f"Average pack length: {num_train_samples / num_train_samples_after_packing}")
     print(f"Num train samples after packing: {num_train_samples_after_packing}")
