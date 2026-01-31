@@ -115,22 +115,33 @@ python utils/HF_data_download.py
 ```
 
 ## 3. Train the big MoE model with Megatron Bridge
+### 3.1 For intern-s1
 1. Step 1, convert HF model to Megatron Version and save. (**this will finally stop with Error of CUDA OOM, ignore it**)
 ```bash
 CUDA_DEVICE_MAX_CONNECTIONS=1 torchrun --nproc_per_node 8 train/megatron-bridge/bridge-finetune-s1-mini.py \
     --hf_model_save_dir Kiria-Nozan/Intern-S1-Qwen-3-MoE \
     --save_megatron_model
-```
 2. Step 2, train model with Megatron Bridge.
 ```bash
 CUDA_DEVICE_MAX_CONNECTIONS=1 torchrun --nproc_per_node 8 train/megatron-bridge/bridge-finetune-s1-mini.py
+```
+### 3.2 For gpt-oss-20b
+1. Step 1, convert HF model to Megatron Version and save.
+```bash
+python checkpoints/megatron/megatron_to_hf.py import \
+ --hf-model unsloth/gpt-oss-20b \
+ --megatron-path checkpoints/megatron/megatron_version/gpt-oss-20b/origin_pretrained
+```
+2. Step 2, train model with Megatron Bridge.
+```bash
+CUDA_DEVICE_MAX_CONNECTIONS=1 torchrun --nproc_per_node 8 train/megatron-bridge/bridge-finetune-gpt-oss-20b.py
 ```
 
 ## 4. Transfer Megatron Bridge checkpoint to HuggingFace Version
 For Nemotron 3 Nano, use the nano-v3 docker image (nvcr.io/nvidia/nemo:25.11.nemotron_3_nano)
 ```bash
-python checkpoints/megatron/megatron_to_hf.py export\
-     --hf-model nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16\
+python checkpoints/megatron/megatron_to_hf.py export \
+     --hf-model nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16 \
      --megatron-path checkpoints/megatron/megatron_version/nemotron-3-30B/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz/default/checkpoints/iter_0056459\
      --hf-path checkpoints/hub_ready/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16
 ```

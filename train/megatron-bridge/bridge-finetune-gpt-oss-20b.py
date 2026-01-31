@@ -60,6 +60,8 @@ def parse_args():
                         help="Megatron model save directory")
     parser.add_argument("--save_megatron_model", action="store_true",
                         help="Whether to save the Megatron model")
+    parser.add_argument("--pretrained_megatron_ckpt", type=str, default="/data1/ckpts/gpt_oss_20b_megatron_base",
+                    help="Megatron-format base checkpoint dir (converted from HF)")
     # Data paths
     parser.add_argument("--data_root", type=str,
                         default=str(current_dir.parent.parent / 'DataPrepare/SFT_data/SFT_data/GPT/gpt-oss-20b/TDC_SFT_data_binary_sm_wo_herg-c_ToxCast_butkiewicz'),
@@ -74,11 +76,11 @@ def parse_args():
                         help="Attention backend to use")
 
     # Parallelism configuration
-    parser.add_argument("--tp", type=int, default=1,
+    parser.add_argument("--tp", type=int, default=4,
                         help="Tensor model parallel size (default: 4 for MoE, 1 otherwise)")
     parser.add_argument("--pp", type=int, default=1,
                         help="Pipeline model parallel size")
-    parser.add_argument("--ep", type=int, default=1,
+    parser.add_argument("--ep", type=int, default=4,
                         help="Expert model parallel size (default: 4 for MoE, 1 otherwise)")
     parser.add_argument("--etp", type=int, default=1,
                         help="Expert tensor parallel size")
@@ -215,6 +217,7 @@ def main():
     config.train.eval_interval = args.eval_interval
 
     config.checkpoint.save_interval = one_train_epoch_iters  # // 2 + 2
+    config.checkpoint.pretrained_checkpoint = args.pretrained_megatron_ckpt
     config.model.sequence_parallel = (args.tp > 1)
 
 

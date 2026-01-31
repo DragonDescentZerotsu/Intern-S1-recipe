@@ -123,6 +123,16 @@ def process_dataset(input_dir, output_file, data_style, model_name, tokenizer, e
                                 split_mark = 'assistant\n<think></think>'
                                 input_text = rendered.split(split_mark)[0] + split_mark
                                 answer_text = rendered.split(split_mark)[1]
+                            elif model_name == "zai-org/GLM-4.7-Flash":
+                                rendered = tokenizer.apply_chat_template(
+                                    message,
+                                    tokenize=False,
+                                    add_generation_prompt=False,
+                                    enable_thinking=enable_thinking
+                                )
+                                split_mark = '<|assistant|></think>'
+                                input_text = rendered.split(split_mark)[0] + split_mark
+                                answer_text = rendered.split(split_mark)[1]
                             data_entry = {"input": input_text, "output": answer_text}
                         
                         f_out.write(json.dumps(data_entry, ensure_ascii=False) + '\n')
@@ -144,10 +154,11 @@ def main():
     
     # Configuration
     DATA_STYLE = 'GPT'  # 'GPT' or 'Alpaca'
-    model_name = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16"
+    model_name = "zai-org/GLM-4.7-Flash"
                  # "openai/gpt-oss-20b"
                  # "internlm/Intern-S1-mini"
                  # "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16"
+                 # zai-org/GLM-4.7-Flash
     ENABLE_THINKING = False
 
     # Define dataset configurations for GPT style

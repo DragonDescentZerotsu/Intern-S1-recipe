@@ -56,7 +56,7 @@ class TEPackingCollator:
             ids_all.append(ids); labs_all.append(lab)
             cur += L; cu.append(cur)
 
-        input_ids = torch.cat(ids_all,  dim=0)
+        input_ids = torch.cat(ids_all, dim=0)
         labels    = torch.cat(labs_all, dim=0)
 
         # ---- 关键：为 FP8 Linear 对齐 (B*T) % 8 == 0，这里 B=1 => T % 8 == 0
