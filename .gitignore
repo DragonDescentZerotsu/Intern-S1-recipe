@@ -41,6 +41,7 @@
 !/DataPrepare/TDC_test_prompts_label_sm_wo_herg-c_ToxCast_butkiewicz/*.json
 
 /wandb
+/unsloth_compiled_cache
 
 # excluding TDC downloaded data
 data/
