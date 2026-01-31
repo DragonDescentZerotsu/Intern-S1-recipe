@@ -114,6 +114,7 @@ def main():
         learning_rate=args.learning_rate,
         num_train_epochs=args.num_train_epochs,
         warmup_steps=args.warmup_steps,
+        optim="paged_adamw_8bit",
         lr_scheduler_type=args.lr_scheduler_type,
         logging_steps=args.logging_steps,
         # Evaluation strategy: by epoch with fractional epochs via steps

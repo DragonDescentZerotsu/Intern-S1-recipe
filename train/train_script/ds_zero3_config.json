@@ -1,4 +1,5 @@
 {
+  "zero_allow_untested_optimizer": true,
   "bf16": {
     "enabled": true
   },
