@@ -9,7 +9,7 @@ os.environ.setdefault("VLLM_USE_V1", "1")
 mp.set_start_method("spawn", force=True)
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '6,7'  # TODO: device GPU #
+os.environ['CUDA_VISIBLE_DEVICES'] = '7'  # TODO: device GPU #
 
 import re
 import inspect
@@ -36,7 +36,7 @@ def get_args():
     parser = argparse.ArgumentParser(description='Test TDC tasks with vLLM using preprocessed data (Merged F1 & AUROC)')
 
     parser.add_argument('--model-path', type=str,
-                        default='zai-org/GLM-4.7-Flash',  # Default from F1 script
+                        default='checkpoints/GLM-4.7-Flash/TDC_binary_sm_wo_herg-c_ToxCast_butkiewica',  # Default from F1 script
                         help='Path to the model checkpoint')
                         # internlm/Intern-S1-mini
                         # Qwen/Qwen3-8B
@@ -61,14 +61,14 @@ def get_args():
                                  'TrialOutcome', 'PeptideMHC', 'all'],
                         help='Task groups to run')
     parser.add_argument('--max-model-len', type=int, default=1024 * 1, help='Max model length')
-    parser.add_argument('--tensor-parallel-size', type=int, default=2, help='Tensor parallel size')
+    parser.add_argument('--tensor-parallel-size', type=int, default=1, help='Tensor parallel size')
     parser.add_argument('--gpu-memory-utilization', type=float, default=0.92, help='GPU memory utilization')
     parser.add_argument('--max-num-seqs', type=int, default=512, help='Max number of sequences')
     parser.add_argument('--max-logprobs', type=int, default=1024, help='Max logprobs to return')
     # parser.add_argument('--device', type=str, default='2', help='CUDA device ID')
     parser.add_argument('--strip-smiles-tags', action='store_false', help='Remove <SMILES> and </SMILES> from prompts before inference') 
     parser.add_argument('--log-file', action='store_false', help='Enable logging to file')
-    parser.add_argument('--log-file-name', type=str, default="single_token_vllm_suffix_scoring_GLM-4.7-Flash_{t_stamp}.log", help='Log file name pattern')
+    parser.add_argument('--log-file-name', type=str, default="single_token_vllm_suffix_scoring_GLM-4.7-Flash-finetune-1-epoch-sm_{t_stamp}.log", help='Log file name pattern')
 
     args = parser.parse_args()
     return args
