@@ -8,15 +8,30 @@ import partial_json_parser
 from partial_json_parser.core.options import Allow
 
 from vllm.entrypoints.chat_utils import make_tool_call_id
-from vllm.entrypoints.openai.protocol import (
-    ChatCompletionRequest,
-    DeltaFunctionCall,
-    DeltaMessage,
-    DeltaToolCall,
-    ExtractedToolCallInformation,
-    FunctionCall,
-    ToolCall,
-)
+
+try:
+    from vllm.entrypoints.openai.protocol import ChatCompletionRequest
+except ImportError:
+    from vllm.entrypoints.openai.chat_completion.protocol import ChatCompletionRequest
+
+try:
+    from vllm.entrypoints.openai.protocol import (
+        DeltaFunctionCall,
+        DeltaMessage,
+        DeltaToolCall,
+        ExtractedToolCallInformation,
+        FunctionCall,
+        ToolCall,
+    )
+except ImportError:
+    from vllm.entrypoints.openai.engine.protocol import (
+        DeltaFunctionCall,
+        DeltaMessage,
+        DeltaToolCall,
+        ExtractedToolCallInformation,
+        FunctionCall,
+        ToolCall,
+    )
 from vllm.logger import init_logger
 
 # TokenizerLike import varies by vLLM version
