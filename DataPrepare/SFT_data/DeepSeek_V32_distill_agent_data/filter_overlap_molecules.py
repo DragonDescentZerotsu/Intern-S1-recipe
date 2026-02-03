@@ -84,9 +84,13 @@ def filter_and_save_data(input_dir, output_dir, test_task_smiles):
                     # Alpaca format: "instruction" field
                     if 'instruction' in data:
                         content = data['instruction']
-                        s = extract_smiles(content)
-                        if s and s in exclude_smiles:
-                            should_remove = True
+                    elif 'messages' in data:
+                        content = data['messages'][0]['content']
+                    s = extract_smiles(content)
+                    if s and s in exclude_smiles:
+                        should_remove = True
+
+                    
                     
                     if not should_remove:
                         fout.write(line)
@@ -113,9 +117,11 @@ def filter_and_save_data(input_dir, output_dir, test_task_smiles):
     print("="*60)
 
 def main():
-    old_data_dir = "DataPrepare/SFT_data/DeepSeek_V32_distill_agent_data/intern-s1-mini_TDC_train_Alpaca_per_task"
+    # old_data_dir = "DataPrepare/SFT_data/DeepSeek_V32_distill_agent_data/intern-s1-mini_TDC_train_Alpaca_per_task"
+    old_data_dir = "DataPrepare/SFT_data/DeepSeek_V32_distill_agent_data/TDC_train_raw_normalized_messages_per_task"
     new_test_dir = "DataPrepare/TDC_test_prompts_label_scaffold"
-    output_dir = "DataPrepare/SFT_data/DeepSeek_V32_distill_agent_data/intern-s1-mini_TDC_train_Alpaca_per_task_scaffold_filtered"
+    # output_dir = "DataPrepare/SFT_data/DeepSeek_V32_distill_agent_data/intern-s1-mini_TDC_train_Alpaca_per_task_scaffold_filtered"
+    output_dir = "DataPrepare/SFT_data/DeepSeek_V32_distill_agent_data/TDC_train_raw_normalized_messages_per_task_scaffold_filtered"
 
     print("--- Loading New Test Data (SMILES to exclude) ---")
     new_test_task_smiles = get_smiles_by_task_from_new_data(new_test_dir)

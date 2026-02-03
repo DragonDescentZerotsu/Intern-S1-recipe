@@ -24,7 +24,7 @@ from transformers import AutoTokenizer
 
 from utils.TDC_answer_parser import extract_answer, parse_answer
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # TODO: device GPU #
+os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'  # TODO: device GPU #
 
 
 # Setup logging
@@ -36,7 +36,9 @@ def get_args():
     parser = argparse.ArgumentParser(description='Test TDC tasks with vLLM using preprocessed CoT data (F1 Score)')
 
     parser.add_argument('--model-path', type=str,
-                        default='internlm/Intern-S1-mini',
+                        default='zai-org/GLM-4.7-Flash',
+                        # zai-org/GLM-4.7-Flash
+                        # internlm/Intern-S1-mini
                         help='Path to the model checkpoint')
     parser.add_argument('--use-lora', action='store_true', help='Use LoRA adapter')
     parser.add_argument('--lora-path', type=str,
@@ -46,12 +48,12 @@ def get_args():
                         default=Path(__file__).parent.parent / "DataPrepare/TDC_test_prompts_label_scaffold",
                         help='Directory containing preprocessed test data')
     parser.add_argument('--task-groups', nargs='+',
-                        default=['ADME', 'Tox', 'HTS', 'Develop'],
+                        default=['ADME', 'Tox', 'HTS'],
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding',
                                  'TrialOutcome', 'PeptideMHC', 'all'],
                         help='Task groups to run')
     parser.add_argument('--max-model-len', type=int, default=1024 * 10, help='Max model length')
-    parser.add_argument('--tensor-parallel-size', type=int, default=1, help='Tensor parallel size')
+    parser.add_argument('--tensor-parallel-size', type=int, default=2, help='Tensor parallel size')
     parser.add_argument('--gpu-memory-utilization', type=float, default=0.92, help='GPU memory utilization')
     parser.add_argument('--max-num-seqs', type=int, default=256, help='Max number of sequences')
     
@@ -61,7 +63,7 @@ def get_args():
 
     parser.add_argument('--strip-smiles-tags', action='store_false', help='Remove <SMILES> and </SMILES> from prompts before inference')
     parser.add_argument('--log-file', action='store_false', help='Enable logging to file')
-    parser.add_argument('--log-file-name', type=str, default="test_TDC_vllm_CoT_F1_{model_name}_{t_stamp}_SAbDab_Chen.log", help='Log file name pattern')  # TODO: log file name 
+    parser.add_argument('--log-file-name', type=str, default="test_TDC_vllm_CoT_F1_{model_name}_{t_stamp}_3.log", help='Log file name pattern')  # TODO: log file name 
 
     args = parser.parse_args()
     return args
@@ -73,12 +75,14 @@ def load_tasks_map(data_dir):
     """
     mapping = {
         'Tox': [
+            # 'hERG_Karim.jsonl',  # 2690
+            # 'Carcinogens_Lagunin.jsonl',  # 56
             # 'Skin_Reaction.jsonl',  # 82
             # 'hERG.jsonl',  # 132
             # 'DILI.jsonl',  # 96
             # 'ClinTox.jsonl',  # 297
             # 'AMES.jsonl',  # 1457
-            # 'Tox21.jsonl',  # 15584
+            'Tox21.jsonl',  # 15584
             # 'herg_central_hERG_inhib.jsonl',  # 61379
             # -----------------------------------------
             # 'ToxCast.jsonl'  # 307282

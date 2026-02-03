@@ -17,15 +17,35 @@ CUDA_VISIBLE_DEVICES=0 vllm serve internlm/Intern-S1-mini \
 ```
 ### 2. GLM-4.7-Flash
 ```bash
-CUDA_VISIBLE_DEVICES=0,1,2,3 vllm serve zai-org/GLM-4.7-Flash \
+CUDA_VISIBLE_DEVICES=4,5 vllm serve zai-org/GLM-4.7-Flash \
      --host 0.0.0.0 \
-     --port 8000 \
-     --tensor-parallel-size 4 \
+     --port 8001 \
+     --tensor-parallel-size 2 \
      --speculative-config.method mtp \
      --speculative-config.num_speculative_tokens 1 \
      --tool-call-parser glm47 \
      --reasoning-parser glm45 \
      --enable-auto-tool-choice \
      --served-model-name glm-4.7-flash
-
+```
+Add log request to see the prompt after applying chat template.
+```bash
+export VLLM_LOGGING_LEVEL=DEBUG
+CUDA_VISIBLE_DEVICES=4,5 vllm serve zai-org/GLM-4.7-Flash \
+     --host 0.0.0.0 \
+     --port 8001 \
+     --tensor-parallel-size 2 \
+     --speculative-config.method mtp \
+     --speculative-config.num_speculative_tokens 1 \
+     --tool-call-parser glm47 \
+     --reasoning-parser glm45 \
+     --enable-auto-tool-choice \
+     --served-model-name glm-4.7-flash \
+     --enable-log-requests \
+     --max-log-len 20000 \
+     --enable-log-outputs
+```
+To turn off vllm debuging mode:
+```bash
+export VLLM_LOGGING_LEVEL=INFO
 ```

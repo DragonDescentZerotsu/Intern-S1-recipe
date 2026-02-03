@@ -63,12 +63,12 @@ def get_args():
     parser.add_argument('--api-base', type=str, default="http://localhost:8001/v1", help='API Base URL')  # TODO: port number | local model: http://localhost:8000/v1 | openrouter: https://openrouter.ai/api/v1 ｜ deepseek: https://api.deepseek.com/v1
     parser.add_argument('--api-key', type=str, default="EMPTY", help='API Key')  # TODO: API Key | local model: "EMPTY" | openrouter: os.environ["OPENROUTER_API_KEY_Haydn"], os.environ["OPENROUTER_API_KEY_Mark"] | deepseek: os.environ["DEEPSEEK_API_KEY"]
     parser.add_argument('--model', type=str, default="", help='Model name (optional, will query server if empty)')  # TODO: model name | local model: "" | openrouter: deepseek/deepseek-v3.2; openai/gpt-5.2; openai/gpt-5-mini | deepseek: deepseek-chat
-    parser.add_argument('--num-processes', type=int, default=8, help='Number of parallel workers')  # 64 for intern-s1-mini, 16 for GLM-4.7-Flash
+    parser.add_argument('--num-processes', type=int, default=8, help='Number of parallel workers')  # 16 for intern-s1-mini, 8 for GLM-4.7-Flash
     parser.add_argument('--data-dir', type=Path, default=current_dir.parent / "DataPrepare/TDC_test_prompts_label_scaffold", help='Directory containing processed test data')
     parser.add_argument('--thinking', action='store_true', default=True, help='Enable thinking parameter for DeepSeek models')  # TODO: 注意这里 thinking 到底是开了还是没开
     parser.add_argument('--enable-tools', action='store_true', default=True, help='Enable tool calling')  # TODO: 注意是否使用了 tool ， debug 可能关了
     parser.add_argument('--log-file', action='store_true', default=True, help='Save logs to file')  # TODO: 注意这里 log-file 到底是开了还是没开
-    parser.add_argument('--log-file-name', type=str, default="Tools_GLM-4.7-Flash_{t_stamp}_2.log", help='logs file name')   # TODO: log file name
+    parser.add_argument('--log-file-name', type=str, default="Tools_GLM-4.7-Flash_{t_stamp}_1.log", help='logs file name')   # TODO: log file name
     parser.add_argument('--langfuse', action='store_true', default=False, help='Save traces to langfuse')  # TODO: 注意这里 langfuse trace 到底是开了还是没开
     parser.add_argument('--max-retry', type=int, default=4, help='Max retries for answer parsing failure')
     
@@ -258,7 +258,13 @@ def run_turn_base(client, messages, model_name, thinking=False, tools=None, use_
                 temperature=0.8,
                 top_p=0.8,
                 stream=False,
-                extra_body=dict(spaces_between_special_tokens=False)
+                extra_body={
+                    "spaces_between_special_tokens": False,
+                    # "thinking": {
+                    #     "type": "enabled",
+                    #     "clear_thinking": False
+                    # }
+                }
             )
             # TODO: local DeepSeek V3.2
             # response = client.chat.completions.create(
@@ -450,12 +456,14 @@ def load_tasks_map(data_dir):
     """
     mapping = {  # TODO: Detailed Task selection
         'Tox': [
+            'hERG_Karim.jsonl',  # 2690
+            'Carcinogens_Lagunin.jsonl',  # 56
             # 'Skin_Reaction.jsonl',  # 82
             # 'hERG.jsonl',  # 132
             # 'DILI.jsonl',  # 96
             # 'ClinTox.jsonl',  # 297
             # 'AMES.jsonl',  # 1457
-            'Tox21.jsonl',  # 15584
+            # 'Tox21.jsonl',  # 15584
             # -----------------------------------------
             # 'herg_central_hERG_inhib.jsonl',  # 61379    leave out
             # 'ToxCast.jsonl'  # 307282    leave out
