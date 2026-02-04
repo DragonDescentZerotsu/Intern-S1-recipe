@@ -63,7 +63,7 @@ def get_args():
 
     parser.add_argument('--strip-smiles-tags', action='store_false', help='Remove <SMILES> and </SMILES> from prompts before inference')
     parser.add_argument('--log-file', action='store_false', help='Enable logging to file')
-    parser.add_argument('--log-file-name', type=str, default="test_TDC_vllm_CoT_F1_{model_name}_{t_stamp}_long_context_4.log", help='Log file name pattern')  # TODO: log file name 
+    parser.add_argument('--log-file-name', type=str, default="test_TDC_vllm_CoT_F1_{model_name}_{t_stamp}_long_context_1.log", help='Log file name pattern')  # TODO: log file name 
 
     args = parser.parse_args()
     return args
@@ -75,37 +75,37 @@ def load_tasks_map(data_dir):
     """
     mapping = {
         'Tox': [
-            # 'hERG_Karim.jsonl',  # 2690
-            # 'Carcinogens_Lagunin.jsonl',  # 56
-            # 'Skin_Reaction.jsonl',  # 82
-            # 'hERG.jsonl',  # 132
-            # 'DILI.jsonl',  # 96
-            # 'ClinTox.jsonl',  # 297
-            # 'AMES.jsonl',  # 1457
+            'hERG_Karim.jsonl',  # 2690
+            'Carcinogens_Lagunin.jsonl',  # 56
+            'Skin_Reaction.jsonl',  # 82
+            'hERG.jsonl',  # 132
+            'DILI.jsonl',  # 96
+            'ClinTox.jsonl',  # 297
+            'AMES.jsonl',  # 1457
             # 'Tox21.jsonl',  # 15584
             # 'herg_central_hERG_inhib.jsonl',  # 61379
             # -----------------------------------------
             # 'ToxCast.jsonl'  # 307282
         ],
         'ADME': [
-            # 'PAMPA_NCATS.jsonl',  # 408
-            # 'HIA_Hou.jsonl',  # 117
-            # 'BBB_Martins.jsonl',  # 406
-            # 'Pgp_Broccatelli.jsonl',  # 245
-            # 'Bioavailability_Ma.jsonl',  # 128
-            # 'CYP2C9_Substrate_CarbonMangels.jsonl',  # 135
-            # 'CYP2D6_Substrate_CarbonMangels.jsonl',  # 135
-            # 'CYP3A4_Substrate_CarbonMangels.jsonl',  # 135
-            # 'CYP1A2_Veith.jsonl',  # 2517
+            'PAMPA_NCATS.jsonl',  # 408
+            'HIA_Hou.jsonl',  # 117
+            'BBB_Martins.jsonl',  # 406
+            'Pgp_Broccatelli.jsonl',  # 245
+            'Bioavailability_Ma.jsonl',  # 128
+            'CYP2C9_Substrate_CarbonMangels.jsonl',  # 135
+            'CYP2D6_Substrate_CarbonMangels.jsonl',  # 135
+            'CYP3A4_Substrate_CarbonMangels.jsonl',  # 135
+            'CYP1A2_Veith.jsonl',  # 2517
             # 'CYP2C19_Veith.jsonl',  # 2534
             # 'CYP2C9_Veith.jsonl',  # 2419
             # 'CYP2D6_Veith.jsonl',  # 2626
             # 'CYP3A4_Veith.jsonl',  # 2467
         ],
         'HTS': [
-            'HIV.jsonl',  # 8225
-            'SARSCoV2_3CLPro_Diamond.jsonl',  # 176
-            'SARSCoV2_Vitro_Touret.jsonl',  # 298
+            # 'HIV.jsonl',  # 8225
+            # 'SARSCoV2_3CLPro_Diamond.jsonl',  # 176
+            # 'SARSCoV2_Vitro_Touret.jsonl',  # 298
             # -----------------------------------------
             # 'butkiewicz.jsonl'  # 401997
         ],
