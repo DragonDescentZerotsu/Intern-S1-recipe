@@ -52,7 +52,7 @@ def get_args():
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding',
                                  'TrialOutcome', 'PeptideMHC', 'all'],
                         help='Task groups to run')
-    parser.add_argument('--max-model-len', type=int, default=1024 * 10, help='Max model length')
+    parser.add_argument('--max-model-len', type=int, default=1024 * 30, help='Max model length')
     parser.add_argument('--tensor-parallel-size', type=int, default=2, help='Tensor parallel size')
     parser.add_argument('--gpu-memory-utilization', type=float, default=0.92, help='GPU memory utilization')
     parser.add_argument('--max-num-seqs', type=int, default=256, help='Max number of sequences')
@@ -63,7 +63,7 @@ def get_args():
 
     parser.add_argument('--strip-smiles-tags', action='store_false', help='Remove <SMILES> and </SMILES> from prompts before inference')
     parser.add_argument('--log-file', action='store_false', help='Enable logging to file')
-    parser.add_argument('--log-file-name', type=str, default="test_TDC_vllm_CoT_F1_{model_name}_{t_stamp}_4.log", help='Log file name pattern')  # TODO: log file name 
+    parser.add_argument('--log-file-name', type=str, default="test_TDC_vllm_CoT_F1_{model_name}_{t_stamp}_long_context_4.log", help='Log file name pattern')  # TODO: log file name 
 
     args = parser.parse_args()
     return args
