@@ -59,7 +59,7 @@ def get_args():
     
     # Sampling arguments
     parser.add_argument('--temperature', type=float, default=0.8, help='Sampling temperature')  # 0.0 ?
-    parser.add_argument('--max-tokens', type=int, default=1024 * 9, help='Max new tokens to generate')
+    parser.add_argument('--max-tokens', type=int, default=1024 * 29, help='Max new tokens to generate')
 
     parser.add_argument('--strip-smiles-tags', action='store_false', help='Remove <SMILES> and </SMILES> from prompts before inference')
     parser.add_argument('--log-file', action='store_false', help='Enable logging to file')
