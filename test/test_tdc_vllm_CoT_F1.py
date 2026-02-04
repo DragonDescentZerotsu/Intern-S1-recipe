@@ -24,7 +24,7 @@ from transformers import AutoTokenizer
 
 from utils.TDC_answer_parser import extract_answer, parse_answer
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '2,3'  # TODO: device GPU #
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'  # TODO: device GPU #
 
 
 # Setup logging
@@ -63,7 +63,7 @@ def get_args():
 
     parser.add_argument('--strip-smiles-tags', action='store_false', help='Remove <SMILES> and </SMILES> from prompts before inference')
     parser.add_argument('--log-file', action='store_false', help='Enable logging to file')
-    parser.add_argument('--log-file-name', type=str, default="test_TDC_vllm_CoT_F1_{model_name}_{t_stamp}_3.log", help='Log file name pattern')  # TODO: log file name 
+    parser.add_argument('--log-file-name', type=str, default="test_TDC_vllm_CoT_F1_{model_name}_{t_stamp}_4.log", help='Log file name pattern')  # TODO: log file name 
 
     args = parser.parse_args()
     return args
@@ -82,7 +82,7 @@ def load_tasks_map(data_dir):
             # 'DILI.jsonl',  # 96
             # 'ClinTox.jsonl',  # 297
             # 'AMES.jsonl',  # 1457
-            'Tox21.jsonl',  # 15584
+            # 'Tox21.jsonl',  # 15584
             # 'herg_central_hERG_inhib.jsonl',  # 61379
             # -----------------------------------------
             # 'ToxCast.jsonl'  # 307282
@@ -103,9 +103,9 @@ def load_tasks_map(data_dir):
             # 'CYP3A4_Veith.jsonl',  # 2467
         ],
         'HTS': [
-            # 'HIV.jsonl',  # 8225
-            # 'SARSCoV2_3CLPro_Diamond.jsonl',  # 176
-            # 'SARSCoV2_Vitro_Touret.jsonl',  # 298
+            'HIV.jsonl',  # 8225
+            'SARSCoV2_3CLPro_Diamond.jsonl',  # 176
+            'SARSCoV2_Vitro_Touret.jsonl',  # 298
             # -----------------------------------------
             # 'butkiewicz.jsonl'  # 401997
         ],
@@ -315,7 +315,7 @@ def main():
             # Let's map -1 to the opposite of truth or keep it to penalize.
             # Actually, f1_score with labels=[0, 1] and pos_label=1 will treat others as mismatch.
             
-            score = f1_score(valid_labels, preds, average='binary', pos_label=1)
+            score = f1_score(valid_labels, preds, average='macro', pos_label=1)
             logger.info(f"Classification Report:\n{classification_report(valid_labels, preds, digits=4, labels=[0, 1])}")
             logger.info(f"F1 Score: {score:.4f}")
             
