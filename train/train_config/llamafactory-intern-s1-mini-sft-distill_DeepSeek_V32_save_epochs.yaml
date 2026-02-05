@@ -31,7 +31,7 @@ dataloader_num_workers: 16
 # enable_thinking: true  # false for TDC
 
 ### output
-output_dir: checkpoints/Intern-S1-mini/full/sft-distill_DeepSeek_V32-TDC-train-set-scaffold
+output_dir: checkpoints/Intern-S1-mini/full/sft-distill_DeepSeek_V32-TDC-train-set-scaffold-converge
 logging_steps: 100
 save_strategy: epoch
 # save_steps: 5000

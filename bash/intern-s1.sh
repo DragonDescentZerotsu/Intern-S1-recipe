@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=intern-s1-mini___TDC-scaffold-binary-SFT-wo-herg-c_ToxCast_butkiewicz
-#SBATCH --partition=dgx-b200-old-driver
+#SBATCH --job-name=intern-s1-mini___distill-DeepSeek_V32-TDC-train-set-scaffold-converge
+#SBATCH --partition=dgx-b200
 #SBATCH --gpus=8
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=64
 #SBATCH --mem=128G
-#SBATCH --time=1-00:00:00
+#SBATCH --time=5-00:00:00
 #SBATCH --output=/vast/projects/xia6/apex-gen/tianang/projects/Intern-S1/logs/B200/%x-%j.out
 #SBATCH --error=/vast/projects/xia6/apex-gen/tianang/projects/Intern-S1/logs/B200/%x-%j.err
 
@@ -38,4 +38,4 @@ cd /vast/projects/xia6/apex-gen/tianang/projects/Intern-S1
 # 用 srun 启动，确保资源绑定到该作业步
 #srun python intern-vllm-A100-CoT-multi-sample.py
 # srun --gpus=8 --ntasks=1 --cpus-per-task=32 llamafactory-cli train train_config/llamafactory-intern-s1-mini-sft.yaml
-llamafactory-cli train train/train_config/llamafactory-TDC-SFT-binary-wo-herg-c_ToxCast_butkiewicz-intern-s1-mini.yaml
+llamafactory-cli train train/train_config/llamafactory-intern-s1-mini-sft-distill_DeepSeek_V32_save_epochs.yaml
