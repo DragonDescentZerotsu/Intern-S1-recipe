@@ -1,6 +1,8 @@
 ## 1. Install Dependencies
 
 ```bash
+conda create -n GLM-vllm python=3.12.11
+conda activate GLM-vllm
 pip install -r requirements.txt
 ```
 
