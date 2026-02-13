@@ -4,14 +4,15 @@ Includes tools obtained from Haydn's full file, especially those related to pKa.
 """
 import time
 
-_t = time.time(); import math; print(f"import math: {time.time()-_t:.2f}s")
-_t = time.time(); from typing import Dict, Any, List; print(f"import typing: {time.time()-_t:.2f}s")
-
-_t = time.time(); from rdkit import Chem; print(f"from rdkit import Chem: {time.time()-_t:.2f}s")
-_t = time.time(); from rdkit.Chem import Descriptors, Crippen; print(f"from rdkit.Chem import Descriptors, Crippen: {time.time()-_t:.2f}s")
-_t = time.time(); from molgpka import MolGpKa; print(f"from molgpka import MolGpKa: {time.time()-_t:.2f}s")
-_t = time.time(); import json; print(f"import json: {time.time()-_t:.2f}s")
-_t = time.time(); from .RDKit_tools import _tool; print(f"from .RDKit_tools import _tool: {time.time()-_t:.2f}s")
+import math
+from typing import Dict, Any, List
+from rdkit import Chem
+from rdkit.Chem import Descriptors, Crippen
+print(f"importing molgpka...")
+_t = time.time()
+from molgpka import MolGpKa; print(f"from molgpka import MolGpKa: {time.time()-_t:.2f}s")
+import json
+from .RDKit_tools import _tool
 
 
 # -------------------------

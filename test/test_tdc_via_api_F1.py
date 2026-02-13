@@ -69,7 +69,7 @@ def get_args():
     parser.add_argument('--enable-tools', action='store_true', default=True, help='Enable tool calling')  # TODO: 注意是否使用了 tool ， debug 可能关了
     parser.add_argument('--log-file', action='store_true', default=False, help='Save logs to file')  # TODO: 注意这里 log-file 到底是开了还是没开
     parser.add_argument('--log-file-name', type=str, default="Tools_Intern-S1-mini-distill_DeepSeek_V32_1_epoch_{t_stamp}_hERG_Karim.log", help='logs file name')   # TODO: log file name
-    parser.add_argument('--langfuse', action='store_true', default=False, help='Save traces to langfuse')  # TODO: 注意这里 langfuse trace 到底是开了还是没开
+    parser.add_argument('--langfuse', action='store_true', default=True, help='Save traces to langfuse')  # TODO: 注意这里 langfuse trace 到底是开了还是没开
     parser.add_argument('--max-retry', type=int, default=4, help='Max retries for answer parsing failure')
     
     args = parser.parse_args()
@@ -237,18 +237,6 @@ def run_turn_base(client, messages, model_name, thinking=False, tools=None, use_
     while sub_turn <= depth_limit:
         try:
             # TODO: local Intern-S1-mini
-            response = client.chat.completions.create(
-                # name='repaired_QED',  # langfuse
-                model=model_name,
-                messages=messages,
-                tools=tools,
-                max_tokens=10240, # Reduced from 20000 to be safe/faster, usually enough. Important to keep this small other wise retry and slow down the speed.
-                temperature=0.8,
-                top_p=0.8,
-                stream=False,
-                extra_body=dict(spaces_between_special_tokens=False, enable_thinking=True)
-            )
-            # TODO: local GLM-4.7-Flash
             # response = client.chat.completions.create(
             #     # name='repaired_QED',  # langfuse
             #     model=model_name,
@@ -258,14 +246,26 @@ def run_turn_base(client, messages, model_name, thinking=False, tools=None, use_
             #     temperature=0.8,
             #     top_p=0.8,
             #     stream=False,
-            #     extra_body={
-            #         "spaces_between_special_tokens": False,
-            #         # "thinking": {
-            #         #     "type": "enabled",
-            #         #     "clear_thinking": False
-            #         # }
-            #     }
+            #     extra_body=dict(spaces_between_special_tokens=False, enable_thinking=True)
             # )
+            # TODO: local GLM-4.7-Flash
+            response = client.chat.completions.create(
+                # name='repaired_QED',  # langfuse
+                model=model_name,
+                messages=messages,
+                tools=tools,
+                max_tokens=10240, # Reduced from 20000 to be safe/faster, usually enough. Important to keep this small other wise retry and slow down the speed.
+                temperature=0.8,
+                top_p=0.8,
+                stream=False,
+                extra_body={
+                    "spaces_between_special_tokens": False,
+                    # "thinking": {
+                    #     "type": "enabled",
+                    #     "clear_thinking": False
+                    # }
+                }
+            )
             # TODO: local DeepSeek V3.2
             # response = client.chat.completions.create(
             #     model=model_name,
@@ -457,7 +457,7 @@ def load_tasks_map(data_dir):
     mapping = {  # TODO: Detailed Task selection
         'Tox': [
             # 'hERG_Karim.jsonl',  # 2690
-            'Carcinogens_Lagunin.jsonl',  # 56
+            # 'Carcinogens_Lagunin.jsonl',  # 56
             # 'Skin_Reaction.jsonl',  # 82
             # 'hERG.jsonl',  # 132
             # 'DILI.jsonl',  # 96
@@ -471,7 +471,7 @@ def load_tasks_map(data_dir):
         'ADME': [
             # 'PAMPA_NCATS.jsonl',  # 408
             # 'HIA_Hou.jsonl',  # 117
-            # 'BBB_Martins.jsonl',  # 406
+            'BBB_Martins.jsonl',  # 406
             # 'Pgp_Broccatelli.jsonl',  # 245
             # 'Bioavailability_Ma.jsonl',  # 128
             # 'CYP2C9_Substrate_CarbonMangels.jsonl',  # 135

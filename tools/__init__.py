@@ -52,5 +52,6 @@ def get_function_by_name(name):
         "get_3d_exposed_polar_surface": get_3d_exposed_polar_surface,
         "predict_pka": predict_pka,
         "estimate_logd": estimate_logd,
+        "remove_salts": remove_salts,
     }
     return tool_map.get(name)
