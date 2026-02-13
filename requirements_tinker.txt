@@ -1,0 +1,4 @@
+molgpka @ git+https://github.com/haydn-jones/MolGpKa.git
+freesasa
+rdkit
+accfg
