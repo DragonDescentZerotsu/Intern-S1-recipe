@@ -9,6 +9,9 @@
 /DataPrepare/shared_data/TDC_test_fg_desc_with_attach_points_and_atom_ids.jsonl
 /DataPrepare/shared_data/TDC_valid_fg_desc_with_attach_points_and_atom_ids.jsonl
 /DataPrepare/shared_data/TDC_all_fg_desc_with_attach_points_and_atom_ids.jsonl
+/DataPrepare/shared_data/append_train.jsonl
+/DataPrepare/shared_data/append_test.jsonl
+/DataPrepare/shared_data/append_valid.jsonl
 
 /DataPrepare/TDC_test_prompts_label_scaffold_wo_herg-c_ToxCast_butkiewicz/*
 !/DataPrepare/TDC_test_prompts_label_scaffold_wo_herg-c_ToxCast_butkiewicz/*.py

@@ -25,10 +25,11 @@ def merge_jsonl(input_files, output_file):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--in1", type=str, default="DataPrepare/shared_data/TDC_train_fg_desc_with_attach_points_and_atom_ids.jsonl")
-    parser.add_argument("--in2", type=str, default="DataPrepare/shared_data/TDC_test_fg_desc_with_attach_points_and_atom_ids.jsonl")
-    parser.add_argument("--in3", type=str, default="DataPrepare/shared_data/TDC_valid_fg_desc_with_attach_points_and_atom_ids.jsonl")
+    parser.add_argument("--in1", type=str, default="DataPrepare/shared_data/append_train.jsonl")
+    parser.add_argument("--in2", type=str, default="DataPrepare/shared_data/append_test.jsonl")
+    parser.add_argument("--in3", type=str, default="DataPrepare/shared_data/append_valid.jsonl")
+    parser.add_argument("--in4", type=str, default="DataPrepare/shared_data/TDC_all_fg_desc_with_attach_points_and_atom_ids.jsonl")
     parser.add_argument("--out", type=str, default="DataPrepare/shared_data/TDC_all_fg_desc_with_attach_points_and_atom_ids.jsonl")
     args = parser.parse_args()
 
-    merge_jsonl([args.in1, args.in2, args.in3], args.out)
+    merge_jsonl([args.in1, args.in2, args.in3, args.in4], args.out)

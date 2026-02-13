@@ -1,5 +1,5 @@
-## When using [test_tdc_via_api_AUROC.py](test_tdc_via_api_AUROC.py) to test Intern-s1-mini's tool call performance, host model like this:
-### 1. Intern-s1-mini
+# When using [test_tdc_via_api_F1.py](test_tdc_via_api_F1.py) to test model's tool call performance, host model like this:
+## 1. Intern-s1-mini
 ```bash
 CUDA_VISIBLE_DEVICES=0 vllm serve internlm/Intern-S1-mini \
   --host 0.0.0.0 \
@@ -15,7 +15,7 @@ CUDA_VISIBLE_DEVICES=0 vllm serve internlm/Intern-S1-mini \
   --tool-call-parser interns1 \
   --chat-template agent/chat_templates/chat_template_intern-s1_modified.jinja
 ```
-### 2. GLM-4.7-Flash
+## 2. GLM-4.7-Flash
 ```bash
 CUDA_VISIBLE_DEVICES=4,5 vllm serve zai-org/GLM-4.7-Flash \
      --host 0.0.0.0 \
@@ -28,7 +28,8 @@ CUDA_VISIBLE_DEVICES=4,5 vllm serve zai-org/GLM-4.7-Flash \
      --enable-auto-tool-choice \
      --served-model-name glm-4.7-flash
 ```
-Add log request to see the prompt after applying chat template.
+## 3. Special functions
+### 3.1 Add log request to see the prompt after applying chat template.
 ```bash
 export VLLM_LOGGING_LEVEL=DEBUG
 CUDA_VISIBLE_DEVICES=4,5 vllm serve zai-org/GLM-4.7-Flash \
@@ -49,3 +50,20 @@ To turn off vllm debuging mode:
 ```bash
 export VLLM_LOGGING_LEVEL=INFO
 ```
+
+### 3.2 Alow vLLM to return logprobs
+For [test_tdc_via_api_F1_optimal_threshold.py](test_tdc_via_api_F1_optimal_threshold.py), add `--max-logprobs` to the vLLM host command.
+```bash
+CUDA_VISIBLE_DEVICES=4,5 vllm serve zai-org/GLM-4.7-Flash \
+     --host 0.0.0.0 \
+     --port 8001 \
+     --tensor-parallel-size 2 \
+     --speculative-config.method mtp \
+     --speculative-config.num_speculative_tokens 1 \
+     --tool-call-parser glm47 \
+     --reasoning-parser glm45 \
+     --enable-auto-tool-choice \
+     --served-model-name glm-4.7-flash \
+     --max-logprobs 120
+```
+Change `--max-logprobs 20` to `--max-logprobs 100` to get more logprobs.

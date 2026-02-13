@@ -42,16 +42,17 @@ logger = logging.getLogger(__name__)
 def get_all_tdc_smiles():
     smiles_set = set()
     
-    task_groups = ['ADME', 'Tox', 'HTS'] #, 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC']
+    task_groups = ['Tox'] #'HTS', 'ADME', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC']
 
     for group_name in task_groups:
         task_names = []
         if group_name == 'Tox':
-            task_names = ['Skin_Reaction'] 
-            task_names += ['hERG', 'AMES', 'DILI', 'ClinTox']
-            task_names += ['Tox21_' + label for label in retrieve_label_name_list('Tox21')]
-            task_names += ['herg_central_' + retrieve_label_name_list('herg_central')[-1]] 
-            task_names += ['ToxCast_' + label for label in retrieve_label_name_list('Toxcast')]
+            task_names = ['hERG_Karim', 'Carcinogens_Lagunin'] 
+            # task_names += ['Skin_Reaction'] 
+            # task_names += ['hERG', 'AMES', 'DILI', 'ClinTox']
+            # task_names += ['Tox21_' + label for label in retrieve_label_name_list('Tox21')]
+            # task_names += ['herg_central_' + retrieve_label_name_list('herg_central')[-1]] 
+            # task_names += ['ToxCast_' + label for label in retrieve_label_name_list('Toxcast')]
             
         elif group_name == 'ADME':
             task_names = [
@@ -109,8 +110,8 @@ def get_all_tdc_smiles():
                 #         smiles_set.update(train_df['Drug'].dropna().unique())
                 # TODO: chose 'train' or 'test' or 'valid' to collect SMILES
 
-                if 'valid' in split:  # 'test'
-                    test_df = split['valid']
+                if 'test' in split:  # 'test'
+                    test_df = split['test']
                     # Standard SMILES task usually has 'Drug' column
                     if 'Drug' in test_df.columns:
                         smiles_set.update(test_df['Drug'].dropna().unique())
@@ -152,7 +153,7 @@ class NoDaemonContext(type(multiprocessing.get_context())):
 # Since I can't guarantee joblib, I will try to use the NoDaemon logic for Pool.
 
 def main():
-    output_path = current_dir / 'shared_data' / 'TDC_valid_fg_desc_with_attach_points_and_atom_ids.jsonl'  # 'TDC_train_fg_desc_with_attach_points_and_atom_ids.jsonl'
+    output_path = current_dir / 'shared_data' / 'append_test.jsonl'  # 'TDC_valid_fg_desc_with_attach_points_and_atom_ids.jsonl'  # 'TDC_train_fg_desc_with_attach_points_and_atom_ids.jsonl'
     output_path.parent.mkdir(parents=True, exist_ok=True)
     
     # 1. Collect SMILES
