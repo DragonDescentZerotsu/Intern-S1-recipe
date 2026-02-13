@@ -55,3 +55,10 @@ python test/test_tdc_via_api_F1.py \
   --log-file-name "your_log_file.log" \
   --langfuse
 ```
+
+## 4. Tools for different tasks
+
+There are two kinds of tools:
+1. **Baisc Tools**: Tools that are available for all tasks, refer to the `BASIC_TOOLS` variable in [__init__.py](tools/__init__.py)
+2. **Task-Specific Tools**: Tool groups that are available for specific tasks, refer to the `TDC_RDKIT_SPECIFIC_OPENAI_TOOLS_MAP` variable in [RDKit_tools.py](tools/RDKit_tools.py)
+3. When loading the tools, the function `get_tools_for_task()` in [test/test_tdc_via_api_F1.py](test/test_tdc_via_api_F1.py) will load the tools based on the task groups.
