@@ -1,9 +1,10 @@
 from .AccFG import *
 from .RDKit_tools import *
 from .ePSA_3D import get_3d_exposed_polar_surface, SASA_OPENAI_TOOLS
-from .addtional_tools import *
+from .pka_related_tools import *
+from .standardize_tools import *
 
-BASIC_TOOLS = RDKIT_BASIC_OPENAI_TOOLS + AccFG_OPENAI_TOOLS # + SASA_OPENAI_TOOLS  # 因为 AccFG_OPENAI_TOOLS 里面的 name 和实际的调用的函数不一致所以注意下面 tool_map 的映射
+BASIC_TOOLS = RDKIT_BASIC_OPENAI_TOOLS + AccFG_OPENAI_TOOLS + [PKA_TOOL, LOGD_TOOL] + STANDARDIZE_OPENAI_TOOLS + SASA_OPENAI_TOOLS  # 因为 AccFG_OPENAI_TOOLS 里面的 name 和实际的调用的函数不一致所以注意下面 tool_map 的映射
 
 def get_function_by_name(name):
     tool_map = {
@@ -49,5 +50,7 @@ def get_function_by_name(name):
         "get_num_atom_stereo_centers": get_num_atom_stereo_centers,
         "get_num_unspecified_atom_stereo_centers": get_num_unspecified_atom_stereo_centers,
         "get_3d_exposed_polar_surface": get_3d_exposed_polar_surface,
+        "predict_pka": predict_pka,
+        "estimate_logd": estimate_logd,
     }
     return tool_map.get(name)

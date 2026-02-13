@@ -1,5 +1,6 @@
 """
-包括了从 Haydn 的 full 文件中获取的 tools
+包括了从 Haydn 的 full 文件中获取的 tools, 尤其是和pka相关的
+Includes tools obtained from Haydn's full file, especially those related to pKa.
 """
 import time
 
@@ -238,24 +239,21 @@ def estimate_logd(smiles: str, ph: float = 7.4) -> str:
 # ============================================================
 # OpenAI tool definitions
 # ============================================================
-
-ADDITIONAL_OPENAI_TOOLS: List[Dict[str, Any]] = [
-    _tool(
+PKA_TOOL = _tool(
         "predict_pka",
         "Predict pKa values for ionizable sites in a molecule. "
         "Returns base-site and acid-site pKa values (1-indexed atom map numbers), "
         "the most basic/acidic pKa, the number of basic/acidic sites, "
         "and the atom-mapped SMILES."
-    ),
-    _tool_smiles_and_ph(
+    )
+LOGD_TOOL = _tool_smiles_and_ph(
         "estimate_logd",
         "Estimate logD at a target pH from predicted pKa values and RDKit logP. "
         "Uses a Henderson-Hasselbalch approximation: logD(pH) ≈ logP + log10(f_neutral). "
-        "logP is RDKit Wildman-Crippen logP. This is a heuristic intended for "
-        "permeability/BBB-style reasoning and should not be treated as experimental logD. "
+        "logP is RDKit Wildman-Crippen logP. This is a heuristic intended for helping"
+        "your reasoning and should not be treated as experimental logD. "
         "For polyprotic molecules, uses the most basic and most acidic predicted pKa values."
-    ),
-]
+    )
 
 if __name__ == "__main__":
     smiles = 'CC(=O)Oc1ccccc1C(=O)O'  # Aspirin
@@ -269,4 +267,4 @@ if __name__ == "__main__":
     print(estimate_logd(smiles, ph=2.0))
     print()
     print('=== Tool schema ===')
-    print(json.dumps(ADDITIONAL_OPENAI_TOOLS, indent=2, ensure_ascii=False))
+    print(json.dumps([PKA_TOOL, LOGD_TOOL], indent=2, ensure_ascii=False))

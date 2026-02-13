@@ -364,7 +364,7 @@ AccFG_OPENAI_TOOLS = [{
     'type': 'function',
     'function': {
         'name': 'describe_high_level_fg_fragments',
-        'description': 'Parse SMILES string into functional groups with attachment points and mark atom ids in the SMILES string for better structure description.',
+        'description': 'Accurately parse functional groups with attachment points, corresponding fragment SMILES, and atom ids in the SMILES string for better structure description.',
         'parameters': {
             'type': 'object',
             'properties': {
