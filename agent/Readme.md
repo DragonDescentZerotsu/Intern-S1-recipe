@@ -1,17 +1,18 @@
 ### 1. vLLM serving Intern-S1-mini (1 x A100):
 ```bash
-CUDA_VISIBLE_DEVICES=0 vllm serve internlm/Intern-S1-mini \
+CUDA_VISIBLE_DEVICES=5 vllm serve Kiria-Nozan/Intern-s1-mini-distill-dsv32-11k-samples \
   --host 0.0.0.0 \
   --port 8000 \
   --api-key EMPTY \
   --dtype auto \
   --served-model-name Intern-S1-mini \
-  --max-model-len 32768 \
+  --max-model-len 16000 \
   --tensor-parallel-size 1 \
   --trust-remote-code \
   --enable-auto-tool-choice \
   --tool-parser-plugin agent/tool_parser/intern_s1_parser.py \
   --tool-call-parser interns1 \
+  --gpu_memory_utilization 0.95 \
   --chat-template agent/chat_templates/chat_template_intern-s1_modified.jinja
 ```
 
