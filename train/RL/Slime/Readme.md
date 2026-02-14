@@ -31,7 +31,7 @@ In the new shell with root identity, update to the latest slime repo
 ```bash
 cd /root/slime
 git pull
-pip install -e . --no-deps
+pip install -e . --no-deps --break-system-packages
 ```
 Or we can create a new folder of slime to easier manage code
 ```bash
@@ -72,7 +72,7 @@ P="$(pwd)"
 srun --partition=dgx-b200 \
      --pty \
      --nodes=1 \
-     --gpus=8 \
+     --gpus=4 \
      --cpus-per-task=64 \
      --mem=512G \
      --time=1-00:00:00 \
