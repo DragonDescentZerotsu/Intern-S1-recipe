@@ -107,13 +107,13 @@ docker run --rm -it \
   --ipc=host \
   nvcr.io/nvidia/nemo:25.11.nemotron_3_nano
 ```
-
+---
 ## 2. Download data (TDC train/valid/test)
 ### 2.1 Download data from HuggingFace
 ```bash
 python utils/HF_data_download.py
 ```
-
+---
 ## 3. Train the big MoE model with Megatron Bridge
 ### 3.1 For intern-s1
 1. Step 1, convert HF model to Megatron Version and save. (**this will finally stop with Error of CUDA OOM, ignore it**)
