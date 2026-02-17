@@ -125,12 +125,13 @@ SGLANG_ARGS=(
    # EAGLE speculative decoding is NOT compatible with TransformersForCausalLM
    # (glm4_moe_lite uses generic transformers backend which lacks get_embed_and_head())
    --sglang-speculative-algorithm EAGLE
-   --sglang-speculative-num-steps 2
+   --sglang-speculative-num-steps 3
    --sglang-speculative-eagle-topk 1
-   --sglang-speculative-num-draft-tokens 3
+   --sglang-speculative-num-draft-tokens 4
 
    # B200 does not support fa3. Keep flashinfer here.
-   # --sglang-attention-backend trtllm_mha
+   --sglang-attention-backend triton
+   --sglang-speculative-draft-attention-backend triton
 
    # GLM-4.7-Flash + flashinfer may hit CUDA graph capture shape mismatch
    # (e.g. [64, 20, 64] vs [16, 20, 64]). Disable graph first for stability.
