@@ -112,7 +112,7 @@ def cached_describe_high_level_fg_fragments(smiles: str):
     # If not cached, compute and cache
     print(f"{smiles} not cached, computing...")
     # Prevent nested daemon pool error by forcing synchronous execution if the underlying library tries to spawn a pool
-    with patch('multiprocessing.Pool', side_effect=SynchronousPool), patch('accfg.main.ProcessPoolExecutor', SynchronousProcessPoolExecutor):
+    with patch('multiprocessing.Pool', side_effect=SynchronousPool):
         return high_level_fg_fragments_w_attach_points_no_special_tokens_w_atom_ids(smiles)
 
 #---------------------------------------------------
