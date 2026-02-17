@@ -43,6 +43,8 @@
 !/DataPrepare/TDC_test_prompts_label_sm_wo_herg-c_ToxCast_butkiewicz/*.md
 !/DataPrepare/TDC_test_prompts_label_sm_wo_herg-c_ToxCast_butkiewicz/*.json
 
+/DataPrepare/Slime_RL_data/**
+
 /wandb
 /unsloth_compiled_cache
 
