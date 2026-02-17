@@ -39,7 +39,7 @@ def get_tools_for_task(task_name: str) -> list[dict]:
     return BASIC_TOOLS + specific_tools
 
 
-def parse_tool_calls(response: str, tools_info: list[dict], parser_type: str = "glm4") -> dict:
+def parse_tool_calls(response: str, tools_info: list[dict], parser_type: str = "glm47") -> dict:
     """
     Parse tool calls from LLM response using sglang FunctionCallParser.
     """

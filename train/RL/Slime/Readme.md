@@ -285,7 +285,7 @@ def register_image_processor(
 pip install -U transformers --break-system-packages
 ```
 
-# 3. Transfer the model from HF to Slime
+# 3. Transfer checkpoints from HF to Megatron version for Slime training
 1. Update transformers to the latest version
 ```bash
 pip install -U transformers --break-system-packages

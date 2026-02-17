@@ -16,6 +16,7 @@ CUDA_VISIBLE_DEVICES=0 vllm serve internlm/Intern-S1-mini \
   --chat-template agent/chat_templates/chat_template_intern-s1_modified.jinja
 ```
 ## 2. GLM-4.7-Flash
+### vLLM
 ```bash
 CUDA_VISIBLE_DEVICES=4,5 vllm serve zai-org/GLM-4.7-Flash \
      --host 0.0.0.0 \
@@ -27,6 +28,29 @@ CUDA_VISIBLE_DEVICES=4,5 vllm serve zai-org/GLM-4.7-Flash \
      --reasoning-parser glm45 \
      --enable-auto-tool-choice \
      --served-model-name glm-4.7-flash
+```
+### Sglang
+```bash
+python3 -m sglang.launch_server \
+  --model-path checkpoints/megatron/hf_version/GLM-4.7-Flash \
+  --tp-size 1 \
+  --tool-call-parser glm47 \
+  --reasoning-parser glm45 \
+  --speculative-algorithm EAGLE \
+  --speculative-num-steps 3 \
+  --speculative-eagle-topk 1 \
+  --speculative-num-draft-tokens 4 \
+  --mem-fraction-static 0.8 \
+  --served-model-name glm-4.7-flash \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --attention-backend triton \
+  --speculative-draft-attention-backend triton
+```
+If not on Blackwell chips, remove attention backend settings
+```diff
+- --attention-backend triton \
+- --speculative-draft-attention-backend triton
 ```
 ## 3. Special functions
 ### 3.1 Add log request to see the prompt after applying chat template.

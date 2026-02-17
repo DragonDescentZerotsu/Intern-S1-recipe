@@ -141,7 +141,7 @@ SGLANG_ARGS=(
    # Re-enable after sglang patch/upgrade:
    # --sglang-cuda-graph-max-bs 16
    # Keep only one in-flight request for debug stability.
-   --sglang-max-running-requests 1
+   --sglang-max-running-requests 64
 )
 
 CUSTOM_ARGS=(
