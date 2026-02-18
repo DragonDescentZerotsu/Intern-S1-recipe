@@ -6,20 +6,33 @@ agents using the Slime framework. It implements a multi-turn agent loop with too
 mirroring the logic from test_tdc_via_api_F1.py but adapted for Slime's training pipeline.
 
 Usage in shell script:
-    --custom-generate-function-path generate_tdc.generate
+    --custom-generate-function-path generate_tdc_async.generate
+    --rollout-function-path generate_tdc_async.generate_rollout_fully_async
 """
 
+import asyncio
+import atexit
 import json
 import logging
 import os
+import queue
 import re
 import sys
+import threading
+import time
 from contextlib import nullcontext
 from typing import Any
+
 from dotenv import load_dotenv
+
 load_dotenv()
 
-from slime.rollout.sglang_rollout import GenerateState
+from slime.rollout.sglang_rollout import (
+    GenerateState,
+    generate_and_rm_group,
+    generate_rollout as sglang_generate_rollout,
+)
+from slime.utils.async_utils import run
 from slime.utils.http_utils import post
 from slime.utils.types import Sample
 
@@ -498,3 +511,229 @@ async def generate(args, sample: Sample, sampling_params: dict) -> Sample:
         f"response_length={sample.response_length}"
     )
     return sample
+
+
+# --- Fully async rollout infrastructure (adapted from slime/examples/fully_async) ---
+_global_worker = None
+_worker_lock = threading.Lock()
+
+
+class AsyncRolloutWorker:
+    """Background rollout worker that continuously pulls prompts and runs generation."""
+
+    def __init__(self, args, data_buffer):
+        self.args = args
+        self.data_buffer = data_buffer
+        self.running = True
+        self.output_queue = queue.Queue(maxsize=1000)
+        self.worker_thread = None
+        self.state = GenerateState(args)
+
+    async def continuous_worker_loop(self):
+        logger.info("Continuous async rollout worker started")
+
+        active_tasks = set()
+        max_concurrent_tasks = max(1, self.args.rollout_batch_size)
+        group_id_counter = 0
+
+        while self.running:
+            try:
+                if active_tasks:
+                    done_tasks = {task for task in active_tasks if task.done()}
+                    for task in done_tasks:
+                        try:
+                            task.result()
+                        except Exception as e:
+                            logger.warning(f"Async rollout task failed: {e}")
+                    active_tasks -= done_tasks
+
+                while len(active_tasks) < max_concurrent_tasks and self.running:
+                    samples = self.data_buffer.get_samples(1)
+                    if not samples:
+                        break
+
+                    for group in samples:
+                        group_id = group_id_counter
+                        group_id_counter += 1
+
+                        task = asyncio.create_task(
+                            generate_and_rm_group(
+                                self.args,
+                                group,
+                                sampling_params=self.state.sampling_params.copy(),
+                                evaluation=False,
+                            )
+                        )
+
+                        def task_done_callback(done_task, gid=group_id):
+                            try:
+                                result = done_task.result()
+                            except Exception as e:
+                                logger.warning(f"Async rollout callback failed for group {gid}: {e}")
+                                return
+                            self.output_queue.put((gid, result))
+
+                        task.add_done_callback(task_done_callback)
+                        active_tasks.add(task)
+
+                        if len(active_tasks) >= max_concurrent_tasks:
+                            break
+
+                await asyncio.sleep(1)
+            except Exception as e:
+                logger.warning(f"Error in continuous worker loop: {e}")
+                await asyncio.sleep(1)
+
+        if active_tasks:
+            logger.info(f"Waiting for {len(active_tasks)} async tasks to finish before shutdown")
+            await asyncio.wait(active_tasks)
+
+        logger.info("Continuous async rollout worker stopped")
+
+    def worker_thread_func(self):
+        asyncio.run(self.continuous_worker_loop())
+
+    def start(self):
+        if self.worker_thread is None or not self.worker_thread.is_alive():
+            self.worker_thread = threading.Thread(target=self.worker_thread_func, daemon=True)
+            self.worker_thread.start()
+            logger.info("Started continuous async worker thread")
+
+    def stop(self):
+        self.running = False
+        if self.worker_thread and self.worker_thread.is_alive():
+            self.worker_thread.join(timeout=5)
+        logger.info("Stopped async worker thread")
+
+    def get_completed_groups(self) -> list[tuple]:
+        completed = []
+        while True:
+            try:
+                completed.append(self.output_queue.get_nowait())
+            except queue.Empty:
+                break
+        return completed
+
+    def get_queue_size(self) -> int:
+        return self.output_queue.qsize()
+
+
+def get_global_worker(args, data_buffer):
+    """Get or create a singleton background worker for rollout generation."""
+    global _global_worker
+    with _worker_lock:
+        if (
+            _global_worker is None
+            or _global_worker.worker_thread is None
+            or not _global_worker.worker_thread.is_alive()
+        ):
+            logger.info("Creating new global async rollout worker")
+            _global_worker = AsyncRolloutWorker(args, data_buffer)
+            _global_worker.start()
+        return _global_worker
+
+
+def stop_global_worker():
+    """Stop global async worker if it exists."""
+    global _global_worker
+    with _worker_lock:
+        if _global_worker is not None:
+            _global_worker.stop()
+            _global_worker = None
+
+
+async def generate_rollout_async(args, rollout_id: int, data_buffer) -> list[list[Sample]]:
+    """Collect rollout groups from a persistent background async worker."""
+    del rollout_id
+    assert args.rollout_global_dataset
+
+    worker = get_global_worker(args, data_buffer)
+    target_data_size = args.rollout_batch_size
+
+    data = []
+    completed_groups = {}
+    do_print = True
+
+    logger.info(f"Starting fully async rollout generation for {target_data_size} groups")
+    logger.info(f"Initial worker queue size: {worker.get_queue_size()}")
+
+    start_time = time.time()
+    last_progress_time = start_time
+    no_progress_timeout = 30.0
+
+    while len(data) < target_data_size:
+        completed = worker.get_completed_groups()
+        made_progress = False
+        for group_id, group in completed:
+            completed_groups[group_id] = group
+            made_progress = True
+
+        if made_progress:
+            last_progress_time = time.time()
+
+        processed_any = False
+        for group_id in sorted(completed_groups.keys()):
+            if len(data) >= target_data_size:
+                break
+
+            group = completed_groups.pop(group_id)
+            try:
+                any_aborted = any(sample.status == Sample.Status.ABORTED for sample in group)
+            except Exception:
+                any_aborted = False
+
+            if any_aborted:
+                try:
+                    data_buffer.add_samples([group])
+                    logger.info(f"Returned aborted group {group_id} to data buffer")
+                except Exception as e:
+                    logger.warning(f"Failed to return aborted group {group_id} to buffer: {e}")
+                continue
+
+            if do_print and group:
+                logger.info(
+                    f"First rollout sample: {[group[0].prompt + group[0].response]}, "
+                    f"label: {group[0].label}, reward: {group[0].reward}"
+                )
+                do_print = False
+
+            data.append(group)
+            processed_any = True
+
+        current_time = time.time()
+        if current_time - last_progress_time > no_progress_timeout:
+            logger.warning(
+                f"No rollout progress for {no_progress_timeout}s. "
+                f"Queue size={worker.get_queue_size()}, collected={len(data)}/{target_data_size}"
+            )
+            last_progress_time = current_time
+
+        if not processed_any:
+            await asyncio.sleep(0.01)
+
+    duration = time.time() - start_time
+    logger.info(f"Fully async rollout completed in {duration:.2f}s, queue size={worker.get_queue_size()}")
+
+    if data:
+        logger.info(
+            f"Finish rollout: {[data[-1][0].prompt + data[-1][0].response]}, "
+            f"label: {data[-1][0].label}, reward: {data[-1][0].reward}"
+        )
+
+    data = sorted(data, key=lambda group: group[0].index)
+    return data
+
+
+def generate_rollout_fully_async(args, rollout_id, data_buffer, evaluation=False):
+    """
+    Fully async rollout entrypoint.
+
+    For eval, fallback to Slime default rollout implementation so eval config
+    can keep working even when training rollout is fully async.
+    """
+    if evaluation:
+        return sglang_generate_rollout(args, rollout_id, data_buffer, evaluation=True)
+    return run(generate_rollout_async(args, rollout_id, data_buffer))
+
+
+atexit.register(stop_global_worker)

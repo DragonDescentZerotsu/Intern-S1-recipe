@@ -15,8 +15,8 @@ set -ex
 # 如果 MLP 平台环境变量未设置，使用本机地址（单节点模式）
 # MLP_WORKER_0_HOST: 主节点 IP 地址，用于 Ray 集群和 NCCL 通信
 # MLP_SOCKET_IFNAME: 网络接口名称，用于节点间通信
-: ${MLP_WORKER_0_HOST:=$(hostname -I | awk '{print $1}')}
-: ${MLP_SOCKET_IFNAME:=eth0}
+# : ${MLP_WORKER_0_HOST:=$(hostname -I | awk '{print $1}')}
+# : ${MLP_SOCKET_IFNAME:=eth0}
 
 # will prevent ray from buffering stdout/stderr
 export PYTHONBUFFERED=16
@@ -39,6 +39,7 @@ CKPT_ARGS=(
 )
 
 ROLLOUT_ARGS=(
+   --rollout-function-path generate_tdc_async.generate_rollout_fully_async
    --prompt-data DataPrepare/Slime_RL_data/by_task/train/BBB_Martins.jsonl
    --input-key text
    --label-key Y
@@ -47,19 +48,19 @@ ROLLOUT_ARGS=(
    --rollout-shuffle
 
    --num-rollout 3000
-   --rollout-batch-size 32 # 128
+   --rollout-batch-size 2 # 128
    #--over-sampling-batch-size 256
    --n-samples-per-prompt 8
    --rollout-max-response-len 32768
    --rollout-temperature 1.0
 
-   --global-batch-size 256
+   --global-batch-size 16
    #--balance-data
 )
 
 EVAL_ARGS=(
    --eval-interval 20
-   --eval-prompt-data BBB_Martins_test DataPrepare/Slime_RL_data/by_task/test/BBB_Martins.jsonl
+   --eval-prompt-data BBB_Martins_test DataPrepare/Slime_RL_data/by_task/test/BBB_Martins_debug.jsonl
    --n-samples-per-eval-prompt 2
    --eval-max-response-len 16384
    --eval-temperature 0.6
@@ -113,7 +114,7 @@ WANDB_ARGS=(
 
 SGLANG_ARGS=(
    --rollout-num-gpus-per-engine 1
-   --sglang-mem-fraction-static 0.8
+   --sglang-mem-fraction-static 0.9
    # Pin DP settings explicitly. In some sglang/slime combos, dp size can be
    # inferred unexpectedly and cause KV-cache index/value shape mismatches.
    --sglang-enable-dp-attention
@@ -127,24 +128,18 @@ SGLANG_ARGS=(
    --sglang-speculative-num-steps 3
    --sglang-speculative-eagle-topk 1
    --sglang-speculative-num-draft-tokens 4
-
-   # B200 does not support fa3. Keep flashinfer here.
+   
+   # In Huggingface page of GLM-4.7-Flash, triton is recommended for attention backend for Blackwell GPUs
    --sglang-attention-backend triton
    --sglang-speculative-draft-attention-backend triton
 
-   # GLM-4.7-Flash + flashinfer may hit CUDA graph capture shape mismatch
-   # (e.g. [64, 20, 64] vs [16, 20, 64]). Disable graph first for stability.
-   # --sglang-disable-cuda-graph
-   # Use non-overlap scheduler to avoid overlap-path KV indexing bugs.
-   # --sglang-disable-overlap-schedule
-   # Re-enable after sglang patch/upgrade:
+
    --sglang-cuda-graph-max-bs 32
-   # Keep only one in-flight request for debug stability.
-   --sglang-max-running-requests 64
+   --sglang-max-running-requests 128
 )
 
 CUSTOM_ARGS=(
-   --custom-generate-function-path generate_tdc.generate
+   --custom-generate-function-path generate_tdc_async.generate
    --custom-rm-path reward_tdc.reward_func
 )
 
@@ -163,51 +158,31 @@ MISC_ARGS=(
 )
 
 # launch the master node of ray in container
-export MASTER_ADDR=${MLP_WORKER_0_HOST}
-export no_proxy="127.0.0.1,${MASTER_ADDR}"
+export MASTER_ADDR=${MLP_WORKER_0_HOST:-"127.0.0.1"}
 ray start --head --node-ip-address ${MASTER_ADDR} --num-gpus 8 --disable-usage-stats  # gpu numbers
-
-for WORKER_IP in $(awk '{print $1}' /root/mpi_rack_hostfile); do
-  if [[ "$WORKER_IP" == "$MLP_WORKER_0_HOST" ]]; then
-    continue
-  fi
-  echo "Starting Ray worker on ${WORKER_IP}"
-  ssh root@"${WORKER_IP}" \
-    "pkill -9 sglang ; ray stop --force ; pkill -9 python ; ray start --address=${MASTER_ADDR}:6379 --num-gpus 8 --node-ip-address ${WORKER_IP} --disable-usage-stats" &
-done
-wait
 
 # PROJECT_ROOT is 3 levels up from SCRIPT_DIR (train/RL/Slime -> project root)
 PROJECT_ROOT="$(cd -- "${SCRIPT_DIR}/../../.." &>/dev/null && pwd)"
 
+RUNTIME_ENV_JSON="{
+  \"env_vars\": {
+    \"PYTHONPATH\": \"/root/Megatron-LM/:${SCRIPT_DIR}:${PROJECT_ROOT}\",
+    \"NCCL_IB_DISABLE\": \"1\",
+    \"NCCL_CUMEM_ENABLE\": \"0\",
+    \"CUDA_DEVICE_MAX_CONNECTIONS\": \"1\",
+    \"NVTE_BWD_LAYERNORM_SM_MARGIN\": \"20\",
+    \"NCCL_P2P_LEVEL\": \"NVL\",
+    \"TORCH_NCCL_AVOID_RECORD_STREAMS\": \"1\",
+    \"NCCL_NVLS_ENABLE\": \"${HAS_NVLINK}\",
+    \"NCCL_MIN_CTAS\": \"4\"
+  }
+}"
+
 # all the original InfiniteBand (IB) settings are removed as we are only using one node, turn them back on if you have multiple nodes
 # Refer to the original InfiniteBand (IB) settings in the original run script in Slime github
 ray job submit --address="http://127.0.0.1:8265" \
-   --runtime-env-json='{
-     "env_vars": {
-        "no_proxy": "localhost,127.0.0.1,0.0.0.0,${MASTER_ADDR}",
-        "GLOO_SOCKET_IFNAME": "${MLP_SOCKET_IFNAME}",
-        "TP_SOCKET_IFNAME": "${MLP_SOCKET_IFNAME}",
-        "MASTER_ADDR": "${MLP_WORKER_0_HOST}",
-        "PYTHONPATH": "/root/Megatron-LM/:${SCRIPT_DIR}:${PROJECT_ROOT}",
-        "NCCL_IB_DISABLE": "1",
-        "NCCL_CUMEM_ENABLE": "0",
-        "CUDA_DEVICE_MAX_CONNECTIONS": "1",
-        "NVTE_BWD_LAYERNORM_SM_MARGIN": "20",
-        "NCCL_P2P_LEVEL": "NVL",
-        "TORCH_NCCL_AVOID_RECORD_STREAMS": "1",
-        "NCCL_NVLS_ENABLE": "0",
-        "NCCL_MIN_CTAS": "4",
-        "OMPI_MCA_pml": "ob1",
-        "OMPI_MCA_btl": "^openib",
-        "OMPI_MCA_routed": "direct",
-        "OMPI_MCA_routed_radix": "1024",
-        "OMPI_MCA_plm_rsh_no_tree_spawn": "1",
-        "OMPI_MCA_oob_tcp_if_include": "${MLP_SOCKET_IFNAME}",
-        "OMPI_MCA_btl_tcp_if_include": "${MLP_SOCKET_IFNAME}"
-     }
-   }' \
-   -- python3 train/RL/Slime/train.py \
+   --runtime-env-json="${RUNTIME_ENV_JSON}" \
+   -- python3 train/RL/Slime/train_async.py \
    --actor-num-nodes 1 \
    --actor-num-gpus-per-node 4 \
    --rollout-num-gpus 4 \

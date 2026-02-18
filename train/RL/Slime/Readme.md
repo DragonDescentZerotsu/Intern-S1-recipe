@@ -91,6 +91,31 @@ srun --partition=dgx-b200 \
      --export=ALL,HOME="$HOME" \
      bash -l
 ```
+Multi nodes
+```bash
+CACHE=/vast/projects/xia6/apex-gen/tianang/container_cache
+export XDG_RUNTIME_DIR=$CACHE/xdg_runtime
+export ENROOT_CACHE_PATH=$CACHE/enroot_cache
+export ENROOT_DATA_PATH=$CACHE/enroot_data
+export ENROOT_TEMP_PATH=$CACHE/enroot_tmp
+
+P="$(pwd)"
+
+srun --partition=dgx-b200 \
+     --pty \
+     --nodes=2 \
+     --gpus=16 \
+     --ntasks-per-node=1 \
+     --cpus-per-gpu=8 \
+     --mem-per-gpu=128G \
+     --time=1-00:00:00 \
+     --container-writable \
+     --container-image=$CACHE/slime_latest.sqsh \
+     --container-mounts=$P:$P,$HOME:$HOME,/vast:/vast:rw \
+     --container-workdir="$P" \
+     --export=ALL,HOME="$HOME" \
+     bash -l
+```
 # 2. Update the slime repo in container
 ### 2.1 Update Slime
 ```bash
@@ -99,7 +124,7 @@ git clone https://github.com/THUDM/slime.git
 cd slime
 pip install -e . --no-deps --break-system-packages
 ``` 
-### 2.2 Make a patch for Slime(Megatron-Bridge) to support GLM-4.7-Flash
+### 2.2 Make a patch for Slime(Megatron-Bridge) to support GLM-4.7-Flash weight transformation
 Find file `slime_plugins/mbridge/glm4moe_lite.py`, replace it with:
 <details>
 <summary>Click to expand code</summary>
@@ -270,6 +295,9 @@ PY
 python -m py_compile "$FILE"
 ```
 Actual change in this patch is:
+<details>
+<summary>Click to see details</summary>
+
 ```diff
 def register_image_processor(
     config: Type[PretrainedConfig], image_processor: Type[BaseImageProcessor]
@@ -285,6 +313,8 @@ def register_image_processor(
 +       # transformers v5 时代的新签名
 +       AutoImageProcessor.register(config, slow_image_processor_class=image_processor, exist_ok=True)
 ```
+</details>
+
 ### 2.5 Update `transformers`
 ```bash
 pip install -U transformers --break-system-packages
@@ -292,6 +322,8 @@ pip install -U transformers --break-system-packages
 
 ### 2.6 Update `flashinfer-jit-cache`
 ```bash
+cd ../..
+
 wget https://github.com/flashinfer-ai/flashinfer/releases/download/v0.6.3/flashinfer_jit_cache-0.6.3+cu129-cp39-abi3-manylinux_2_28_x86_64.whl#sha256=b50f1e6d270a95b737606dbc9d48b262fed180100f8143932ff90b87b7d39fa8
 
 pip install flashinfer_jit_cache-0.6.3+cu129-cp39-abi3-manylinux_2_28_x86_64.whl --break-system-packages
@@ -299,19 +331,16 @@ pip install flashinfer_jit_cache-0.6.3+cu129-cp39-abi3-manylinux_2_28_x86_64.whl
 
 ### 2.7 Install necessary packages for agent tools
 ```bash
+cd projects/Intern-S1
 pip install -r requirements_slime.txt --break-system-packages
 ```
 
 # 3. Transfer checkpoints from HF to Megatron version for Slime training
-1. Update transformers to the latest version
-```bash
-pip install -U transformers --break-system-packages
-```
-2. Download model weight
+1. Download model weight
 ```bash
 hf download zai-org/GLM-4.7-Flash --local-dir checkpoints/megatron/hf_version/GLM-4.7-Flash
 ```
-3. Transfer the model from HF to Slime
+2. Transfer the model from HF to Slime
 ```bash
 source your-path-to-slime/scripts/models/glm4.7-30B-A3B.sh
 

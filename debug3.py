@@ -1,25 +1,27 @@
-import json
+# /tmp/rs_check_fixed.py
+import os
+import torch
+import torch.distributed as dist
 
-# Path to the JSONL file
-file_path = "/vast/projects/xia6/apex-gen/tianang/projects/Intern-S1/DataPrepare/SFT_data/SFT_data/GPT/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16/TDC_SFT_data_binary_Scaffold_wo_herg-c_ToxCast_butkiewicz/training.jsonl"
+local_rank = int(os.environ.get("LOCAL_RANK", "0"))
+torch.cuda.set_device(local_rank)
 
-count_A = 0
-count_B = 0
-total_lines = 0
+dist.init_process_group("nccl")
+rank = dist.get_rank()
+ws = dist.get_world_size()
 
-with open(file_path, 'r', encoding='utf-8') as f:
-    for line in f:
-        total_lines += 1
-        try:
-            data = json.loads(line.strip())
-            output = data.get('output', '')
-            if '(A)' in output:
-                count_A += 1
-            if '(B)' in output:
-                count_B += 1
-        except json.JSONDecodeError as e:
-            print(f"Error parsing line {total_lines}: {e}")
+def t(name, pg):
+    out = torch.zeros(8, device="cuda")
+    inp = torch.ones(8 * ws, device="cuda")  # ✅ 必须是 output * world_size
+    try:
+        w = pg.reduce_scatter_tensor_coalesced([out], [inp], dist.ReduceScatterOptions())
+        w.wait()
+        print(f"rank{rank} {name}: OK out_sum={out.sum().item()}", flush=True)
+    except Exception as e:
+        print(f"rank{rank} {name}: FAIL -> {e}", flush=True)
 
-print(f"Total lines: {total_lines}")
-print(f"Lines with (A) in output: {count_A}")
-print(f"Lines with (B) in output: {count_B}")
+t("WORLD", dist.group.WORLD)
+pg = dist.new_group(ranks=list(range(ws)), backend="nccl")
+dist.barrier()
+t("NEW_GROUP", pg)
+dist.destroy_process_group()
