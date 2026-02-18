@@ -1,0 +1,5 @@
+molgpka @ git+https://github.com/haydn-jones/MolGpKa.git
+freesasa
+rdkit
+accfg
+numpy==1.26.4

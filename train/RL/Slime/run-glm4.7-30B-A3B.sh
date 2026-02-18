@@ -53,7 +53,7 @@ ROLLOUT_ARGS=(
    --rollout-max-response-len 32768
    --rollout-temperature 1.0
 
-   --global-batch-size 1024
+   --global-batch-size 256
    #--balance-data
 )
 
@@ -119,7 +119,6 @@ SGLANG_ARGS=(
    --sglang-enable-dp-attention
    --sglang-enable-dp-lm-head
    --sglang-dp-size 1
-   --sglang-data-parallel-size 1
    --sglang-moe-dense-tp-size 1
 
    # EAGLE speculative decoding is NOT compatible with TransformersForCausalLM
@@ -135,11 +134,11 @@ SGLANG_ARGS=(
 
    # GLM-4.7-Flash + flashinfer may hit CUDA graph capture shape mismatch
    # (e.g. [64, 20, 64] vs [16, 20, 64]). Disable graph first for stability.
-   --sglang-disable-cuda-graph
+   # --sglang-disable-cuda-graph
    # Use non-overlap scheduler to avoid overlap-path KV indexing bugs.
-   --sglang-disable-overlap-schedule
+   # --sglang-disable-overlap-schedule
    # Re-enable after sglang patch/upgrade:
-   # --sglang-cuda-graph-max-bs 16
+   --sglang-cuda-graph-max-bs 32
    # Keep only one in-flight request for debug stability.
    --sglang-max-running-requests 64
 )
@@ -166,7 +165,7 @@ MISC_ARGS=(
 # launch the master node of ray in container
 export MASTER_ADDR=${MLP_WORKER_0_HOST}
 export no_proxy="127.0.0.1,${MASTER_ADDR}"
-ray start --head --node-ip-address ${MASTER_ADDR} --num-gpus 5 --disable-usage-stats  # gpu numbers
+ray start --head --node-ip-address ${MASTER_ADDR} --num-gpus 8 --disable-usage-stats  # gpu numbers
 
 for WORKER_IP in $(awk '{print $1}' /root/mpi_rack_hostfile); do
   if [[ "$WORKER_IP" == "$MLP_WORKER_0_HOST" ]]; then
@@ -174,7 +173,7 @@ for WORKER_IP in $(awk '{print $1}' /root/mpi_rack_hostfile); do
   fi
   echo "Starting Ray worker on ${WORKER_IP}"
   ssh root@"${WORKER_IP}" \
-    "pkill -9 sglang ; ray stop --force ; pkill -9 python ; ray start --address=${MASTER_ADDR}:6379 --num-gpus 5 --node-ip-address ${WORKER_IP} --disable-usage-stats" &
+    "pkill -9 sglang ; ray stop --force ; pkill -9 python ; ray start --address=${MASTER_ADDR}:6379 --num-gpus 8 --node-ip-address ${WORKER_IP} --disable-usage-stats" &
 done
 wait
 
@@ -211,7 +210,7 @@ ray job submit --address="http://127.0.0.1:8265" \
    -- python3 train/RL/Slime/train.py \
    --actor-num-nodes 1 \
    --actor-num-gpus-per-node 4 \
-   --rollout-num-gpus 1 \
+   --rollout-num-gpus 4 \
    --save-debug-rollout-data "data.pt" \
    ${MODEL_ARGS[@]} \
    ${CKPT_ARGS[@]} \
