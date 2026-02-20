@@ -82,7 +82,7 @@ srun --partition=dgx-b200 \
      --nodes=1 \
      --gpus=8 \
      --cpus-per-task=64 \
-     --mem=512G \
+     --mem=1024G \
      --time=1-00:00:00 \
      --container-writable \
      --container-image=$CACHE/slime_latest.sqsh \
@@ -93,6 +93,10 @@ srun --partition=dgx-b200 \
 ```
 Multi nodes
 ```bash
+salloc --partition=dgx-b200 -N2 --ntasks-per-node=1 --gpus-per-node=8 \
+       --cpus-per-gpu=8 --mem-per-gpu=128G --time=1-00:00:00
+```
+```bash
 CACHE=/vast/projects/xia6/apex-gen/tianang/container_cache
 export XDG_RUNTIME_DIR=$CACHE/xdg_runtime
 export ENROOT_CACHE_PATH=$CACHE/enroot_cache
@@ -101,14 +105,11 @@ export ENROOT_TEMP_PATH=$CACHE/enroot_tmp
 
 P="$(pwd)"
 
-srun --partition=dgx-b200 \
-     --pty \
-     --nodes=2 \
-     --gpus=16 \
-     --ntasks-per-node=1 \
-     --cpus-per-gpu=8 \
-     --mem-per-gpu=128G \
-     --time=1-00:00:00 \
+JOBID=4613440  # the salloc job ID
+NODE=dgx013  # the node ID you want to use
+
+srun --jobid=$JOBID -N1 -n1 -w $NODE --pty \
+     --gpus-per-node=8 --cpus-per-task=64 --mem=0 \
      --container-writable \
      --container-image=$CACHE/slime_latest.sqsh \
      --container-mounts=$P:$P,$HOME:$HOME,/vast:/vast:rw \
@@ -331,16 +332,16 @@ pip install flashinfer_jit_cache-0.6.3+cu129-cp39-abi3-manylinux_2_28_x86_64.whl
 
 ### 2.7 Install necessary packages for agent tools
 ```bash
-cd projects/Intern-S1
+cd projects/Intern-S1  # change to your path
 pip install -r requirements_slime.txt --break-system-packages
 ```
 
 # 3. Transfer checkpoints from HF to Megatron version for Slime training
-1. Download model weight
+### 3.1 Download model weight
 ```bash
 hf download zai-org/GLM-4.7-Flash --local-dir checkpoints/megatron/hf_version/GLM-4.7-Flash
 ```
-2. Transfer the model from HF to Slime
+### 3.2 Transfer the model from HF to Slime
 ```bash
 source your-path-to-slime/scripts/models/glm4.7-30B-A3B.sh
 

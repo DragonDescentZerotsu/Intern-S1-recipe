@@ -34,7 +34,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "${SCRIPT_DIR}/glm4.7-30B-A3B.sh"  # 我的配置路径
 
 CKPT_ARGS=(
-   --hf-checkpoint checkpoints/megatron/hf_version/GLM-4.7-Flash
+   --hf-checkpoint checkpoints/megatron/hf_version/GLM-4.7-Flash #checkpoints/megatron/hf_version/GLM-4.7-Flash
    --ref-load checkpoints/megatron/megatron_version/GLM-4.7-Flash
 )
 
@@ -48,31 +48,31 @@ ROLLOUT_ARGS=(
    --rollout-shuffle
 
    --num-rollout 3000
-   --rollout-batch-size 2 # 128
+   --rollout-batch-size 36 # 128
    #--over-sampling-batch-size 256
    --n-samples-per-prompt 8
-   --rollout-max-response-len 32768
+   --rollout-max-response-len 7680
    --rollout-temperature 1.0
 
-   --global-batch-size 16
+   --global-batch-size 256
    #--balance-data
 )
 
-EVAL_ARGS=(
-   --eval-interval 20
-   --eval-prompt-data BBB_Martins_test DataPrepare/Slime_RL_data/by_task/test/BBB_Martins_debug.jsonl
-   --n-samples-per-eval-prompt 2
-   --eval-max-response-len 16384
-   --eval-temperature 0.6
-   --eval-top-p 0.95
-)
+# EVAL_ARGS=(
+#    --eval-interval 20
+#    --eval-prompt-data BBB_Martins_test DataPrepare/Slime_RL_data/by_task/test/BBB_Martins_debug.jsonl
+#    --n-samples-per-eval-prompt 2
+#    --eval-max-response-len 16384
+#    --eval-temperature 0.6
+#    --eval-top-p 0.95
+# )
 
 PERF_ARGS=(
-   --tensor-model-parallel-size 4
+   --tensor-model-parallel-size 2
    --sequence-parallel
    --pipeline-model-parallel-size 1
    --context-parallel-size 1
-   --expert-model-parallel-size 4
+   --expert-model-parallel-size 2
    --expert-tensor-parallel-size 1
    # --decoder-last-pipeline-num-layers 23  # 仅在 pipeline-model-parallel-size > 1 时使用
 
@@ -107,9 +107,9 @@ OPTIMIZER_ARGS=(
 )
 
 WANDB_ARGS=(
-   # --use-wandb
-   # --wandb-project slime-dev
-   # --wandb-group glm4.7-flash
+   --use-wandb
+   --wandb-project slime-dev
+   --wandb-group glm4.7-flash
 )
 
 SGLANG_ARGS=(
@@ -117,13 +117,11 @@ SGLANG_ARGS=(
    --sglang-mem-fraction-static 0.9
    # Pin DP settings explicitly. In some sglang/slime combos, dp size can be
    # inferred unexpectedly and cause KV-cache index/value shape mismatches.
-   --sglang-enable-dp-attention
-   --sglang-enable-dp-lm-head
-   --sglang-dp-size 1
+   # --sglang-enable-dp-attention
+   # --sglang-enable-dp-lm-head
+   # --sglang-dp-size 1
    --sglang-moe-dense-tp-size 1
 
-   # EAGLE speculative decoding is NOT compatible with TransformersForCausalLM
-   # (glm4_moe_lite uses generic transformers backend which lacks get_embed_and_head())
    --sglang-speculative-algorithm EAGLE
    --sglang-speculative-num-steps 3
    --sglang-speculative-eagle-topk 1
@@ -134,7 +132,7 @@ SGLANG_ARGS=(
    --sglang-speculative-draft-attention-backend triton
 
 
-   --sglang-cuda-graph-max-bs 32
+   --sglang-cuda-graph-max-bs 64
    --sglang-max-running-requests 128
 )
 
@@ -184,8 +182,8 @@ ray job submit --address="http://127.0.0.1:8265" \
    --runtime-env-json="${RUNTIME_ENV_JSON}" \
    -- python3 train/RL/Slime/train_async.py \
    --actor-num-nodes 1 \
-   --actor-num-gpus-per-node 4 \
-   --rollout-num-gpus 4 \
+   --actor-num-gpus-per-node 2 \
+   --rollout-num-gpus 6 \
    --save-debug-rollout-data "data.pt" \
    ${MODEL_ARGS[@]} \
    ${CKPT_ARGS[@]} \
