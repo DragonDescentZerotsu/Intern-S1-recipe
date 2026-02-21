@@ -51,13 +51,16 @@ ROLLOUT_ARGS=(
 
    --num-rollout 1391  # 3 epochs
    --rollout-batch-size 36 # 128
-   #--over-sampling-batch-size 256
+   --over-sampling-batch-size 128
+   --dynamic-sampling-filter-path slime.rollout.filter_hub.dynamic_sampling_filters.check_reward_nonzero_std
    --n-samples-per-prompt 8
    --rollout-max-response-len 32768
    --rollout-temperature 1.0
 
    --global-batch-size 288
    #--balance-data
+   --partial-rollout              # 开启这一项，缓存 aborted 的样本
+
 )
 
 EVAL_ARGS=(
@@ -66,28 +69,19 @@ EVAL_ARGS=(
       AMES_test DataPrepare/Slime_RL_data/by_task/test/AMES.jsonl \
       BBB_Martins_test DataPrepare/Slime_RL_data/by_task/test/BBB_Martins.jsonl \
       Bioavailability_Ma_test DataPrepare/Slime_RL_data/by_task/test/Bioavailability_Ma.jsonl \
-      CYP1A2_Veith_test DataPrepare/Slime_RL_data/by_task/test/CYP1A2_Veith.jsonl \
-      CYP2C19_Veith_test DataPrepare/Slime_RL_data/by_task/test/CYP2C19_Veith.jsonl \
       CYP2C9_Substrate_CarbonMangels_test DataPrepare/Slime_RL_data/by_task/test/CYP2C9_Substrate_CarbonMangels.jsonl \
-      CYP2C9_Veith_test DataPrepare/Slime_RL_data/by_task/test/CYP2C9_Veith.jsonl \  
       CYP2D6_Substrate_CarbonMangels_test DataPrepare/Slime_RL_data/by_task/test/CYP2D6_Substrate_CarbonMangels.jsonl \
-      CYP2D6_Veith_test DataPrepare/Slime_RL_data/by_task/test/CYP2D6_Veith.jsonl \
       CYP3A4_Substrate_CarbonMangels_test DataPrepare/Slime_RL_data/by_task/test/CYP3A4_Substrate_CarbonMangels.jsonl \
-      CYP3A4_Veith_test DataPrepare/Slime_RL_data/by_task/test/CYP3A4_Veith.jsonl \
       Carcinogens_Lagunin_test DataPrepare/Slime_RL_data/by_task/test/Carcinogens_Lagunin.jsonl \
       ClinTox_test DataPrepare/Slime_RL_data/by_task/test/ClinTox.jsonl \
       DILI_test DataPrepare/Slime_RL_data/by_task/test/DILI.jsonl \
       HIA_Hou_test DataPrepare/Slime_RL_data/by_task/test/HIA_Hou.jsonl \
-      HIV_test DataPrepare/Slime_RL_data/by_task/test/HIV.jsonl \
       PAMPA_NCATS_test DataPrepare/Slime_RL_data/by_task/test/PAMPA_NCATS.jsonl \
       Pgp_Broccatelli_test DataPrepare/Slime_RL_data/by_task/test/Pgp_Broccatelli.jsonl \
       SARSCoV2_3CLPro_Diamond_test DataPrepare/Slime_RL_data/by_task/test/SARSCoV2_3CLPro_Diamond.jsonl \
       SARSCoV2_Vitro_Touret_test DataPrepare/Slime_RL_data/by_task/test/SARSCoV2_Vitro_Touret.jsonl \
-      SAbDab_Chen_test DataPrepare/Slime_RL_data/by_task/test/SAbDab_Chen.jsonl \
       Skin_Reaction_test DataPrepare/Slime_RL_data/by_task/test/Skin_Reaction.jsonl \
-      Tox21_test DataPrepare/Slime_RL_data/by_task/test/Tox21.jsonl \
-      hERG_test DataPrepare/Slime_RL_data/by_task/test/hERG.jsonl \
-      hERG_Karim_test DataPrepare/Slime_RL_data/by_task/test/hERG_Karim.jsonl
+      hERG_test DataPrepare/Slime_RL_data/by_task/test/hERG.jsonl
    --n-samples-per-eval-prompt 1
    --eval-max-response-len 32768
    --eval-temperature 1
@@ -201,7 +195,8 @@ RUNTIME_ENV_JSON="{
     \"NCCL_P2P_LEVEL\": \"NVL\",
     \"TORCH_NCCL_AVOID_RECORD_STREAMS\": \"1\",
     \"NCCL_NVLS_ENABLE\": \"${HAS_NVLINK}\",
-    \"NCCL_MIN_CTAS\": \"4\"
+    \"NCCL_MIN_CTAS\": \"4\",
+    \"SGLANG_FORWARD_UNKNOWN_TOOLS\": \"1\"
   }
 }"
 
@@ -213,7 +208,7 @@ ray job submit --address="http://127.0.0.1:8265" \
    --actor-num-nodes 1 \
    --actor-num-gpus-per-node 2 \
    --rollout-num-gpus 6 \
-   --save-debug-rollout-data "data.pt" \
+   --save-debug-rollout-data "data-partial-rollout.pt" \
    ${MODEL_ARGS[@]} \
    ${CKPT_ARGS[@]} \
    ${ROLLOUT_ARGS[@]} \

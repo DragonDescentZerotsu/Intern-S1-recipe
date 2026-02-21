@@ -56,7 +56,7 @@ def _inspect(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Inspect the structure of a .pt file.")
-    parser.add_argument("--path", default="data.pt", help="Path to .pt/.pth checkpoint file")
+    parser.add_argument("--path", default="data-partial-rollout.pt", help="Path to .pt/.pth checkpoint file")
     parser.add_argument("--max-depth", type=int, default=4, help="Max recursive depth (default: 4)")
     parser.add_argument("--max-items", type=int, default=20, help="Max items to print per container (default: 20)")
     args = parser.parse_args()

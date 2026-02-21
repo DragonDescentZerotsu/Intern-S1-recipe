@@ -266,6 +266,8 @@ async def generate(args, sample: Sample, sampling_params: dict) -> Sample:
     3. Tool results are appended to conversation history
     4. Repeat until no more tool calls or depth limit reached
     """
+    assert not args.partial_rollout, "Partial rollout is not supported for TDC agent interactions."
+
     # Initialize state
     state = GenerateState(args)
     url = f"http://{args.sglang_router_ip}:{args.sglang_router_port}/generate"
@@ -277,60 +279,32 @@ async def generate(args, sample: Sample, sampling_params: dict) -> Sample:
     # Get tools for this task
     tools_info = get_tools_for_task(task_name)
 
-    # Check if we are resuming from an aborted partial rollout
-    is_resuming = sample.status == Sample.Status.ABORTED and metadata.get("is_tdc_partial")
+    # Build initial messages:
+    # - messages_for_model: exact conversation content used for token accounting and next-turn generation
+    # - messages_for_trace: structured conversation for debugging/inspection
+    messages_for_model = [{"role": "user", "content": sample.prompt}]
+    messages_for_trace = [{"role": "user", "content": sample.prompt}]
 
-    if is_resuming:
-        messages_for_model = metadata["messages_for_model"]
-        messages_for_trace = metadata["trajectory_messages"]
-        prompt_token_ids = metadata["prompt_token_ids"]
-        response_token_ids = metadata["response_token_ids"]
-        
-        # Slime might have masked off-policy tokens, so we inherit `sample.loss_mask` if available
-        # But we must split it back into turn history `loss_masks` and `partial_mask`
-        original_loss_masks_len = len(metadata["loss_masks"])
-        if sample.loss_mask and len(sample.loss_mask) == original_loss_masks_len + len(metadata["partial_mask"]):
-            loss_masks = sample.loss_mask[:original_loss_masks_len]
-            partial_mask = sample.loss_mask[original_loss_masks_len:]
-        else:
-            loss_masks = metadata["loss_masks"]
-            partial_mask = metadata["partial_mask"]
+    # Prepare initial prompt tokens
+    prompt_text = state.tokenizer.apply_chat_template(
+        messages_for_model,
+        tokenize=False,
+        add_generation_prompt=True,
+        tools=tools_info,
+        enable_thinking=True,
+        clear_thinking=False,
+    )
+    prompt_token_ids = state.tokenizer(prompt_text, add_special_tokens=False)["input_ids"]
 
-        num_tool_calls = metadata["num_tool_calls"]
-        start_turn = metadata["turn_count"]
-        last_tool_names = metadata["last_tool_names"]
-        partial_text = metadata["partial_text"]
-        partial_tokens = metadata["partial_tokens"]
-    else:
-        # Build initial messages
-        messages_for_model = [{"role": "user", "content": sample.prompt}]
-        messages_for_trace = [{"role": "user", "content": sample.prompt}]
-
-        # Prepare initial prompt tokens
-        prompt_text = state.tokenizer.apply_chat_template(
-            messages_for_model,
-            tokenize=False,
-            add_generation_prompt=True,
-            tools=tools_info,
-            enable_thinking=True,
-            clear_thinking=False,
-        )
-        prompt_token_ids = state.tokenizer(prompt_text, add_special_tokens=False)["input_ids"]
-
-        # Tracking variables
-        response_token_ids = []
-        loss_masks = []
-        start_turn = 0
-        num_tool_calls = 0
-        last_tool_names = set()
-        partial_text = ""
-        partial_tokens = []
-        partial_mask = []
-
+    # Tracking variables
+    response_token_ids = []
+    loss_masks = []
     depth_limit = 40
+    last_tool_names = set()
     final_content = ""
     status = Sample.Status.COMPLETED
-    turn_count = start_turn
+    num_tool_calls = 0
+    turn_count = 0
 
     # Optional Langfuse tracing
     enable_langfuse = _resolve_langfuse_enabled(args)
@@ -356,7 +330,7 @@ async def generate(args, sample: Sample, sampling_params: dict) -> Sample:
             trace_cm = nullcontext()
 
     with trace_cm:
-        for turn in range(start_turn, depth_limit):
+        for turn in range(depth_limit):
             turn_count = turn + 1
 
             # Prepare text input for sglang
@@ -368,17 +342,7 @@ async def generate(args, sample: Sample, sampling_params: dict) -> Sample:
                 enable_thinking=True,
                 clear_thinking=False,
             )
-            
-            # If resuming a partial turn, we MUST pass `input_ids` to continue generating from partial tokens
-            turn_sampling_params = sampling_params.copy()
-            if partial_tokens:
-                turn_prompt_ids = state.tokenizer.encode(text_input, add_special_tokens=False)
-                payload_input_ids = turn_prompt_ids + partial_tokens
-                if "max_new_tokens" in turn_sampling_params:
-                    turn_sampling_params["max_new_tokens"] = max(0, turn_sampling_params["max_new_tokens"] - len(partial_tokens))
-                payload = {"input_ids": payload_input_ids, "sampling_params": turn_sampling_params, "return_logprob": True}
-            else:
-                payload = {"text": text_input, "sampling_params": turn_sampling_params, "return_logprob": True}
+            payload = {"text": text_input, "sampling_params": sampling_params}
 
             # Call sglang server
             try:
@@ -388,30 +352,13 @@ async def generate(args, sample: Sample, sampling_params: dict) -> Sample:
                 status = Sample.Status.ABORTED
                 break
 
-            # Extract new generated tokens/text
-            new_text = output["text"]
-            if "output_token_logprobs" in output.get("meta_info", {}):
-                new_tokens = [item[1] for item in output["meta_info"]["output_token_logprobs"]]
-            else:
-                new_tokens = [] # fallback if not returned
-
-            partial_text += new_text
-            partial_tokens += new_tokens
-            partial_mask += [1] * len(new_tokens)
-
             # Check for abort
             finish_reason = output.get("meta_info", {}).get("finish_reason", {})
             if isinstance(finish_reason, dict) and finish_reason.get("type") == "abort":
                 status = Sample.Status.ABORTED
                 break
 
-            # If not aborted, the turn has finished generating the assistant message!
-            response = partial_text.strip()
-            
-            # Reset partial states for next turn
-            partial_text = ""
-            partial_tokens = []
-            partial_mask = []
+            response = output["text"].strip()
 
             # Remove end-of-turn tokens if present (model-specific)
             eos_tokens_to_strip = ["<|user|>", "<|endoftext|>", '<|observation|>']
@@ -518,59 +465,29 @@ async def generate(args, sample: Sample, sampling_params: dict) -> Sample:
             status = Sample.Status.TRUNCATED
 
     # Build final Sample
-    # In partial rollout aborted state, we also include the partial tokens gathered so far
-    all_token_ids = prompt_token_ids + response_token_ids + partial_tokens
-    
+    all_token_ids = prompt_token_ids + response_token_ids
     full_response = ""
     full_raw_response = ""
     for msg in messages_for_trace:
         if isinstance(msg, dict) and msg.get("role") == "assistant":
             full_response += msg.get("content", "")
             full_raw_response += msg.get("raw_content", "")
-            
-    # Include the partial text if aborted
-    if status == Sample.Status.ABORTED:
-        full_response += partial_text
-        full_raw_response += partial_text
 
     sample.tokens = all_token_ids
     sample.response = full_response
     sample.response_content = full_response
     sample.raw_response = full_raw_response
     sample.final_content = final_content
-    sample.loss_mask = loss_masks + partial_mask
+    sample.loss_mask = loss_masks
     sample.status = status
-    sample.response_length = len(sample.loss_mask)
-    
-    # Update metadata based on whether it is aborted or finished
-    new_metadata = {
+    sample.response_length = len(loss_masks)
+    sample.metadata = {
         **(sample.metadata or {}),
         "num_turns": turn_count,
         "num_tool_calls": num_tool_calls,
         "task_name": task_name,
         "trajectory_messages": messages_for_trace,
     }
-    
-    if status == Sample.Status.ABORTED:
-        new_metadata.update({
-            "is_tdc_partial": True,
-            "messages_for_model": messages_for_model,
-            "prompt_token_ids": prompt_token_ids,
-            "response_token_ids": response_token_ids,
-            "loss_masks": loss_masks,
-            "partial_text": partial_text,
-            "partial_tokens": partial_tokens,
-            "partial_mask": partial_mask,
-            "turn_count": turn, # turn index to resume from
-            "last_tool_names": last_tool_names,
-        })
-    elif "is_tdc_partial" in new_metadata:
-        # Cleanup keys if we successfully finished after resuming
-        keys_to_remove = ["is_tdc_partial", "messages_for_model", "prompt_token_ids", "response_token_ids", "loss_masks", "partial_text", "partial_tokens", "partial_mask", "turn_count", "last_tool_names"]
-        for k in keys_to_remove:
-            new_metadata.pop(k, None)
-
-    sample.metadata = new_metadata
 
     if langfuse_client is not None:
         try:
