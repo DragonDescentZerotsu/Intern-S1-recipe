@@ -358,10 +358,10 @@ async def generate(args, sample: Sample, sampling_params: dict) -> Sample:
                 status = Sample.Status.ABORTED
                 break
 
-            response = output["text"]
+            response = output["text"].strip()
 
             # Remove end-of-turn tokens if present (model-specific)
-            eos_tokens_to_strip = ["<|im_end|>", "<|endoftext|>"]
+            eos_tokens_to_strip = ["<|user|>", "<|endoftext|>", '<|observation|>']
             for eos_tok in eos_tokens_to_strip:
                 if response.endswith(eos_tok):
                     response = response[:-len(eos_tok)]
@@ -571,7 +571,17 @@ class AsyncRolloutWorker:
                             except Exception as e:
                                 logger.warning(f"Async rollout callback failed for group {gid}: {e}")
                                 return
-                            self.output_queue.put((gid, result))
+                            try:
+                                # [BUG FIX]: Use non-blocking `put_nowait` instead of blocking `put()`.
+                                # [BUG FIX]: 使用非阻塞的 `put_nowait` 替代阻塞的 `put()`。
+                                # Why: If the Trainer is busy doing Evaluation, it stops pulling items from this output_queue.
+                                # If the queue reaching its maxsize (1000) using blocking `put()`, the asyncio worker thread 
+                                # will be indefinitely suspended, leading to pipeline deadlock. 
+                                # 为什么：如果主训练器正在花费大量时间做评测（Evaluation），它会停止从此 output_queue 获取数据。
+                                # 此时若后台满载，阻塞式的 `put()` 会将整个 asyncio 工作线程无限期挂起（死锁）。使用 nowait 进行丢弃。
+                                self.output_queue.put_nowait((gid, result))
+                            except queue.Full:
+                                logger.error(f"Worker queue is full! Dropping generated group {gid}.")
 
                         task.add_done_callback(task_done_callback)
                         active_tasks.add(task)
@@ -590,20 +600,27 @@ class AsyncRolloutWorker:
 
         logger.info("Continuous async rollout worker stopped")
 
-    def worker_thread_func(self):
-        asyncio.run(self.continuous_worker_loop())
-
     def start(self):
-        if self.worker_thread is None or not self.worker_thread.is_alive():
-            self.worker_thread = threading.Thread(target=self.worker_thread_func, daemon=True)
-            self.worker_thread.start()
-            logger.info("Started continuous async worker thread")
+        from slime.utils.async_utils import get_async_loop
+        if self.worker_thread is None or self.worker_thread.done():
+            # [BUG FIX]: Route the worker to the Global Shared Event Loop rather than spawning a new native thread.
+            # [BUG FIX]: 将后台 Worker 投递到“全局共享事件循环”中，而不是使用原生 threading.Thread 新起一个 Event Loop。
+            # Why: SGLang's `GenerateState` object contains ans `asyncio.Semaphore` bounded to the first Event Loop that initialized it.
+            # If Evaluation mode is natively triggered on the main thread, cross-loop calls will crash with:
+            # `RuntimeError: Task got Future attached to a different loop`. This shared loop guarantees thread-safety.
+            # 为什么：SGLang 的 `GenerateState` 中的协程信号量 `asyncio.Semaphore` 是单例且绑定到首个 Event Loop 上的。
+            # 原本的独立新线程会导致主线程如果发起 Evaluation，两者事件循环发生跨域冲突直接崩溃（如上报错）。使用共享的全局异步循环解决冲突。
+            self.worker_thread = asyncio.run_coroutine_threadsafe(
+                self.continuous_worker_loop(),
+                get_async_loop().loop
+            )
+            logger.info("Started continuous async worker task in AsyncLoopThread")
 
     def stop(self):
         self.running = False
-        if self.worker_thread and self.worker_thread.is_alive():
-            self.worker_thread.join(timeout=5)
-        logger.info("Stopped async worker thread")
+        if self.worker_thread and not self.worker_thread.done():
+            self.worker_thread.cancel()
+        logger.info("Stopped async worker task")
 
     def get_completed_groups(self) -> list[tuple]:
         completed = []
@@ -625,7 +642,7 @@ def get_global_worker(args, data_buffer):
         if (
             _global_worker is None
             or _global_worker.worker_thread is None
-            or not _global_worker.worker_thread.is_alive()
+            or _global_worker.worker_thread.done()
         ):
             logger.info("Creating new global async rollout worker")
             _global_worker = AsyncRolloutWorker(args, data_buffer)
@@ -733,7 +750,28 @@ def generate_rollout_fully_async(args, rollout_id, data_buffer, evaluation=False
     """
     if evaluation:
         return sglang_generate_rollout(args, rollout_id, data_buffer, evaluation=True)
-    return run(generate_rollout_async(args, rollout_id, data_buffer))
+    
+    data = run(generate_rollout_async(args, rollout_id, data_buffer))
+    
+    from slime.rollout.base_types import RolloutFnTrainOutput
+    
+    metrics = {}
+    if data:
+        total_turns = 0
+        total_tool_calls = 0
+        total_samples = 0
+        for group in data:
+            for sample in group:
+                total_samples += 1
+                metadata = sample.metadata or {}
+                total_turns += metadata.get("num_turns", 0)
+                total_tool_calls += metadata.get("num_tool_calls", 0)
+        
+        if total_samples > 0:
+            metrics["rollout/num_turns"] = total_turns / total_samples
+            metrics["rollout/num_tool_calls"] = total_tool_calls / total_samples
+            
+    return RolloutFnTrainOutput(samples=data, metrics=metrics)
 
 
 atexit.register(stop_global_worker)

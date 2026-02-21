@@ -36,36 +36,64 @@ source "${SCRIPT_DIR}/glm4.7-30B-A3B.sh"  # 我的配置路径
 CKPT_ARGS=(
    --hf-checkpoint checkpoints/megatron/hf_version/GLM-4.7-Flash #checkpoints/megatron/hf_version/GLM-4.7-Flash
    --ref-load checkpoints/megatron/megatron_version/GLM-4.7-Flash
+   --save checkpoints/megatron/megatron_version/GLM-4.7-Flash-RL
+   --save-interval 231  # 半个 epoch save 一次
 )
 
 ROLLOUT_ARGS=(
    --rollout-function-path generate_tdc_async.generate_rollout_fully_async
-   --prompt-data DataPrepare/Slime_RL_data/by_task/train/BBB_Martins.jsonl
+   --prompt-data DataPrepare/Slime_RL_data/merged/train.jsonl
    --input-key text
    --label-key Y
    --metadata-key metadata
    --apply-chat-template
    --rollout-shuffle
 
-   --num-rollout 3000
+   --num-rollout 1391  # 3 epochs
    --rollout-batch-size 36 # 128
    #--over-sampling-batch-size 256
    --n-samples-per-prompt 8
-   --rollout-max-response-len 7680
+   --rollout-max-response-len 32768
    --rollout-temperature 1.0
 
-   --global-batch-size 256
+   --global-batch-size 288
    #--balance-data
 )
 
-# EVAL_ARGS=(
-#    --eval-interval 20
-#    --eval-prompt-data BBB_Martins_test DataPrepare/Slime_RL_data/by_task/test/BBB_Martins_debug.jsonl
-#    --n-samples-per-eval-prompt 2
-#    --eval-max-response-len 16384
-#    --eval-temperature 0.6
-#    --eval-top-p 0.95
-# )
+EVAL_ARGS=(
+   --eval-interval 232
+   --eval-prompt-data \
+      AMES_test DataPrepare/Slime_RL_data/by_task/test/AMES.jsonl \
+      BBB_Martins_test DataPrepare/Slime_RL_data/by_task/test/BBB_Martins.jsonl \
+      Bioavailability_Ma_test DataPrepare/Slime_RL_data/by_task/test/Bioavailability_Ma.jsonl \
+      CYP1A2_Veith_test DataPrepare/Slime_RL_data/by_task/test/CYP1A2_Veith.jsonl \
+      CYP2C19_Veith_test DataPrepare/Slime_RL_data/by_task/test/CYP2C19_Veith.jsonl \
+      CYP2C9_Substrate_CarbonMangels_test DataPrepare/Slime_RL_data/by_task/test/CYP2C9_Substrate_CarbonMangels.jsonl \
+      CYP2C9_Veith_test DataPrepare/Slime_RL_data/by_task/test/CYP2C9_Veith.jsonl \  
+      CYP2D6_Substrate_CarbonMangels_test DataPrepare/Slime_RL_data/by_task/test/CYP2D6_Substrate_CarbonMangels.jsonl \
+      CYP2D6_Veith_test DataPrepare/Slime_RL_data/by_task/test/CYP2D6_Veith.jsonl \
+      CYP3A4_Substrate_CarbonMangels_test DataPrepare/Slime_RL_data/by_task/test/CYP3A4_Substrate_CarbonMangels.jsonl \
+      CYP3A4_Veith_test DataPrepare/Slime_RL_data/by_task/test/CYP3A4_Veith.jsonl \
+      Carcinogens_Lagunin_test DataPrepare/Slime_RL_data/by_task/test/Carcinogens_Lagunin.jsonl \
+      ClinTox_test DataPrepare/Slime_RL_data/by_task/test/ClinTox.jsonl \
+      DILI_test DataPrepare/Slime_RL_data/by_task/test/DILI.jsonl \
+      HIA_Hou_test DataPrepare/Slime_RL_data/by_task/test/HIA_Hou.jsonl \
+      HIV_test DataPrepare/Slime_RL_data/by_task/test/HIV.jsonl \
+      PAMPA_NCATS_test DataPrepare/Slime_RL_data/by_task/test/PAMPA_NCATS.jsonl \
+      Pgp_Broccatelli_test DataPrepare/Slime_RL_data/by_task/test/Pgp_Broccatelli.jsonl \
+      SARSCoV2_3CLPro_Diamond_test DataPrepare/Slime_RL_data/by_task/test/SARSCoV2_3CLPro_Diamond.jsonl \
+      SARSCoV2_Vitro_Touret_test DataPrepare/Slime_RL_data/by_task/test/SARSCoV2_Vitro_Touret.jsonl \
+      SAbDab_Chen_test DataPrepare/Slime_RL_data/by_task/test/SAbDab_Chen.jsonl \
+      Skin_Reaction_test DataPrepare/Slime_RL_data/by_task/test/Skin_Reaction.jsonl \
+      Tox21_test DataPrepare/Slime_RL_data/by_task/test/Tox21.jsonl \
+      hERG_test DataPrepare/Slime_RL_data/by_task/test/hERG.jsonl \
+      hERG_Karim_test DataPrepare/Slime_RL_data/by_task/test/hERG_Karim.jsonl
+   --n-samples-per-eval-prompt 1
+   --eval-max-response-len 32768
+   --eval-temperature 1
+   --eval-top-p 0.95
+   --custom-eval-rollout-log-function-path custom_eval.log_eval_rollout_data_f1
+)
 
 PERF_ARGS=(
    --tensor-model-parallel-size 2
@@ -96,11 +124,12 @@ GRPO_ARGS=(
 OPTIMIZER_ARGS=(
    --optimizer adam
    --lr 1e-6
-   --lr-decay-style constant
+   --min-lr 1e-7                     # 衰减到的最小学习率
+   --lr-decay-style cosine           # 使用余弦退火策略
+   --lr-warmup-iters 50              # 前 50 步进行预热 (warmup)
    --weight-decay 0.1
    --adam-beta1 0.9
    --adam-beta2 0.98
-
    --optimizer-cpu-offload
    --overlap-cpu-optimizer-d2h-h2d
    --use-precision-aware-optimizer

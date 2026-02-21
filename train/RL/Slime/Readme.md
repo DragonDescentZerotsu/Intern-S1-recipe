@@ -355,3 +355,30 @@ PYTHONPATH=/root/Megatron-LM python tools/convert_hf_to_torch_dist.py \
 module load cuda
 bash train/RL/Slime/glm4.7-30B-A3B.sh
 ```
+
+# 5. Reuse and Modification of Fully Async Infrastructure
+
+If you need to write new fully async code for other experiments or new Custom Agents in the future, it is highly recommended to **copy the `generate_tdc_async.py` as your baseline template** rather than the original `slime/examples/fully_async/fully_async_rollout.py`.
+
+### 5.1 Why use `generate_tdc_async.py` instead of the original example?
+This implementation contains several critical upgrades and bug fixes compared to the original Slime `fully_async` example:
+
+1. **Fixed Worker Thread & Event Loop Collisions During Evaluation**:
+   The original Slime async example will crash (`RuntimeError: Event loop bound`) if `evaluation=True` natively triggers, because `GenerateState` forms a Singleton whose `asyncio.Semaphore` is bound to whichever event loop uses it first. The enhanced version routes the `AsyncRolloutWorker` into the globally shared `slime.utils.async_utils.AsyncLoopThread`, allowing training generation processes and evaluation processes to correctly multiplex without deadlocks or thread boundary crashes.
+2. **Fixed Sub-optimal SGLang Queueing**:
+   The original code incorrectly breaks out of `while len(active_tasks) < max_concurrent_tasks` on the first iteration, preventing the active tasks buffer from filling up smoothly. The enhanced version correctly populates up to concurrent targets at once.
+3. **Robust Timeout and Backpressure Handling**:
+   The improved code uses non-blocking puts (`put_nowait`) into the thread queue so that if training is halted (e.g., during Evaluation intervals) and the queue limit of 1000 items is reached, the generator degrades gracefully rather than silently halting the entire training/evaluation loop process in Python.
+4. **Deterministic Rollout Returns**:
+   Results returned directly from completed futures are re-sorted mathematically (`sorted(completed_groups.keys())`) to feed the Trainer deterministic gradients, avoiding race conditions in gradient calculation caused by dict unordered popping.
+
+### 5.2 Creating a New Async Agent
+
+When starting a new fully async generation, follow these structural rules:
+
+1. **Retain the Global Async Utilities**: 
+   Keep `_global_worker`, `AsyncRolloutWorker`, and `generate_rollout_fully_async` exactly as they are without modification. They form the correct Boilerplate.
+2. **Implement your own `async def generate(...)`**:
+   The logic defining what tokens to send/receive, what Tools to execute locally, and where `responses` or `metadata` arrays are updated should happen inside `generate`.
+3. **Point the Shell Script**:
+   Both `--rollout-function-path` (for the background generator) and `--custom-generate-function-path` (for the loop content itself) must correctly align with the `generate_rollout_fully_async` and your top-level `generate` functions. Do not mix and match across implementations.

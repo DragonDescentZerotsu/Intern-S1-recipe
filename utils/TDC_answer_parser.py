@@ -56,6 +56,14 @@ def parse_answer(answer_text, format_correct, think_is_on:bool):
                 return 1
             elif '\\text{B}' in answer_text:
                 return 1
+            elif ' B ' in answer_text:
+                return 1
+            elif ' A ' in answer_text:
+                return 0
+            elif ' B.' in answer_text:
+                return 1
+            elif ' A.' in answer_text:
+                return 0
             elif 'B' in answer_text:
                 return 1
             elif 'A' in answer_text:

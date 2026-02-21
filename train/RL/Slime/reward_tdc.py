@@ -9,87 +9,16 @@ Usage in shell script:
 """
 
 import logging
-import re
+import os
+import sys
+
+# Add project root to path to import utils
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+from utils.TDC_answer_parser import extract_answer, parse_answer
 
 from slime.utils.types import Sample
 
 logger = logging.getLogger(__name__)
-
-
-def extract_answer(response: str):
-    """
-    Extract the final answer from model response.
-    Looks for 'Answer:', 'answer is', or '<answer>' patterns.
-    Returns (answer_text, format_correct).
-    """
-    format_correct = False
-    answer_matches = None
-
-    if "Answer:" in response:
-        format_correct = True
-        answer_matches = list(re.finditer(r"Answer:", response, re.IGNORECASE))
-    elif "answer is" in response:
-        format_correct = True
-        answer_matches = list(re.finditer(r"answer is", response, re.IGNORECASE))
-
-    if answer_matches:
-        last_answer_pos = answer_matches[-1].end()
-        answer_text = response[last_answer_pos:].strip()
-    else:
-        answer_text = response
-
-    return answer_text, format_correct
-
-
-def parse_answer(answer_text, format_correct):
-    """
-    Parse answer text to binary prediction: (A) -> 0 (negative), (B) -> 1 (positive).
-    """
-    if answer_text is None:
-        return None
-
-    if format_correct:
-        if "(A)" in answer_text:
-            return 0
-        elif "A**" in answer_text:
-            return 0
-        elif "A)" in answer_text:
-            return 0
-        elif "\\boxed{A}" in answer_text:
-            return 0
-        elif "\\text{A}" in answer_text:
-            return 0
-        elif "(B)" in answer_text:
-            return 1
-        elif "B**" in answer_text:
-            return 1
-        elif "B)" in answer_text:
-            return 1
-        elif "\\boxed{B}" in answer_text:
-            return 1
-        elif "\\text{B}" in answer_text:
-            return 1
-        elif "B" in answer_text:
-            return 1
-        elif "A" in answer_text:
-            return 0
-        else:
-            return None
-    else:
-        if "(A)" in answer_text:
-            return 0
-        elif "(B)" in answer_text:
-            return 1
-        elif "Yes" in answer_text:
-            return 1
-        elif "yes" in answer_text:
-            return 1
-        elif "B" in answer_text:
-            return 1
-        elif "A" in answer_text:
-            return 0
-        else:
-            return None
 
 
 async def reward_func(args, sample: Sample, **kwargs) -> float:
@@ -109,7 +38,7 @@ async def reward_func(args, sample: Sample, **kwargs) -> float:
     Returns:
         Float reward value
     """
-    response_text = sample.response or ""
+    response_text = sample.final_content or ""
 
     # Get ground truth label (Y field: 0 or 1)
     ground_truth = None
@@ -142,7 +71,7 @@ async def reward_func(args, sample: Sample, **kwargs) -> float:
 
     # Extract and parse the model's answer
     answer_text, format_correct = extract_answer(response_text)
-    prediction = parse_answer(answer_text, format_correct)
+    prediction = parse_answer(answer_text, format_correct, think_is_on=True)
 
     # Compute reward
     reward = 0.0
