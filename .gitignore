@@ -44,6 +44,10 @@
 !/DataPrepare/TDC_test_prompts_label_sm_wo_herg-c_ToxCast_butkiewicz/*.json
 
 /DataPrepare/Slime_RL_data/**
+!/DataPrepare/Slime_RL_data/**/
+!/DataPrepare/Slime_RL_data/**/*.py
+!/DataPrepare/Slime_RL_data/**/*.md
+!/DataPrepare/Slime_RL_data/**/*.gitkeep
 
 /wandb
 /unsloth_compiled_cache
