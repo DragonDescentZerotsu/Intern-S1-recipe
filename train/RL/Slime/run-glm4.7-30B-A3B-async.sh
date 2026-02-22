@@ -54,7 +54,7 @@ ROLLOUT_ARGS=(
    --over-sampling-batch-size 128
    --dynamic-sampling-filter-path slime.rollout.filter_hub.dynamic_sampling_filters.check_reward_nonzero_std
    --n-samples-per-prompt 8
-   --rollout-max-response-len 32768
+   --rollout-max-response-len 22000
    --rollout-temperature 1.0
 
    --global-batch-size 288
@@ -83,7 +83,7 @@ EVAL_ARGS=(
       Skin_Reaction_test DataPrepare/Slime_RL_data/by_task/test/Skin_Reaction.jsonl \
       hERG_test DataPrepare/Slime_RL_data/by_task/test/hERG.jsonl
    --n-samples-per-eval-prompt 1
-   --eval-max-response-len 32768
+   --eval-max-response-len 22000
    --eval-temperature 1
    --eval-top-p 0.95
    --custom-eval-rollout-log-function-path custom_eval.log_eval_rollout_data_f1
@@ -137,7 +137,7 @@ WANDB_ARGS=(
 
 SGLANG_ARGS=(
    --rollout-num-gpus-per-engine 1
-   --sglang-mem-fraction-static 0.9
+   --sglang-mem-fraction-static 0.85
    # Pin DP settings explicitly. In some sglang/slime combos, dp size can be
    # inferred unexpectedly and cause KV-cache index/value shape mismatches.
    # --sglang-enable-dp-attention
@@ -208,7 +208,7 @@ ray job submit --address="http://127.0.0.1:8265" \
    --actor-num-nodes 1 \
    --actor-num-gpus-per-node 2 \
    --rollout-num-gpus 6 \
-   --save-debug-rollout-data "data-partial-rollout.pt" \
+   --save-debug-rollout-data "data.pt" \
    ${MODEL_ARGS[@]} \
    ${CKPT_ARGS[@]} \
    ${ROLLOUT_ARGS[@]} \
