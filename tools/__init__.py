@@ -12,7 +12,10 @@ def get_function_by_name(name):
         "get_molecular_weight": get_molecular_weight,
         "get_exact_molecular_weight": get_exact_molecular_weight,
         "get_heavy_atom_count": get_heavy_atom_count,
+
         "get_mol_logp": get_mol_logp,
+        "get_logp": get_mol_logp,
+
         "get_tpsa": get_tpsa,
         "get_hbd": get_hbd,
         "get_hba": get_hba,
