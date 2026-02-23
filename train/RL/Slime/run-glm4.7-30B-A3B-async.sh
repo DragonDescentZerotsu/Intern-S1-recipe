@@ -52,7 +52,7 @@ ROLLOUT_ARGS=(
    --num-rollout 1391  # 3 epochs
    --rollout-batch-size 36 # 128
    --over-sampling-batch-size 128
-   --dynamic-sampling-filter-path slime.rollout.filter_hub.dynamic_sampling_filters.check_reward_nonzero_std
+   --dynamic-sampling-filter-path custom_filters.custom_check_reward_nonzero_std
    --n-samples-per-prompt 8
    --rollout-max-response-len 22000
    --rollout-temperature 1.0
@@ -208,7 +208,7 @@ ray job submit --address="http://127.0.0.1:8265" \
    --actor-num-nodes 1 \
    --actor-num-gpus-per-node 2 \
    --rollout-num-gpus 6 \
-   --save-debug-rollout-data "data.pt" \
+   --save-debug-rollout-data "data-partial-rollout-new-reward-sbatch.pt" \
    ${MODEL_ARGS[@]} \
    ${CKPT_ARGS[@]} \
    ${ROLLOUT_ARGS[@]} \

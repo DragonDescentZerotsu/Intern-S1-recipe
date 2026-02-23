@@ -1,0 +1,20 @@
+import torch
+
+from slime.rollout.filter_hub.base_types import DynamicFilterOutput
+from slime.utils.types import Sample
+
+__all__ = ["custom_check_reward_nonzero_std"]
+
+
+def custom_check_reward_nonzero_std(args, samples: list[Sample], **kwargs):
+    """
+    Custom dynamic filter to prevent identical scores from registering as non-zero
+    variance due to PyTorch FP32 computation inaccuracies.
+    """
+    rewards = [sample.get_reward_value(args) for sample in samples]
+    # Use float64 and an epsilon to prevent FP inaccuracy on identical floats
+    keep = torch.tensor(rewards, dtype=torch.float64).std().item() > 1e-6
+    return DynamicFilterOutput(
+        keep=keep,
+        reason=None if keep else f"zero_std_{round(rewards[0], 1)}",
+    )

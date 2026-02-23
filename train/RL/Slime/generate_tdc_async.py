@@ -408,11 +408,6 @@ async def generate(args, sample: Sample, sampling_params: dict) -> Sample:
             # If not aborted, the turn has finished generating the assistant message!
             response = partial_text.strip()
             
-            # Reset partial states for next turn
-            partial_text = ""
-            partial_tokens = []
-            partial_mask = []
-
             # Remove end-of-turn tokens if present (model-specific)
             eos_tokens_to_strip = ["<|user|>", "<|endoftext|>", '<|observation|>']
             for eos_tok in eos_tokens_to_strip:
@@ -444,8 +439,22 @@ async def generate(args, sample: Sample, sampling_params: dict) -> Sample:
             messages_for_trace.append(assistant_message_trace)
 
             assistant_tokens, assistant_mask = _get_token_delta(state.tokenizer, messages_for_model, tools_info)
+            
+            # [RL BUG FIX]: Safely inherit the 0-masks from partial_mask if we resumed this turn.
+            # partial_mask preserves the 0s for tokens generated in old, aborted off-policy rollouts.
+            # since `_get_token_delta` blindly generates [1]*len for the whole message, we must restore the 0s.
+            if partial_mask:
+                num_zeros = partial_mask.count(0)
+                for i in range(min(num_zeros, len(assistant_mask))):
+                    assistant_mask[i] = 0
+            
             response_token_ids.extend(assistant_tokens)
             loss_masks.extend(assistant_mask)
+            
+            # Reset partial states for next turn
+            partial_text = ""
+            partial_tokens = []
+            partial_mask = []
 
             final_content = response_content
 
@@ -753,6 +762,14 @@ async def generate_rollout_async(args, rollout_id: int, data_buffer) -> list[lis
     data = []
     completed_groups = {}
     do_print = True
+    
+    from slime.rollout.filter_hub.base_types import MetricGatherer, call_dynamic_filter
+    from slime.utils.misc import load_function
+    
+    dynamic_filter = (
+        load_function(args.dynamic_sampling_filter_path) if getattr(args, "dynamic_sampling_filter_path", None) is not None else None
+    )
+    metric_gatherer = MetricGatherer()
 
     logger.info(f"Starting fully async rollout generation for {target_data_size} groups")
     logger.info(f"Initial worker queue size: {worker.get_queue_size()}")
@@ -790,6 +807,11 @@ async def generate_rollout_async(args, rollout_id: int, data_buffer) -> list[lis
                     logger.warning(f"Failed to return aborted group {group_id} to buffer: {e}")
                 continue
 
+            dynamic_filter_output = call_dynamic_filter(dynamic_filter, args, group)
+            if not dynamic_filter_output.keep:
+                metric_gatherer.on_dynamic_filter_drop(reason=dynamic_filter_output.reason)
+                continue
+
             if do_print and group:
                 logger.info(
                     f"First rollout sample: {[group[0].prompt + group[0].response]}, "
@@ -821,7 +843,7 @@ async def generate_rollout_async(args, rollout_id: int, data_buffer) -> list[lis
         )
 
     data = sorted(data, key=lambda group: group[0].index)
-    return data
+    return data, metric_gatherer.collect()
 
 
 def generate_rollout_fully_async(args, rollout_id, data_buffer, evaluation=False):
@@ -834,14 +856,16 @@ def generate_rollout_fully_async(args, rollout_id, data_buffer, evaluation=False
     if evaluation:
         return sglang_generate_rollout(args, rollout_id, data_buffer, evaluation=True)
     
-    data = run(generate_rollout_async(args, rollout_id, data_buffer))
+    data, metrics = run(generate_rollout_async(args, rollout_id, data_buffer))
     
     from slime.rollout.base_types import RolloutFnTrainOutput
     
-    metrics = {}
     if data:
         total_turns = 0
         total_tool_calls = 0
+        total_ans_reward = 0.0
+        total_format_reward = 0.0
+        total_tool_reward = 0.0
         total_samples = 0
         for group in data:
             for sample in group:
@@ -849,10 +873,18 @@ def generate_rollout_fully_async(args, rollout_id, data_buffer, evaluation=False
                 metadata = sample.metadata or {}
                 total_turns += metadata.get("num_turns", 0)
                 total_tool_calls += metadata.get("num_tool_calls", 0)
+                
+                # Fetch sub-rewards if present
+                total_ans_reward += metadata.get("ans_reward", 0.0)
+                total_format_reward += metadata.get("format_reward", 0.0)
+                total_tool_reward += metadata.get("tool_reward", 0.0)
         
         if total_samples > 0:
             metrics["rollout/num_turns"] = total_turns / total_samples
             metrics["rollout/num_tool_calls"] = total_tool_calls / total_samples
+            metrics["rollout/ans_reward"] = total_ans_reward / total_samples
+            metrics["rollout/format_reward"] = total_format_reward / total_samples
+            metrics["rollout/tool_reward"] = total_tool_reward / total_samples
             
     return RolloutFnTrainOutput(samples=data, metrics=metrics)
 

@@ -11,6 +11,7 @@ Usage in shell script:
 import logging
 import os
 import sys
+import numpy as np
 
 # Add project root to path to import utils
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
@@ -73,24 +74,38 @@ async def reward_func(args, sample: Sample, **kwargs) -> float:
     answer_text, format_correct = extract_answer(response_text)
     prediction = parse_answer(answer_text, format_correct, think_is_on=True)
 
-    # Compute reward
-    reward = 0.0
-
     if prediction is not None and prediction == ground_truth:
-        reward = 1.0
+        ans_reward = 1.0
     elif prediction is not None:
-        reward = 0.0
+        ans_reward = 0.0
     else:
         # Could not parse answer
-        reward = 0.0
+        ans_reward = 0.0
 
     # Format bonus: encourage the model to use "Answer:" prefix
     if format_correct:
-        reward += 0.1
+        format_reward = 0.05
+    else:
+        format_reward = 0.0
+
+    tool_reward = 0.0
+    if sample.metadata is not None:
+        num_tool_calls = sample.metadata.get("num_tool_calls", 0)
+        tool_reward = 0.07 * np.tanh(0.4 * num_tool_calls)
+
+    total_reward = ans_reward + format_reward + ans_reward * tool_reward
+    
+    # Store individual components in metadata for wandb logging
+    if sample.metadata is None:
+        sample.metadata = {}
+    sample.metadata["ans_reward"] = ans_reward
+    sample.metadata["format_reward"] = format_reward
+    sample.metadata["tool_reward"] = ans_reward * tool_reward
+    sample.metadata["total_reward"] = total_reward
 
     logger.debug(
-        f"Reward: {reward}, prediction={prediction}, ground_truth={ground_truth}, "
+        f"Reward: {total_reward}, prediction={prediction}, ground_truth={ground_truth}, "
         f"format_ok={format_correct}, sample_index={sample.index}"
     )
 
-    return reward
+    return total_reward
