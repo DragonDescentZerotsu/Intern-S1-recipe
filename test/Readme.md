@@ -52,8 +52,30 @@ If not on Blackwell chips, remove attention backend settings
 - --attention-backend triton \
 - --speculative-draft-attention-backend triton
 ```
-## 3. Special functions
-### 3.1 Add log request to see the prompt after applying chat template.
+## 3. gpt-oss
+### vLLM
+gpt-oss-20b
+```bash
+CUDA_VISIBLE_DEVICES=0 vllm serve openai/gpt-oss-20b \
+     --host 0.0.0.0 \
+     --port 8000 \
+     --tensor-parallel-size 1 \
+     --tool-call-parser openai \
+     --enable-auto-tool-choice \
+     --served-model-name gpt-oss-20b
+```
+gpt-oss-120b
+```bash
+CUDA_VISIBLE_DEVICES=2,3 vllm serve openai/gpt-oss-120b \
+     --host 0.0.0.0 \
+     --port 8001 \
+     --tensor-parallel-size 2 \
+     --tool-call-parser openai \
+     --enable-auto-tool-choice \
+     --served-model-name gpt-oss-120b
+```
+## 4. Special functions
+### 4.1 Add log request to see the prompt after applying chat template.
 ```bash
 export VLLM_LOGGING_LEVEL=DEBUG
 CUDA_VISIBLE_DEVICES=4,5 vllm serve zai-org/GLM-4.7-Flash \
@@ -75,7 +97,7 @@ To turn off vllm debuging mode:
 export VLLM_LOGGING_LEVEL=INFO
 ```
 
-### 3.2 Alow vLLM to return logprobs
+### 4.2 Alow vLLM to return logprobs
 For [test_tdc_via_api_F1_optimal_threshold.py](test_tdc_via_api_F1_optimal_threshold.py), add `--max-logprobs` to the vLLM host command.
 ```bash
 CUDA_VISIBLE_DEVICES=4,5 vllm serve zai-org/GLM-4.7-Flash \
