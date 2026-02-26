@@ -23,6 +23,11 @@
 !/DataPrepare/TDC_train_prompts_label_scaffold/*.md
 !/DataPrepare/TDC_train_prompts_label_scaffold/*.json
 
+/DataPrepare/TDC_valid_prompts_label_scaffold/*
+!/DataPrepare/TDC_valid_prompts_label_scaffold/*.py
+!/DataPrepare/TDC_valid_prompts_label_scaffold/*.md
+!/DataPrepare/TDC_valid_prompts_label_scaffold/*.json
+
 /DataPrepare/TDC_test_prompts_label_scaffold/*
 !/DataPrepare/TDC_test_prompts_label_scaffold/*.py
 !/DataPrepare/TDC_test_prompts_label_scaffold/*.md

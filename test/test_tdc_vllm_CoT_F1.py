@@ -47,7 +47,7 @@ def get_args():
                         default="",
                         help='Path to LoRA adapter')
     parser.add_argument('--data-dir', type=Path,
-                        default=Path(__file__).parent.parent / "DataPrepare/TDC_test_prompts_label_scaffold",
+                        default=Path(__file__).parent.parent / "DataPrepare/TDC_valid_prompts_label_scaffold",
                         help='Directory containing preprocessed test data')
     parser.add_argument('--task-groups', nargs='+',
                         default=['ADME', 'Tox', 'HTS'],
