@@ -24,7 +24,7 @@ from transformers import AutoTokenizer
 
 from utils.TDC_answer_parser import extract_answer, parse_answer
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'  # TODO: device GPU #
+os.environ['CUDA_VISIBLE_DEVICES'] = '6,7'  # TODO: device GPU #
 
 
 # Setup logging
@@ -36,9 +36,11 @@ def get_args():
     parser = argparse.ArgumentParser(description='Test TDC tasks with vLLM using preprocessed CoT data (F1 Score)')
 
     parser.add_argument('--model-path', type=str,
-                        default='zai-org/GLM-4.7-Flash',
+                        default='openai/gpt-oss-120b',
                         # zai-org/GLM-4.7-Flash
                         # internlm/Intern-S1-mini
+                        # openai/gpt-oss-120b
+                        # openai/gpt-oss-20b
                         help='Path to the model checkpoint')
     parser.add_argument('--use-lora', action='store_true', help='Use LoRA adapter')
     parser.add_argument('--lora-path', type=str,
@@ -63,7 +65,7 @@ def get_args():
 
     parser.add_argument('--strip-smiles-tags', action='store_false', help='Remove <SMILES> and </SMILES> from prompts before inference')
     parser.add_argument('--log-file', action='store_false', help='Enable logging to file')
-    parser.add_argument('--log-file-name', type=str, default="test_TDC_vllm_CoT_F1_{model_name}_{t_stamp}_long_context_1.log", help='Log file name pattern')  # TODO: log file name 
+    parser.add_argument('--log-file-name', type=str, default="no_Tools_gpt-oss-120b_{model_name}_{t_stamp}_4.log", help='Log file name pattern')  # TODO: log file name 
 
     args = parser.parse_args()
     return args
@@ -75,37 +77,37 @@ def load_tasks_map(data_dir):
     """
     mapping = {
         'Tox': [
-            'hERG_Karim.jsonl',  # 2690
-            'Carcinogens_Lagunin.jsonl',  # 56
-            'Skin_Reaction.jsonl',  # 82
-            'hERG.jsonl',  # 132
-            'DILI.jsonl',  # 96
-            'ClinTox.jsonl',  # 297
-            'AMES.jsonl',  # 1457
+            # 'hERG_Karim.jsonl',  # 2690
+            # 'Carcinogens_Lagunin.jsonl',  # 56
+            # 'Skin_Reaction.jsonl',  # 82
+            # 'hERG.jsonl',  # 132
+            # 'DILI.jsonl',  # 96
+            # 'ClinTox.jsonl',  # 297
+            # 'AMES.jsonl',  # 1457
             # 'Tox21.jsonl',  # 15584
             # 'herg_central_hERG_inhib.jsonl',  # 61379
             # -----------------------------------------
             # 'ToxCast.jsonl'  # 307282
         ],
         'ADME': [
-            'PAMPA_NCATS.jsonl',  # 408
-            'HIA_Hou.jsonl',  # 117
-            'BBB_Martins.jsonl',  # 406
-            'Pgp_Broccatelli.jsonl',  # 245
-            'Bioavailability_Ma.jsonl',  # 128
-            'CYP2C9_Substrate_CarbonMangels.jsonl',  # 135
-            'CYP2D6_Substrate_CarbonMangels.jsonl',  # 135
-            'CYP3A4_Substrate_CarbonMangels.jsonl',  # 135
-            'CYP1A2_Veith.jsonl',  # 2517
+            # 'PAMPA_NCATS.jsonl',  # 408
+            # 'HIA_Hou.jsonl',  # 117
+            # 'BBB_Martins.jsonl',  # 406
+            # 'Pgp_Broccatelli.jsonl',  # 245
+            # 'Bioavailability_Ma.jsonl',  # 128
+            # 'CYP2C9_Substrate_CarbonMangels.jsonl',  # 135
+            # 'CYP2D6_Substrate_CarbonMangels.jsonl',  # 135
+            # 'CYP3A4_Substrate_CarbonMangels.jsonl',  # 135
+            # 'CYP1A2_Veith.jsonl',  # 2517
             # 'CYP2C19_Veith.jsonl',  # 2534
             # 'CYP2C9_Veith.jsonl',  # 2419
             # 'CYP2D6_Veith.jsonl',  # 2626
             # 'CYP3A4_Veith.jsonl',  # 2467
         ],
         'HTS': [
-            # 'HIV.jsonl',  # 8225
-            # 'SARSCoV2_3CLPro_Diamond.jsonl',  # 176
-            # 'SARSCoV2_Vitro_Touret.jsonl',  # 298
+            'HIV.jsonl',  # 8225
+            'SARSCoV2_3CLPro_Diamond.jsonl',  # 176
+            'SARSCoV2_Vitro_Touret.jsonl',  # 298
             # -----------------------------------------
             # 'butkiewicz.jsonl'  # 401997
         ],
@@ -184,7 +186,7 @@ def main():
     try:
         llm = LLM(
             model=args.model_path,
-            enforce_eager=True,
+            # enforce_eager=True,
             max_model_len=args.max_model_len,
             max_num_batched_tokens=args.max_model_len,
             dtype="bfloat16",
