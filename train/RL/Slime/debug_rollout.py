@@ -37,7 +37,7 @@ def _inspect(
                 print(f"{indent}  ... ({len(obj) - max_items} more keys)")
                 break
             _inspect(v, path=f"{path}[{k!r}]", depth=depth + 1, max_depth=max_depth, max_items=max_items)
-        return
+        return j
 
     if isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray)):
         seq_type = type(obj).__name__
