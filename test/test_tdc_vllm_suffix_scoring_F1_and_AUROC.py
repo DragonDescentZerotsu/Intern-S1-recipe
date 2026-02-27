@@ -9,7 +9,7 @@ os.environ.setdefault("VLLM_USE_V1", "1")
 mp.set_start_method("spawn", force=True)
 
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '7'  # TODO: device GPU #
+os.environ['CUDA_VISIBLE_DEVICES'] = '4,5'  # TODO: device GPU #
 
 import re
 import inspect
@@ -36,7 +36,7 @@ def get_args():
     parser = argparse.ArgumentParser(description='Test TDC tasks with vLLM using preprocessed data (Merged F1 & AUROC)')
 
     parser.add_argument('--model-path', type=str,
-                        default='checkpoints/GLM-4.7-Flash/TDC_binary_sm_wo_herg-c_ToxCast_butkiewica',  # Default from F1 script
+                        default='openai/gpt-oss-120b',  # Default from F1 script
                         help='Path to the model checkpoint')
                         # internlm/Intern-S1-mini
                         # Qwen/Qwen3-8B
@@ -47,6 +47,7 @@ def get_args():
                         # nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16
                         # Kiria-Nozan/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16-1-epoch-TDC-binary-wo-hergC_ToxCast_butkiewicz
                         # openai/gpt-oss-20b
+                        # openai/gpt-oss-120b
                         # zai-org/GLM-4.7-Flash
     parser.add_argument('--use-lora', action='store_true', help='Use LoRA adapter')
     parser.add_argument('--lora-path', type=str,
@@ -61,14 +62,14 @@ def get_args():
                                  'TrialOutcome', 'PeptideMHC', 'all'],
                         help='Task groups to run')
     parser.add_argument('--max-model-len', type=int, default=1024 * 1, help='Max model length')
-    parser.add_argument('--tensor-parallel-size', type=int, default=1, help='Tensor parallel size')
+    parser.add_argument('--tensor-parallel-size', type=int, default=2, help='Tensor parallel size')
     parser.add_argument('--gpu-memory-utilization', type=float, default=0.92, help='GPU memory utilization')
     parser.add_argument('--max-num-seqs', type=int, default=512, help='Max number of sequences')
     parser.add_argument('--max-logprobs', type=int, default=1024, help='Max logprobs to return')
     # parser.add_argument('--device', type=str, default='2', help='CUDA device ID')
     parser.add_argument('--strip-smiles-tags', action='store_false', help='Remove <SMILES> and </SMILES> from prompts before inference') 
     parser.add_argument('--log-file', action='store_false', help='Enable logging to file')
-    parser.add_argument('--log-file-name', type=str, default="single_token_vllm_suffix_scoring_GLM-4.7-Flash-finetune-1-epoch-sm_{t_stamp}.log", help='Log file name pattern')
+    parser.add_argument('--log-file-name', type=str, default="single_token_vllm_suffix_scoring_gpt-oss-120b_{t_stamp}_test_set.log", help='Log file name pattern')
 
     args = parser.parse_args()
     return args
