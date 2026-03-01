@@ -54,6 +54,9 @@
 !/DataPrepare/Slime_RL_data/**/*.md
 !/DataPrepare/Slime_RL_data/**/*.gitkeep
 
+/train/RL/Tinker/rollouts/**
+
+
 /wandb
 /unsloth_compiled_cache
 
