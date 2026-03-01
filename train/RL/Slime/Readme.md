@@ -350,17 +350,22 @@ PYTHONPATH=/root/Megatron-LM python tools/convert_hf_to_torch_dist.py \
     --hf-checkpoint checkpoints/megatron/hf_version/GLM-4.7-Flash \
     --save checkpoints/megatron/megatron_version/GLM-4.7-Flash
 ```
-# 4. Run the training script
+# 4. Prepare Slime RL data
+Prepared data is stored in `Slime_RL_data/by_task/`
+```bash
+python prepare_slime_RL_data.py
+```
+# 5. Run the training script
 ```bash
 module load cuda
 bash train/RL/Slime/glm4.7-30B-A3B.sh
 ```
 
-# 5. Reuse and Modification of Fully Async Infrastructure
+# 6. Reuse and Modification of Fully Async Infrastructure
 
 If you need to write new fully async code for other experiments or new Custom Agents in the future, it is highly recommended to **copy the `generate_tdc_async.py` as your baseline template** rather than the original `slime/examples/fully_async/fully_async_rollout.py`.
 
-### 5.1 Why use `generate_tdc_async.py` instead of the original example?
+### 6.1 Why use `generate_tdc_async.py` instead of the original example?
 This implementation contains several critical upgrades and bug fixes compared to the original Slime `fully_async` example:
 
 1. **Fixed Worker Thread & Event Loop Collisions During Evaluation**:
@@ -372,7 +377,7 @@ This implementation contains several critical upgrades and bug fixes compared to
 4. **Deterministic Rollout Returns**:
    Results returned directly from completed futures are re-sorted mathematically (`sorted(completed_groups.keys())`) to feed the Trainer deterministic gradients, avoiding race conditions in gradient calculation caused by dict unordered popping.
 
-### 5.2 Creating a New Async Agent
+### 6.2 Creating a New Async Agent
 
 When starting a new fully async generation, follow these structural rules:
 
