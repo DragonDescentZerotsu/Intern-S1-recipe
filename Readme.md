@@ -62,3 +62,7 @@ There are two kinds of tools:
 1. **Baisc Tools**: Tools that are available for all tasks, refer to the `BASIC_TOOLS` variable in [__init__.py](tools/__init__.py)
 2. **Task-Specific Tools**: Tool groups that are available for specific tasks, refer to the `TDC_RDKIT_SPECIFIC_OPENAI_TOOLS_MAP` variable in [RDKit_tools.py](tools/RDKit_tools.py)
 3. When loading the tools, the function `get_tools_for_task()` in [test/test_tdc_via_api_F1.py](test/test_tdc_via_api_F1.py) will load the tools based on the task groups.
+
+## 5. RL
+`GLM-4.7-Flash` RL is supported in [train/RL/Slime](train/RL/Slime), read [train/RL/Slime/Readme.md](train/RL/Slime/Readme.md) for more information.  
+`GPT-OSS` RL is supported in [train/RL/Tinker](train/RL/Tinker), read [train/RL/Tinker/Readme.md](train/RL/Tinker/Readme.md) for more information.
