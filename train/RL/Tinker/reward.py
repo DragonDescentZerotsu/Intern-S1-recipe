@@ -11,9 +11,9 @@ def compute_reward(full_text: str, final_text: str, gt: int) -> float:
     if prediction is not None and prediction == gt:
         reward = 1.0
         # tool use reward
-        # if cfg.use_tools and ("to=functions." in full_text or "TOOL CALL" in full_text):
-        #     reward += 0.1
+        if cfg.use_tools and ("to=functions." in full_text or "TOOL CALL" in full_text):
+            reward += cfg.reward_use_tools
     # “Answer: (A) or Answer: (B)” in final text
     if format_correct:
-        reward += cfg.format_bonus
+        reward += cfg.reward_format_bonus
     return reward

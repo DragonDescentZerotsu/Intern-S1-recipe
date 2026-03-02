@@ -57,6 +57,7 @@ def main():
     random.seed(cfg.data_seed)
     all_samples = load_train_data(cfg.data_dir, cfg.exclude_tasks, getattr(cfg, "task", None))
     random.shuffle(all_samples)
+    easy_samples_prompts = set()
     
     # 计算总共需要跑多少个 batch (Calculate the total number of batches to run)
     n_batches_per_epoch = math.ceil(len(all_samples) / cfg.batch_size)
@@ -90,7 +91,7 @@ def main():
         config={
             k: getattr(cfg, k) for k in [
                 "model_name","lora_rank","learning_rate","batch_size","group_size",
-                "max_tokens","max_turns","format_bonus","eval_every","eval_max_samples",
+                "max_tokens","max_turns","reward_format_bonus","reward_use_tools","eval_every","eval_max_samples",
                 "data_seed","resume_from","resume_step",
             ]
           } | {"n_samples": len(all_samples), "n_batches": n_batches,
@@ -101,7 +102,8 @@ def main():
     mf = open(os.path.join(cfg.log_path, "metrics.jsonl"), "a")
 
     # 进入主要批次式前向训练主循环 (Enter main batched forward training loop)
-    for bi in range(start_batch, n_batches):
+    bi_iterator = iter(range(start_batch, n_batches))
+    for bi in bi_iterator:
         t_batch_start = time.time()
         epoch = bi // n_batches_per_epoch
         bi_in_epoch = bi % n_batches_per_epoch
@@ -109,6 +111,10 @@ def main():
         # 在新的一轮 Epoch 重新打乱数据排列 (Shuffle data again at the beginning of a new Epoch)
         if bi_in_epoch == 0 and bi > 0:
           random.seed(cfg.data_seed + epoch)
+          if getattr(cfg, "filter_easy_samples", False) and easy_samples_prompts:
+              old_len = len(all_samples)
+              all_samples = [s for s in all_samples if s.get("text", "") not in easy_samples_prompts]
+              logger.info(f"Epoch {epoch}: Filtered {len(easy_samples_prompts)} easy samples. Retained {len(all_samples)} / {old_len}")
           random.shuffle(all_samples)
           logger.info(f"=== EPOCH {epoch} === (reshuffled)")
 
@@ -124,9 +130,20 @@ def main():
         t_ckpt = time.time() - t_ckpt_start
 
         # ── SAMPLER SETUP (设定当前周期的采样器权重) ─────────────────────────────────────
-        t_sampler_start = time.time()
         # 切片截出本批次的样本数据 (Slice the sample data for this batch)
         batch = all_samples[bi_in_epoch * cfg.batch_size : (bi_in_epoch + 1) * cfg.batch_size]
+        
+        if not batch:
+            target_bi = (epoch + 1) * n_batches_per_epoch - 1
+            logger.info(f"Epoch {epoch} samples exhausted. Fast-forwarding batch indices {bi} -> {target_bi}.")
+            while bi < target_bi:
+                try:
+                    bi = next(bi_iterator)
+                except StopIteration:
+                    break
+            continue
+
+        t_sampler_start = time.time()
         
         # 将训练客户端最新的权重落盘，从而交给采样器推理 
         # (Save the latest weights from the training client to disk to hand them over to the sampler for inference)
@@ -229,6 +246,9 @@ def main():
                 skipped += 1
                 if mu > 0.5:
                     skipped_easy += 1
+                    # 如果配置了 Easy Sample Filter，那么将 Easy Sample 的 Prompt 添加到 easy_samples_prompts 集合中
+                    if getattr(cfg, "filter_easy_samples", False):
+                        easy_samples_prompts.add(sample.get("text", ""))
                 else:
                     skipped_hard += 1
                 continue
