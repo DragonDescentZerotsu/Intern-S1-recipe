@@ -1,0 +1,109 @@
+{% set objective = "Please predict the probability of the given molecule being a hERG blocker (IC₅₀ < 10 µM)." -%}
+{% set prompt_playbook -%}
+# Playbook: Predict hERG blocker probability from SMILES (IC50 < 10 µM)
+
+## Output rule
+- **Final output must be a single integer 0–100** = calibrated probability the molecule is a **hERG blocker (IC50 < 10 µM)**.
+- Do all reasoning internally; output **only the integer**.
+
+## Literature-grounded determinants to prioritize
+These are repeatedly supported across QSAR/pharmacophore studies and reviews:
+1. **Lipophilicity (logP) increases risk**; effect rises roughly up to logP ~4 then saturates (PMID: 27783199; 16711756).
+2. **Basic/positively ionizable center increases risk** (cation–π/electrostatic interactions; classic blocker motif) (PMID: 15718164; 18243713; 11961040).
+3. **Higher polarity/TPSA decreases risk** (PMID: 27783199; 16711756).
+4. **Strong acids/anions reduce risk**; acids/zwitterions are generally lower-risk than bases, though exceptions exist (PMID: 27783199; 21902220).
+5. **Drug-like size & flexibility often increase risk**; very small/hydrophilic compounds are rarely strong blockers (PMID: 27783199; 15718164; 16711756).
+6. **Aromatic/hydrophobic ring content often co-occurs with block**; aromatic ring count shows a weak plateau ~3–4 rings (PMID: 27783199; 15718164).
+7. **Uncertainty near the 10 µM boundary is high**; treat mid probabilities as legitimate outcomes (PMID: 27783199).
+
+## Step-by-step tool workflow (always do in this order)
+### 1) Standardize
+- `std = standardize_smiles(smiles, remove_salts=True, canonical_tautomer=True, neutralize=False)`
+
+### 2) Compute descriptors (standardize=True)
+Use `compute_descriptors(std, descriptors=[...], standardize=True)` and record at least:
+- `logp`, `tpsa`, `average_mw`
+- `aromatic_rings`, `total_rings`
+- `num_rotatable_bonds`
+- `hbd`, `hba`
+- `fraction_csp3`
+
+### 3) Ionization at pH 7.4
+- `ion = classify_ionization(std, ph=7.4, standardize=True)`
+- Use `ion.representative.net_charge`, `ion.has_positive_states`, `ion.has_negative_states`, `ion.is_ambiguous`
+
+### 4) Ring system topology
+- `rings = analyze_ring_systems(std, standardize=True)`
+- Use `rings.has_pah_like`, `rings.largest_aromatic_system`
+
+### 5) Fast motif scan (optional but helpful)
+- `get_functional_groups(std, standardize=True)`
+- `match_substructure(std, patterns, standardize=True)` with a small panel such as:
+  - tertiary amine: `[NX3;H0;!$(N=*)]([#6])[#6]`
+  - quaternary ammonium: `[NX4+]`
+  - carboxylate: `C(=O)[O-]`
+  - sulfonate: `S(=O)(=O)[O-]`
+  - sulfonamide: `S(=O)(=O)N`
+  - amide: `C(=O)N`
+
+## Scoring → calibrated probability
+Use a **bucket + adjustments** heuristic (stable, interpretable, and consistent with the literature trends above).
+
+### A) Choose a baseline bucket (P0)
+Compute: logP, TPSA, MW, charge = ion.representative.net_charge, hasPos = ion.has_positive_states.
+
+1. **Very low (P0=5)** if: logP < 1.0 AND hasPos=false AND TPSA >= 60
+2. **Low (P0=15)** if: logP < 2.0 AND charge <= 0 AND TPSA >= 40
+3. **Medium (P0=40)** otherwise if: logP in [2,3) OR ionization is ambiguous
+4. **High (P0=70)** if: hasPos=true AND logP >= 3.0 AND TPSA <= 90
+5. **Very high (P0=85)** if: hasPos=true AND logP >= 4.0 AND TPSA <= 75 AND MW in [250,550]
+
+### B) Apply adjustments (Δ) then clamp to [0,100]
+Start P = P0, then:
+
+**Ionization**
+- if charge <= -1: P -= 25
+- if charge == +1: P += 10
+- if charge >= +2: P -= 10 (possible permeability limitation; don’t call it “safe”)
+- if ion.is_ambiguous: move 10 points toward 50 (i.e., P = P - sign(P-50)*10)
+
+**Polarity**
+- if TPSA >= 120: P -= 20
+- if TPSA <= 40: P += 10
+
+**Size / flexibility**
+- if MW < 250: P -= 15
+- if MW in [300,500]: P += 5
+- if num_rotatable_bonds >= 8: P += 5
+
+**Aromatic / hydrophobe topology**
+- if aromatic_rings >= 3: P += 5
+- if rings.has_pah_like: P += 10
+- if fraction_csp3 >= 0.6 AND aromatic_rings <= 1: P -= 5
+
+**Mitigating polar motifs**
+- if num_amide_bonds >= 2: P -= 5
+- if strong anion motif present AND logP < 3: P -= 10
+
+**Classic blocker motif boost**
+- if tertiary/quaternary amine present AND aromatic_rings >= 2: P += 10
+
+### C) Final calibration guards
+- Only allow **P >= 95** if: hasPos=true AND logP>=4 AND TPSA<=60 AND (aromatic_rings>=2 OR rings.has_pah_like) AND charge not negative.
+- Only allow **P <= 5** if: hasPos=false AND logP<=1.5 AND TPSA>=80 AND MW<=350.
+- If many factors conflict (e.g., cationic but TPSA very high), avoid extremes; keep P nearer 50.
+
+## Similarity override (optional)
+If you have a curated reference set of known blockers/non-blockers (with SMILES):
+- `compute_similarity(std, reference_smiles, fingerprint="morgan", standardize=True)`
+- If max similarity to a known strong blocker >= 0.6: set P >= 80 (unless strongly anionic/high TPSA)
+- If max similarity to a known clean compound >= 0.6: set P <= 20
+- If out-of-domain (all similarities < 0.3): compress toward 50 (e.g., P = round(0.7*P + 0.3*50))
+
+## Key citations for the above heuristics
+- Global physicochemical determinants using a 10 µM cutoff and borderline uncertainty: **27783199**
+- Binding-site and pharmacophore concepts (cation + hydrophobes/aromatics; Y652/F656): **15718164**, **18243713**, **11961040**
+- 2D-QSAR emphasizing +logP, −TPSA, size/diameter: **16711756**
+- Additional QSAR showing acidity mitigates and flexibility/size matter: **21902220**
+{% endset %}
+{% include "tdc/base.jinja2" %}

@@ -1,0 +1,231 @@
+{% set objective = "Please predict the probability of the given molecule being orally bioavailable." -%}
+{% set prompt_playbook -%}
+# Playbook: Predict oral bioavailability from a SMILES string (output 0–100)
+
+This playbook is for an agent that sees only a molecule’s **SMILES** and must output a **calibrated probability (0–100)** that the compound is **orally bioavailable** (i.e., likely to achieve meaningful systemic exposure after oral dosing). It is designed for **small-molecule, passive-absorption–dominated** chemical space; it explicitly flags **exceptions** where the usual rules can fail.
+
+Literature basis for the core heuristics:
+- **Lipinski “Rule of 5”** (MW, logP, HBD, HBA) as a coarse risk screen for poor absorption/permeation: **PMID 11259830**, **PMID 22294375**.
+- **Veber-type flexibility/polarity rules** (rotatable bonds and PSA / total H-bonds) associated with oral bioavailability: **PMID 12036371**, summarized in broader reviews: **PMID 16584131**.
+- **PSA/TPSA thresholds** linked to fraction absorbed (e.g., ~≤60 Å² high absorption; ≥140 Å² low absorption) and fast 2D TPSA as a practical surrogate: **PMID 12470281**, **PMID 16584131**.
+- PSA distributions/thresholds for orally bioavailable drugs (e.g., ~<120 Å² non-CNS): **PMID 12647312**.
+- Ionization-class–dependent bioavailability scoring heuristics (anions behave differently): **PMID 16584131**.
+
+---
+
+## 0) Definitions and scope (what you are predicting)
+
+**Target**: probability the molecule is **likely orally bioavailable** under typical oral dosing, i.e., has a plausible combination of:
+- **Fa**: fraction absorbed (dissolution + permeability)
+- **Fg/Fh**: first-pass extraction (gut/liver)
+
+From SMILES alone, you mostly infer **Fa** (solubility + permeability) and a small set of structural “liability” signals for disposition. Treat the output as **“probability of being in orally viable property space”**, not a guarantee of high human F.
+
+**Applicability**: most reliable for **Ro5-ish small molecules**. Less reliable for:
+- macrocycles, large natural products, peptides
+- compounds intended for **local GI action** (deliberately low F)
+- compounds relying on **active uptake transporters** (can violate Ro5): **PMID 11259830**, **PMID 22294375**
+
+---
+
+## 1) Standardize input (always)
+
+1. `standardize_smiles(smiles, remove_salts=True, canonical_tautomer=True, neutralize=False)`
+   - Keep formal charge meaningful (don’t neutralize).
+2. If standardization fails → output **0** (invalid SMILES) or “cannot assess”.
+
+---
+
+## 2) Compute the core property panel (your primary evidence)
+
+Run once on standardized SMILES:
+
+- `compute_descriptors(…, descriptors=[
+  "masses","logp","hydrogen_bonding","surface_shape_props",
+  "num_rotatable_bonds","ring_counts","num_amide_bonds",
+  "lipinski_violations","formal_charge","esol","qed"
+], standardize=True)`
+
+Also run ionization:
+- `classify_ionization(smiles, ph=7.4, standardize=True)`
+- (Optional) `classify_ionization(smiles, ph=6.5, standardize=True)` as a proxy for intestinal pH region.
+
+Interpretation shortcuts (what these mean for oral BA):
+
+### A. Permeability risk (polarity, H-bonding, flexibility)
+Evidence-based thresholds:
+- **TPSA**: 
+  - **≤ 60 Å²** strongly favors high absorption (often >90%): **PMID 12470281**, **PMID 16584131**
+  - **≥ 140 Å²** strongly disfavors absorption (often <10%): **PMID 12470281**, **PMID 16584131**
+  - For many oral non-CNS drugs, PSA < ~120 Å² is common: **PMID 12647312**
+- **Rotatable bonds**: **≤ 10** is associated with better oral bioavailability (flexibility penalty beyond size): **PMID 12036371**, **PMID 16584131**
+- **HBD/HBA (Ro5)**: excessive donors/acceptors increase desolvation cost and impair permeation: **PMID 11259830**, **PMID 22294375**
+
+### B. Solubility risk (dissolution limitation)
+- Use `esol` as a **rough** solubility proxy.
+- Recognize the common tradeoff: high logP + high MW + high aromaticity often signals low aqueous solubility and low Fa.
+
+### C. Ionization/charge risk (permanent charge and anions)
+- Permanent charge and strongly ionic species typically lower passive permeability.
+- Ionization class matters: Ro5 tends to work better for neutrals/cations than anions; PSA-based rules may be more informative for anions: **PMID 16584131**.
+
+---
+
+## 3) Read the SMILES “like a medicinal chemist” (structural motifs to notice)
+
+Use:
+- `get_functional_groups(…, standardize=False)` to enumerate ionizable groups and polar motifs.
+- `score_structural_alerts(…, alert_library="brenk" or "nih" or "all")` to flag reactive/toxic/assay-interfering motifs (these can indirectly reduce oral viability via safety/instability).
+- `analyze_ring_systems(…)` to detect **PAH-like fused aromatics**, macrocycles, and large rigid systems.
+- `match_substructure(…, patterns=…)` to explicitly detect motifs that often drive (non)absorption.
+
+### A. Patterns to screen (example SMARTS set)
+Create a small “oral BA risk” panel (you can tune over time):
+
+**Permanent/strong charge motifs (usually bad for passive permeability):**
+- quaternary ammonium: `"[N+](C)(C)(C)"`
+- sulfonate: `"S(=O)(=O)[O-]"`
+- phosphonate/phosphate: `"P(=O)(O)(O)"` and `"P(=O)([O-])[O-]"`
+- guanidinium-like: `"NC(=N)N"` (often highly basic/cationic)
+
+**Strong acids (often anionic at pH 7.4):**
+- carboxylate/carboxylic acid: `"C(=O)[O-]"` and `"C(=O)O"`
+- sulfonamide acid variants (context dependent): `"S(=O)(=O)N"`
+
+**Polarity multipliers (raise TPSA/HBD/HBA quickly):**
+- multiple amides / ureas / carbamates (count + pattern)
+- polyols: repeated `"CO"` motifs
+
+**Reactivity/instability flags (contextual):**
+- epoxide: `"C1OC1"`
+- aziridine: `"C1NC1"`
+- acyl halides: `"C(=O)[Cl,Br,I]"`
+- Michael acceptors (context dependent): `"C=CC(=O)"`
+
+Note: these motifs are not direct “oral BA” determinants, but they often correlate with developability issues.
+
+### B. Ring and topology cues
+From `analyze_ring_systems`:
+- **has_pah_like = true** (≥3 fused aromatic rings) + high logP → often poor solubility and high clearance risk; penalize.
+- **macrocycle present** (ring ≥12): rules-of-five less reliable; treat as “uncertain”, not automatically bad.
+
+From `compute_descriptors`:
+- Very **high aromatic ring count** with low fractionCsp3 → tends to increase crystallinity and lower solubility (heuristic).
+
+---
+
+## 4) Convert evidence into a calibrated 0–100 probability
+
+### 4.1 Start with a base prior
+Use a conservative default prior that reflects “random small molecule” being **not** reliably orally bioavailable:
+- **Base = 40**
+
+(If you know your deployment distribution is mostly drug-like libraries, you can raise this.)
+
+### 4.2 Apply a point-based rubric (interpretable, easy to calibrate)
+Compute a score `S` in points, then clamp to 0–100.
+
+#### A) Rule-of-5 block (passive absorption likelihood)
+Using `lipinski_violations` and raw values:
+- If **0 violations**: `S += +20`
+- If **1 violation**: `S += +10`
+- If **2 violations**: `S += -10`  
+  (Lipinski’s operational warning threshold is essentially “≥2 out of range → risk of poor absorption/permeation”: **PMID 11259830**, **PMID 22294375**)
+- If **3–4 violations**: `S += -25`
+
+Additionally, if **MW > 600**: `S += -10` (often beyond typical oral space; Ro5-derived evidence: **PMID 11259830**)
+
+#### B) TPSA block (strong discriminator)
+Using TPSA (2D) as practical surrogate (fast, robust): **PMID 12470281**.
+- TPSA **≤ 60**: `S += +20`
+- 60 < TPSA **≤ 90**: `S += +10`
+- 90 < TPSA **≤ 120**: `S += +0` (still plausible for oral, common boundary: **PMID 12647312**)
+- 120 < TPSA **≤ 140**: `S += -10`
+- TPSA **> 140**: `S += -25` (poor absorption region: **PMID 12470281**, **PMID 16584131**)
+
+#### C) Flexibility block (Veber-style)
+Using rotatable bonds (RB): **PMID 12036371**, **PMID 16584131**.
+- RB **≤ 6**: `S += +10`
+- 7–10: `S += +0`
+- 11–15: `S += -10`
+- >15: `S += -20`
+
+#### D) Ionization/charge block
+From `classify_ionization` at pH 7.4:
+- If representative net charge is **0**: `S += +5`
+- If **+1** (typical amine): `S += +5` (often OK if not too polar)
+- If **−1** (typical acid): `S += 0` (OK but watch PSA; anions behave differently: **PMID 16584131**)
+- If **|charge| ≥ 2**: `S += -20`
+- If **is_ambiguous = true** (many states): `S += -5` (uncertainty)
+
+Hard penalties (structural, not just charge-state enumeration):
+- If substructure shows **quaternary ammonium** or **sulfonate/phosphate**: `S += -30` (permanent/strong ionic)
+
+#### E) Solubility proxy block (ESOL)
+Use ESOL cautiously (it’s a model), but it helps penalize extreme insolubility.
+- If `log_s_esol` **> −3**: `S += +5`
+- If −3 to −4: `S += 0`
+- If **< −4**: `S += -10`
+- If **< −6**: `S += -20`
+
+#### F) Aromaticity / fused aromatics
+From ring analysis:
+- If `has_pah_like=true`: `S += -10`
+- If aromatic_rings ≥ 4 and fraction_csp3 < 0.2: `S += -5`
+
+#### G) Structural alerts (developability proxy)
+From `score_structural_alerts`:
+- If alert count ≥ 3: `S += -5`
+- If alert count ≥ 6: `S += -10`
+
+### 4.3 Convert score to probability
+
+1. Let `P = clamp(0, 100, Base + S)`.
+2. **Calibration step** (recommended): if you have historical outcomes, fit an isotonic/logistic calibration mapping from `Base+S` to observed oral BA success. Without data, keep linear mapping.
+
+### 4.4 Confidence annotation (internal)
+Track an internal confidence flag even if you only output a number:
+- **High confidence**: Ro5-ish, not macrocyclic, not PAH-like, ionization not ambiguous.
+- **Low confidence**: macrocycles; very high MW; zwitterions/multiple charge states; many alerts; “beyond Ro5” space.
+
+---
+
+## 5) “Exception handling” (avoid confidently wrong outputs)
+
+### A) Transporter substrates can violate rules
+Some orally active classes violate Ro5 yet are orally absorbed due to transporters: **PMID 11259830**, **PMID 22294375**. From SMILES alone you can’t prove transporter uptake, so:
+- If multiple Ro5/PSA/RB violations occur **but** the molecule resembles known transporter-favored scaffolds (e.g., peptidomimetics, sugars, bile-acid-like motifs), **do not output near 0**; instead output a **low-to-mid probability (e.g., 20–40)** unless there is permanent charge/massive polarity.
+
+### B) Macrocycles / “beyond Ro5”
+Macrocycles may be orally bioavailable via conformational shielding/intramolecular H-bonds, which 2D rules miss. If `has_macrocycle=true`:
+- reduce penalty severity (cap negative contributions from PSA/RB by ~50%)
+- increase uncertainty (avoid extreme 0/100 unless truly extreme).
+
+### C) Prodrugs
+SMILES may reflect a prodrug (esters, promoieties) that improves permeability. Heuristic:
+- multiple ester groups + masked acids → slightly increase permeability expectation, but watch hydrolysis/solubility. Treat as **uncertain**.
+
+---
+
+## 6) Minimal “one-pass” procedure (what to do every time)
+
+1. **Standardize** SMILES.
+2. Compute descriptors (MW, logP, TPSA, HBD/HBA, RB, ESOL, formal charge, amide count, rings).
+3. Classify ionization at pH 7.4 (optionally 6.5).
+4. Screen key substructures (permanent charge motifs, strong acids/bases, alerting reactivity).
+5. Apply scoring rubric → clamp to 0–100.
+6. If macrocycle / extreme bRo5 / ambiguous ionization → compress probability toward 50 (e.g., `P = 50 + 0.7*(P-50)`).
+
+---
+
+## 7) Quick sanity bands (to keep probabilities calibrated)
+
+Use these as a final check:
+- **80–100**: 0–1 Ro5 violations, TPSA ≤ 90, RB ≤ 10, no permanent charge, ESOL not terrible.
+- **50–79**: mostly OK but 1–2 moderate issues (e.g., TPSA 90–120, RB 10–12, one Ro5 violation, moderate insolubility risk).
+- **20–49**: 2 Ro5 violations or TPSA 120–160 or permanent strong acid/base signals; borderline solubility/permeability.
+- **0–19**: TPSA > 180, |charge| ≥ 2 dominant at pH 7.4, multiple permanent-charge motifs, very high MW with high polarity.
+
+(These align qualitatively with the “risk-of-poor-absorption” intent of Ro5 and PSA/RB thresholds: **PMID 11259830**, **PMID 12470281**, **PMID 12036371**.)
+{% endset %}
+{% include "tdc/base.jinja2" %}

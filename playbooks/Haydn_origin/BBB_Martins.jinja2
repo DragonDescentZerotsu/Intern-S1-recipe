@@ -1,0 +1,252 @@
+{% set objective = "Please predict the probability of the given molecule permeating the blood-brain barrier." -%}
+{% set prompt_playbook -%}
+# Playbook: Predict BBB Permeability from a SMILES (output 0–100)
+
+## 0) What you’re predicting (be explicit)
+BBB “crossing” can mean different experimental endpoints (e.g., **logBB = log(Cbrain/Cblood)**, total brain:plasma ratio *Kp*, unbound ratio *Kp,uu*, in situ permeability, PAMPA-BBB, or MDCK/MDR1 permeability). These differ because of **binding and active efflux** (especially P-gp). Reviews emphasize that total brain ratios can be misleading and that **efflux and unbound fraction** can dominate observed CNS exposure (PMID: **19664709**, **10837716**, **27194478**).
+
+This playbook targets a *practical* question: “Given the structure, is passive BBB permeation plausible, and are there strong structural reasons it will be poor?” It outputs a **calibrated 0–100 probability** that the molecule will be BBB-permeant **by passive diffusion** (with a penalty for likely efflux-limited chemotypes).
+
+---
+
+## 1) Required output
+Return an **integer probability 0–100**:
+- **0** = very unlikely to cross BBB
+- **100** = very likely to cross BBB
+
+Also produce an internal “trace” (not necessarily user-visible): key descriptors, charge-state summary, and which rules moved the probability.
+
+---
+
+## 2) Workflow (tool-driven)
+### Step A — Standardize the structure
+1. `standardize_smiles(smiles, remove_salts=True, canonical_tautomer=True, neutralize=False)`
+   - Keep **formal charge meaningful** (don’t neutralize).
+
+### Step B — Compute core 2D descriptors (BBB-relevant)
+2. `compute_descriptors(std_smiles, descriptors=[
+   "masses","logp","surface_shape_props","hydrogen_bonding",
+   "atom_counts","ring_counts","num_rotatable_bonds","num_amide_bonds",
+   "formal_charge"
+ ], standardize=False)`
+
+Collect at minimum:
+- **MW**, **TPSA**, **LogP** (Wildman–Crippen), **HBD/HBA**, **rotatable bonds**, **amide bonds**, **formal charge**, ring counts.
+
+### Step C — Ionization / charge at physiological pH
+3. `classify_ionization(std_smiles, ph=7.4, standardize=True)`
+
+Use:
+- `representative.net_charge` and `charge_class` (neutral/base/acid/zwitterion)
+- flags `has_positive_states`, `has_negative_states`, `is_ambiguous`
+
+Why: ionization strongly affects BBB passage; anions are often particularly disfavored (e.g., anionic outliers noted in BBB datasets; ionization emphasized in BBB reviews and curated datasets; PMID: **27377191**, **10837716**).
+
+3b. **pKa-derived neutral fraction and logD estimate (recommended)**
+- `estimate_logd(std_smiles, ph=7.4, standardize=True)`
+  - Use `fraction_neutral` as a direct proxy for “how much of the molecule is unionized at pH 7.4”.
+  - Use `logd` as a check for effective lipophilicity at pH 7.4 (approximate; not experimental).
+
+### Step D — Structural readouts to catch “obvious” BBB blockers/enablers
+4. `get_functional_groups(std_smiles)` for a quick hierarchy of ionizable/polar motifs.
+5. `analyze_ring_systems(std_smiles)` to detect large fused aromatics, macrocycles, etc.
+6. `match_substructure(std_smiles, patterns=BBB_SMARTS_LIBRARY)` (library below).
+
+### Optional — “sanity checks”
+7. `score_structural_alerts(...)` (not BBB-specific, but helps spot reactive/polar liabilities).
+8. `extract_pharmacophore_features(...)` to count acceptors/donors/hydrophobes in a model-agnostic way.
+
+---
+
+## 3) Key structural factors to look for (what the SMILES is “telling you”)
+### 3.1 Polarity (TPSA) is often the first-order filter
+A recurring empirical rule is that **higher PSA/TPSA decreases BBB penetration**.
+- A PSA guideline often cited is **PSA < 90 Å²** for CNS-active drugs (PMID: **19473718**).
+- Dataset-derived bins from a logBB modeling study (use as rough prior):
+  - **PSA < 40** → ~**80%** had **logBB > 0**
+  - **PSA > 60** → ~**83%** had **logBB < 0**
+  - **PSA 40–60** is mixed and needs lipophilicity to disambiguate (PMID: **19473718**).
+
+Interpretation from SMILES: more heteroatoms (especially O/N) and polar functional groups generally increase TPSA.
+
+### 3.2 Lipophilicity must be “enough, but not too much”
+BBB permeation improves with lipophilicity up to an optimum; beyond that, solubility/binding/efflux issues can dominate.
+- An ANN study notes optimal logP ranges around **~1.5–2.7** for some CNS classes and suggests an optimum near **~2.9** in its response curve (PMID: **19473718**).
+- CNS property guidance (top marketed CNS drugs) commonly targets **cLogP ~2–4** and **cLogD7.4 ~2–4** with PSA and HBD constraints (PMID: **21790149**).
+
+Interpretation from SMILES: many aromatic rings, halogens, and hydrocarbon surface generally increase logP.
+
+### 3.3 Ionization / net charge at pH 7.4 (often decisive)
+At the BBB, **neutral species** are typically favored for passive diffusion.
+- **Permanent charges** (quaternary ammonium, sulfonate) are strong negatives.
+- **Carboxylates / strong acids** that are mostly anionic at pH 7.4 are often disfavored; anionic compounds can be outliers in logBB relationships (PMID: **27377191**).
+
+Interpretation from SMILES:
+- Carboxylic acid: `C(=O)O` (often deprotonated)
+- Sulfonic acid: `S(=O)(=O)O` (often deprotonated)
+- Quaternary ammonium: `[N+](C)(C)(C)C`
+
+### 3.4 Hydrogen bonding capacity (HBD/HBA)
+High H-bonding raises desolvation cost and usually hurts passive BBB permeation.
+CNS multi-parameter approaches repeatedly include HBD as a key limiter.
+- CNS MPO (Pfizer) uses HBD as one of 6 inputs; HBD is strongly penalized when high (PMID: **22778837**).
+
+Interpretation from SMILES:
+- HBD: `N-H`, `O-H` (amide N is not donor if substituted)
+- HBA: heteroatoms with lone pairs (amide carbonyl O is acceptor; amide N is not)
+
+### 3.5 Size / flexibility
+Bigger and more flexible molecules generally permeate less.
+- Older lipophilicity/size-normalized permeability relationships exist (e.g., log(PS) relates to log(PC/√MW)) and large MW alone is not a perfect cutoff, but MW still matters (PMID: **10837716**).
+- CNS MPO penalizes MW above ~360 and strongly above 500 (PMID: **22778837**).
+
+Interpretation from SMILES:
+- Many atoms and long aliphatic chains → high MW / high rotatable bonds.
+- Many amide bonds often indicates polarity + rigidity but also high HBA and reduced permeability.
+
+### 3.6 Efflux risk (P-gp and other transporters) can negate otherwise “good” properties
+P-gp at the BBB can drastically reduce brain exposure, demonstrated by inhibitor and knockout studies (PMID: **10837716**, **11165188**) and datasets linking efflux ratios to *Kp,uu* shifts (PMID: **27194478**).
+
+You can’t truly “see P-gp substrate” from SMILES alone, but certain patterns raise suspicion:
+- Amphipathic molecules with **multiple heteroatoms** and **basic centers** (P-gp substrates are diverse; reviews stress broad specificity; PMID: **12535572**, **12535575**).
+- High polarity plus lipophilicity (“greasy but polar”) can be a red flag.
+
+Practical rule: if passive-permeability looks OK but the structure is a typical efflux-prone scaffold (poly-heteroaromatic + tertiary amines + multiple HBA), reduce probability.
+
+---
+
+## 4) A concrete scoring rubric → probability (0–100)
+Use **two layers**:
+1) a **passive-permeability score** from descriptors/ionization
+2) an **efflux/charge penalty** layer
+
+### 4.1 Compute intermediate features
+From tools:
+- `MW`, `TPSA`, `logP`, `HBD`, `HBA`, `RB` (rotatable bonds)
+- `net_charge` at pH 7.4 (from `classify_ionization` representative)
+- `charge_class` (neutral/base/acid/zwitterion)
+- `fraction_neutral` and `logD7.4` estimate (from `estimate_logd`)
+
+Define helper indicators:
+- `is_permanent_charge` (quaternary ammonium or sulfonate present)
+- `is_anion_like` = (representative.net_charge ≤ −1)
+- `is_cation_like` = (representative.net_charge ≥ +1)
+- `is_zwitterion_like` = (representative.charge_class == "zwitterion")
+
+### 4.2 Passive BBB score (0–6 “CNS-MPO-like”, proxy)
+CNS MPO is a validated medicinal-chemistry desirability framework using **cLogP, cLogD7.4, MW, TPSA, HBD, pKa** (PMID: **22778837**, **21790149**). You now have a **predicted-pKa-derived** neutral fraction and logD estimate; treat them as approximate but more informative than net-charge-only proxies.
+
+Compute 6 components each 0–1 (cap to [0,1]):
+1. **Lipophilicity component (logP)** (target ~2–4; penalize >5)
+2. **TPSA component** (best ~40–90; penalize ≤20 and >120)
+3. **MW component** (best ≤360; penalize >500)
+4. **HBD component** (best 0–1; penalize ≥3–4)
+5. **Ionization component (pKa-derived neutral-fraction proxy)**
+   - Let `f_neutral = estimate_logd(...).fraction_neutral`.
+   - if `f_neutral ≥ 0.30` → 1.0
+   - if `0.10 ≤ f_neutral < 0.30` → 0.7
+   - if `0.03 ≤ f_neutral < 0.10` → 0.4
+   - if `0.01 ≤ f_neutral < 0.03` → 0.2
+   - if `f_neutral < 0.01` → 0.0
+   - if `classify_ionization.is_ambiguous` → subtract 0.2 (multiple plausible charge states)
+6. **Flexibility component**
+   - RB ≤ 5 → 1.0
+   - RB 6–9 → 0.6
+   - RB ≥ 10 → 0.2
+
+Sum → `S_passive` in **[0,6]**.
+
+### 4.3 Apply hard “show-stopper” rules (override)
+If any of these are true, clamp probability low:
+- **Permanent charge present** → `P = min(P, 5)`
+- **TPSA > 120** *and* (net_charge ≠ 0) → `P = min(P, 10)`
+- **MW > 650** (small-molecule regime exceeded) → `P = min(P, 10)`
+
+Rationale: these conditions are very rarely compatible with passive BBB permeation; CNS drug space generally avoids them (PMID: **21790149**, and general BBB constraints discussed in PMID: **19664709**).
+
+### 4.4 Convert to an initial probability
+Map `S_passive` to probability with a smooth logistic (calibration-friendly):
+- `P0 = round( 100 * sigmoid( 1.2 * (S_passive - 3.5) ) )`
+  - (Scores ~3.5 map near 50%; scores ≥5 map high.)
+
+Calibration anchor: **74%** of marketed CNS drugs had CNS MPO ≥4 in the original CNS MPO work (PMID: **22778837**). So treat `S_passive ≥4` as “more likely than not,” absent efflux penalties.
+
+### 4.5 Bayesian-ish adjustment using PSA bins (optional but useful)
+Use the empirical PSA bins from logBB modeling as a prior tilt (PMID: **19473718**):
+- If TPSA < 40: `P = P0 + 15`
+- If TPSA > 60: `P = P0 - 15`
+- If TPSA 40–60:
+  - if logP > 2: `P = P0 + 5`
+  - if logP < 2: `P = P0 - 10`
+
+(Then clamp to 0–100.)
+
+### 4.6 Efflux-risk penalty layer (structural heuristics)
+Apply penalties if the SMILES suggests an “efflux-prone” amphipathic pattern (BBB efflux is a major source of failed CNS exposure; PMID: **10837716**, **19664709**, **27194478**):
+
+Add a penalty score `E` (0 to 30):
+- +10 if **HBA ≥ 8**
+- +8 if **two or more basic sites** (`estimate_logd(...).num_basic_sites ≥ 2`) (proxy for efflux-prone cationic amphiphiles)
+- +6 if **TPSA ≥ 90** *and* logP ≥ 3 (polar + lipophilic)
+- +6 if **multiple fused aromatic rings** (≥3 fused) and heteroatoms present (often “sticky” + efflux risk)
+
+Then `P = P - E`.
+
+(Keep this penalty modest: efflux can be huge in reality, but predicting it from SMILES is uncertain.)
+
+---
+
+## 5) BBB-focused SMARTS library (for `match_substructure`)
+Use this as a minimal screening set:
+
+```python
+BBB_SMARTS_LIBRARY = {
+  # Strong negatives / permanent charge
+  "quaternary_ammonium": "[N+](C)(C)(C)C",
+  "sulfonate": "S(=O)(=O)[O-]",
+
+  # Acids that often create anionic species
+  "carboxylic_acid": "C(=O)[O;H1,-1]",
+  "tetrazole": "c1nnnn1",
+  "phosphonate": "P(=O)(O)(O)",
+
+  # Common basic centers
+  "tertiary_amine": "[NX3;!$(NC=O);!$(NS(=O)=O)](C)(C)",
+  "piperidine_like": "N1CCCCC1",
+  "piperazine_like": "N1CCNCC1",
+
+  # H-bond rich motifs
+  "guanidine": "NC(=N)N",
+  "urea": "NC(=O)N",
+  "sulfonamide": "S(=O)(=O)N",
+  "amide": "C(=O)N",
+
+  # Highly polar substituents
+  "nitro": "[N+](=O)[O-]",
+  "poly_ether": "OCCO",  # crude proxy for PEG-like
+}
+```
+
+Interpretation guidance:
+- **Carboxylic acid present** + anion-like at pH 7.4 → large penalty.
+- **Quaternary ammonium/sulfonate** → near-zero BBB probability.
+- Multiple ureas/sulfonamides/amides usually raise TPSA/HBA and reduce BBB.
+
+---
+
+## 6) Evidence anchors (why these rules exist)
+- **TPSA/PSA is a dominant predictor**; PSA <90 Å² often cited for CNS drugs, and PSA bins show strong enrichment for logBB>0 at low PSA (PMID: **19473718**).
+- **CNS MPO (6-parameter desirability)** is a widely used CNS design framework with explicit desirability ranges and a practical threshold around **≥4** (PMID: **22778837**; also summarized with CNS property guidance in PMID: **21790149**).
+- **Efflux transporters (P-gp)** can dramatically reduce brain penetration; knockout/inhibitor evidence supports this and explains why property-only models can fail (PMID: **10837716**, **11165188**, **27194478**, **19664709**).
+- **BOILED-Egg** is a SwissADME heuristic using lipophilicity and polarity space; secondary sources attribute it to Daina & Zoete (2016) and describe equations (PMID: **37609475**). (Primary BOILED-Egg paper not retrieved here from this corpus snapshot.)
+
+---
+
+## 7) Limitations (what you cannot reliably infer from SMILES alone)
+- **Experimental logD7.4 and pKa** (you have a predicted-pKa-derived estimate, which can be wrong for edge chemotypes).
+- **Active uptake transporters** (e.g., LAT1) and **brain tissue binding**.
+- **Efflux liability** is only weakly predictable from 2D structure; treat penalties as probabilistic (PMID: **19664709**, **12535572**).
+
+If uncertainty is high (e.g., ambiguous ionization or borderline TPSA 70–100), keep probability closer to 40–60 unless strong evidence pushes it.
+{% endset %}
+{% include "tdc/base.jinja2" %}

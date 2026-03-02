@@ -1,0 +1,237 @@
+{% set objective = "Please predict the probability of the given molecule inhibiting CYP1A2." -%}
+{% set prompt_playbook -%}
+# Playbook: Predict CYP1A2 inhibition probability from a SMILES
+
+**Goal:** Given a molecule’s SMILES, output **one integer 0–100** estimating the probability the molecule **inhibits CYP1A2**.
+
+This playbook converts **literature-backed determinants** of CYP1A2 inhibition into **SMILES-detectable cues** and a **calibrated scoring workflow** using the available tools.
+
+## 0) Ground-truth mental model (what CYP1A2 “likes”)
+
+CYP1A2 has a **compact, narrow, planar, aromatic-lined binding cavity**. Ligands that fit tend to be **flat/planar, aromatic, lipophilic**, with **one good H-bond acceptor** and **low overall polarity/charge** (PMIDs **19961320**, **19099399**, **16078835**).
+
+Key recurring determinants across QSAR/pharmacophore and structure studies:
+- **Aromaticity & planarity/flatness** ↑ inhibition (PMIDs **19961320**, **19099399**, **19754423**)
+- **Higher lipophilicity** often ↑ inhibition (PMID **16078835**), though some series show weak correlation (PMID **19961320**)
+- **High charge / high dipole / high polarity** ↓ inhibition (PMID **16078835**)
+- **Pharmacophore** often: **(hydrophobe) + (hydrophobe) + (aromatic ring) + (H-bond acceptor)** (PMID **21970686**)
+
+## 1) Standard operating procedure (SOP)
+
+### Step 1 — Standardize input
+1. `standardize_smiles(smiles, remove_salts=True, canonical_tautomer=True, neutralize=False)`
+   - Keep formal charges; charge often matters for CYP1A2 trends (PMID **16078835**).
+
+### Step 2 — Compute core descriptors
+Run:
+- `compute_descriptors(..., descriptors=["masses","atom_counts","surface_shape_props","ring_counts","logp","num_rotatable_bonds","hydrogen_bonding","num_amide_bonds","formal_charge"], standardize=True)`
+- `classify_ionization(smiles, ph=7.4, standardize=True)`
+- `analyze_ring_systems(smiles, standardize=True)`
+- `extract_pharmacophore_features(smiles, standardize=True)`
+- `get_murcko_scaffold(smiles, standardize=True, generic=True)`
+
+### Step 3 — Substructure screening (SMARTS)
+Use `match_substructure` with a CYP1A2-focused panel (see §4).
+
+### Step 4 — Similarity to known CYP1A2 inhibitors/non-inhibitors (recommended)
+If you maintain a reference set, run:
+- `compute_similarity(query, reference_smiles=inhibitor_refs, fingerprint="morgan", standardize=True)`
+- `compute_similarity(query, reference_smiles=noninhibitor_refs, fingerprint="morgan", standardize=True)`
+
+Interpretation: high similarity to known inhibitors should strongly increase probability; high similarity to known non-inhibitors should decrease.
+
+### Step 5 — Convert features to a single probability
+Compute a **raw score** using the rubric in §5, then map it to **0–100** and output as an integer.
+
+## 2) Applicability / confidence gates
+
+Before scoring, decide if the molecule is **in-domain** for typical CYP1A2 inhibition heuristics:
+- **MW**: if very small (<120) or very large (>650), lower confidence.
+- **Highly flexible**: many rotatable bonds (>10) often indicates non-planar/too floppy → tends to reduce CYP1A2 fit in a narrow planar cavity (PMIDs **19961320**, **19099399**).
+- **Highly charged / zwitterionic at pH 7.4**: often decreases inhibition likelihood in many QSARs (PMID **16078835**).
+
+If out-of-domain, still output a probability, but **shrink toward 50** (see §5 “OOD penalty”).
+
+## 3) What to “see” in the SMILES (high-level cues)
+
+### A. Features that strongly INCREASE CYP1A2 inhibition probability
+1. **Flat aromatic-rich scaffolds**
+   - Multiple aromatic rings, especially **fused aromatics** / “flat polycycles” consistent with the planar pocket and π–π stacking (PMIDs **19961320**, **19099399**, **19754423**).
+   - `analyze_ring_systems.has_pah_like == true` (≥3 fused aromatic rings) is a major positive.
+
+2. **Aromatic heterocycles with one good H-bond acceptor**
+   - One ring N/O that can act as an HBA (pharmacophore includes HBA + aromatic + hydrophobe) (PMID **21970686**).
+
+3. **Lipophilicity in a drug-like range**
+   - Higher lipophilicity and aromaticity increase inhibition in global QSAR (PMID **16078835**).
+
+4. **Mechanism-based inhibition (MBI) risk motifs**
+   - **Alkynes (C#C, propargyl/ethynyl)**: often used in potent CYP1A2 inhibitor series; proximity to heme is a known potency driver in some inhibitor classes (PMID **22004550**).
+   - **Furan ring**: can be associated with time-dependent CYP inhibition risk in some series (PMID **20189807**). Treat as a risk-raiser (not necessarily selective).
+
+### B. Features that strongly DECREASE CYP1A2 inhibition probability
+1. **High polarity / high dipole / high charge**
+   - Global QSAR indicates **charge and dipole reduce inhibition** (PMID **16078835**).
+   - Operational proxies: high TPSA, multiple ionic centers at pH 7.4, strong net charge.
+
+2. **High fraction sp3 / nonplanar bulky 3D scaffolds**
+   - CYP1A2 prefers planar ligands; nonplanar bulky scaffolds often lose inhibition (PMIDs **19961320**, **19099399**, **20189807**).
+
+3. **Too many heteroatoms / HBA overload**
+   - Many polar acceptors can reduce binding in a hydrophobic aromatic pocket; several series show weaker inhibition with more hydroxyls/acceptors (PMID **19961320**; also flavonoid SAR in review summaries).
+
+4. **Very flexible molecules**
+   - Many rotatable bonds → difficulty maintaining a thin planar pose.
+
+## 4) Recommended SMARTS panel for `match_substructure`
+
+Use these as *binary* cues (present/count). You can expand.
+
+```json
+{
+  "fused_aromatic_proxy": "a1aaaa2aaaaa12", 
+  "biphenyl": "c1ccc(cc1)c2ccccc2",
+  "quinoline_like": "n1cccc2ccccc12",
+  "isoquinoline_like": "n1ccc2ccccc2c1",
+  "indole_like": "c1ccc2[nH]ccc2c1",
+  "benzofuran": "o1cccc2ccccc12",
+  "benzothiophene": "s1cccc2ccccc12",
+  "furan": "o1cccc1",
+  "thiophene": "s1cccc1",
+  "pyridine": "n1ccccc1",
+  "imidazole": "n1cc[nH]c1",
+
+  "alkyne": "C#C",
+  "propargyl_amine": "NCC#C",
+
+  "anilide": "NC(=O)c1ccccc1",
+  "tertiary_amine": "[NX3;!$(NC=O)]([#6])[#6]",
+
+  "cationic_quat": "[N+](C)(C)(C)",
+  "carboxylate": "C(=O)[O-]",
+  "sulfonamide": "S(=O)(=O)N",
+
+  "many_ether": "COC",
+  "phenol": "c[OX2H]",
+
+  "nitro": "[$([N+](=O)[O-])]"
+}
+```
+
+Notes:
+- These patterns are intentionally simple; they trade precision for robustness.
+- Aromatic fused-ring SMARTS are imperfect; rely on `analyze_ring_systems` for robust fused ring detection.
+
+## 5) Scoring rubric → probability (0–100)
+
+### 5.1 Base rate
+Start with:
+- **P = 20** (baseline chance a random drug-like compound inhibits CYP1A2 at a meaningful threshold).
+
+### 5.2 Add/subtract points from interpretable feature buckets
+Use standardized descriptors and tool outputs.
+
+#### A) Aromaticity & ring/planarity surrogates (max +45)
+- +10 if `aromatic_rings >= 2`
+- +10 if `aromatic_rings >= 3`
+- +10 if `analyze_ring_systems.largest_aromatic_system >= 2` (≥2 fused aromatic rings)
+- +15 if `analyze_ring_systems.has_pah_like == true` (≥3 fused aromatic rings)
+- −10 if `fraction_csp3 >= 0.50`
+- −15 if `fraction_csp3 >= 0.70`
+
+**Rationale:** planar aromatic scaffolds fit the narrow planar pocket and benefit from π-stacking (PMIDs **19961320**, **19099399**).
+
+#### B) Lipophilicity (max +20, min −15)
+Let `logP = WildmanCrippenLogP`.
+- +10 if 2.0 ≤ logP ≤ 4.0
+- +5 if 4.0 < logP ≤ 5.0
+- −10 if logP < 1.5
+- −5 if logP > 5.5 (often too greasy/large; may still inhibit but less predictable)
+
+**Rationale:** lipophilicity frequently drives inhibition in global QSAR (PMID **16078835**) and fits hydrophobic pocket (PMIDs **19961320**, **19099399**).
+
+#### C) Polarity / H-bonding burden (max +10, min −25)
+Let TPSA = `tpsa`, HBA/HBD from descriptors.
+- +10 if 20 ≤ TPSA ≤ 60 **and** HBA in [1..5]
+- −10 if TPSA > 90
+- −15 if TPSA > 120
+- −10 if HBA ≥ 8
+- −5 if HBD ≥ 3
+
+**Rationale:** Excess polarity/dipole/charge reduces inhibition in global QSAR (PMID **16078835**); CYP1A2 pocket is largely hydrophobic/aromatic (PMIDs **19961320**, **19099399**).
+
+#### D) Charge / ionization at pH 7.4 (max +5, min −25)
+From `classify_ionization`:
+- +5 if representative net_charge == 0
+- −10 if representative net_charge == +1 or −1
+- −25 if |representative net_charge| ≥ 2
+- −15 if `is_ambiguous == true` (multiple charge states) **and** any charged states exist
+
+**Rationale:** increasing charge decreases inhibition in global QSAR (PMID **16078835**). (Caveat: some inhibitors are basic; this is a probabilistic trend.)
+
+#### E) Size & flexibility (max +10, min −25)
+- +5 if 180 ≤ MW ≤ 420
+- −10 if MW < 150
+- −10 if MW > 500
+- −10 if `num_rotatable_bonds > 8`
+- −15 if `num_rotatable_bonds > 12`
+
+**Rationale:** CYP1A2 has a compact pocket (PMIDs **19961320**, **19099399**).
+
+#### F) Substructure “boosters” (max +30)
+From SMARTS matches:
+- +10 if `quinoline_like` or `isoquinoline_like` present
+- +8 if `indole_like` present
+- +6 if `benzofuran` or `benzothiophene` present
+- +8 if `biphenyl` present
+- +10 if `alkyne` present (MBI-like risk; see PMID **22004550**)
+- +5 if `furan` present (time-dependent risk; see PMID **20189807**)
+
+#### G) Substructure “penalties” (min −35)
+- −25 if `cationic_quat` present
+- −10 if `sulfonamide` present **and** TPSA > 90 (often too polar)
+- −10 if `carboxylate` present **and** representative net_charge is negative
+- −10 if ≥2 strong ionizable centers (infer from ionization output and functional groups)
+
+### 5.3 Similarity override (if reference sets exist)
+Let:
+- `sim_inhib = max similarity to inhibitor_refs`
+- `sim_non = max similarity to noninhibitor_refs`
+
+Adjust probability after rubric:
+- If `sim_inhib >= 0.65`: set **P = max(P, 80)**
+- If `sim_inhib >= 0.80`: set **P = max(P, 92)**
+- If `sim_non >= 0.70` and `sim_inhib < 0.55`: set **P = min(P, 20)**
+
+### 5.4 Out-of-domain (OOD) shrinkage
+Define OOD flags:
+- MW > 650 or MW < 120
+- `num_rotatable_bonds > 15`
+- TPSA > 140
+- |net_charge| ≥ 2
+
+If **any** OOD flag is true:
+- Shrink toward 50: `P = round(50 + 0.6*(P - 50))`
+
+### 5.5 Finalization
+- Clamp: `P = min(100, max(0, P))`
+- Output **integer only**.
+
+## 6) Calibration notes (how to interpret the number)
+
+Use these anchors when sanity-checking:
+- **0–10:** very polar/charged, low aromaticity, high sp3, very flexible → unlikely CYP1A2 inhibitor.
+- **30–50:** mixed signals; modest aromaticity but polarity/charge/flexibility dilute binding.
+- **60–80:** planar aromatic core + acceptable lipophilicity + limited charge/polarity.
+- **90–100:** strong planar polyaromatic/fused systems and/or high similarity to known inhibitors; often includes MBI risk motifs (alkynes) (PMID **22004550**).
+
+## 7) Literature citations used (for agent justification)
+
+- Global QSAR: lipophilicity and aromaticity increase; charge/dipole decrease (PMID **16078835**).
+- Narrow planar active site, aromatic “sandwich”, key residues, and general ligand profile (PMID **19099399**).
+- Review of CYP1A2 inhibition determinants, planarity/small volume-to-surface, aromatic lipophilic inhibitors; many inhibitor examples (PMID **19961320**).
+- Time-dependent inhibition note in furan-containing series (PMID **20189807**).
+- Acetylenic/fused aromatic inhibitor series and potency drivers (PMID **22004550**).
+- Pharmacophore (hydrophobes + aromatic + HBA) and planarity of potent polycyclic inhibitors (PMID **21970686**).
+{% endset %}
+{% include "tdc/base.jinja2" %}

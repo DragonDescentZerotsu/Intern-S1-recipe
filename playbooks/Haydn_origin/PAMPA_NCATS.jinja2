@@ -1,0 +1,200 @@
+{% set objective = "Please predict the probability of the given molecule having high permeability in the PAMPA assay." -%}
+{% set prompt_playbook -%}
+# Playbook: Predicting **High PAMPA Permeability** from a SMILES (output = integer probability 0–100)
+
+## 0) Define what “high PAMPA permeability” means (assay-dependent)
+PAMPA thresholds vary by protocol and lipid system, so pick a default and adjust only if the task specifies a variant.
+
+**Default (general PAMPA, small molecules):**
+- Treat **high permeability** as **Papp/Pe ≥ 1 × 10⁻⁶ cm/s** (used as a “highly permeable” threshold in multiple PAMPA contexts) (PMID: **17416489**, **33381960**).
+
+**If specifically PAMPA-BBB (brain lipid):**
+- High (CNS+) often defined as **Pe > 4 × 10⁻⁶ cm/s**; low (CNS−) as **Pe < 2 × 10⁻⁶** (PMID: **25542610**).
+
+**If using logPe reporting (some hexadecane/HDM PAMPA variants):**
+- **logPe ≥ −4.0** has been used as a “high passive permeability” benchmark (PMID: **26118348**).
+
+**Clearly poor permeability (useful floor signal):**
+- **Papp < 1 × 10⁻⁸ cm/s** has been used as a cutoff for poorly permeable compounds in pH-dependent PAMPA analyses (PMID: **28478135**).
+
+## 1) Input handling (SMILES hygiene)
+1. **Standardize** the input to reduce salt/tautomer noise:
+   - `standardize_smiles(smiles, remove_salts=True, canonical_tautomer=True, neutralize=False)`
+   - Keep `neutralize=False` so charge-related descriptors remain meaningful.
+2. If the standardized SMILES is empty/invalid → output **0**.
+
+## 2) Compute the minimum feature set you need
+Run these tools on the standardized SMILES.
+
+### 2.1 Ionization / unionized fraction at pH 7.4 (recommended)
+- `classify_ionization(smiles, ph=7.4, standardize=True)`
+- `estimate_logd(smiles, ph=7.4, standardize=True)`
+
+Interpretation (mechanistic basis): PAMPA permeability is strongly affected by ionization; **unionized (neutral) forms usually permeate best**, while charged forms often show reduced permeability (PMID: **26118348**, **28478135**).
+
+Extract:
+- From `classify_ionization`:
+  - `representative.net_charge`
+  - `charge_class_counts` (neutral/acid/base/zwitterion)
+  - `has_positive_states`, `has_negative_states`, `is_ambiguous`
+- From `estimate_logd`:
+  - `fraction_neutral` (direct proxy for “how much is unionized at pH 7.4”)
+  - `logd` (effective lipophilicity at pH 7.4; heuristic, not experimental)
+  - `most_basic_pka`, `most_acidic_pka`, `num_basic_sites`, `num_acidic_sites`, `warnings`
+
+### 2.2 2D physicochemical descriptors (RDKit)
+- `compute_descriptors(smiles, standardize=True, descriptors=[
+  "masses","logp","surface_shape_props","hydrogen_bonding",
+  "atom_counts","ring_counts","num_rotatable_bonds","num_amide_bonds",
+  "formal_charge"
+])`
+
+Use at least:
+- **cLogP** (Wildman–Crippen)
+- **TPSA**
+- **HBD / HBA**
+- **MW**
+- **rotatable bonds**
+- **amide bonds**
+- **formal charge**
+- **aromatic ring count / total rings**
+
+### 2.3 Structural context and motifs
+- `get_functional_groups(smiles, standardize=True)` (fast human-readable scan)
+- `analyze_ring_systems(smiles, standardize=True)` (macrocycles, fused aromatics)
+
+Why: some exceptions to “charged = low permeability” arise from **charge delocalization over large aromatic systems**; permanently charged aromatics can still show high PAMPA permeability (PMID: **17416489**).
+
+### 2.4 Targeted substructure screen (SMARTS)
+Run `match_substructure` with patterns that flag permeability suppressors/enhancers.
+
+Suggested pattern set (edit as needed):
+```python
+patterns = {
+  # permanent/strong cations
+  "quaternary_ammonium": "[N+](C)(C)(C)C",
+  "amidinium": "C(=[N+])N",
+  "guanidinium": "NC(=[NH2+])N",
+
+  # strong anions / polyacids
+  "carboxylic_acid": "C(=O)[O;H,-]",
+  "sulfonic_acid": "S(=O)(=O)[O;H,-]",
+  "phosphonic_acid": "P(=O)(O)(O)",
+
+  # permeability-lowering polar clusters
+  "polyol_motif": "[CH2,CH][OH]",  # crude; interpret with TPSA/HBD
+  "urea": "NC(=O)N",
+  "sulfonamide": "S(=O)(=O)N",
+  "amide": "C(=O)N",
+
+  # aromaticity (for delocalized cations / planar scaffolds)
+  "aryl": "a",
+}
+```
+
+## 3) Decision logic: estimate a **probability of high PAMPA permeability**
+Use a transparent scoring model that you can calibrate over time.
+
+### 3.1 Start with a baseline
+- Initialize `score = 50`.
+
+### 3.2 Major driver: unionized fraction at pH 7.4 (pKa-derived)
+(Unionized species generally permeate better; charged species often worse) (PMID: **26118348**, **28478135**).
+
+Let `f_neutral = estimate_logd(...).fraction_neutral`.
+
+Apply:
+- If `f_neutral ≥ 0.30`: **+20**
+- If `0.10 ≤ f_neutral < 0.30`: **+10**
+- If `0.03 ≤ f_neutral < 0.10`: **0**
+- If `0.01 ≤ f_neutral < 0.03`: **−10**
+- If `f_neutral < 0.01`: **−20**
+
+Still apply strong charge-state penalties:
+- If `|representative.net_charge| >= 2`: **−30**
+- If `charge_class_counts["zwitterion"] > 0`: **−25**
+- If `is_ambiguous` (many states / mixed charges): **−10**
+- If `estimate_logd(...).warnings` is non-empty: **−5** (polyprotic/amphoteric uncertainty)
+
+**Special case (permanent cations can still be permeable):**
+- If **quaternary ammonium present** BUT ring analysis shows **large aromatic system** (e.g., `aromatic_rings >= 2` OR `largest_aromatic_system` large): add back **+10** (charge delocalization exception) (PMID: **17416489**).
+
+### 3.3 Lipophilicity window (logD7.4 estimate)
+Permeability often benefits from sufficient lipophilicity; in a large PAMPA dataset of lariat depsipeptides, permeable compounds were enriched around **ALogP ~3–4** (PMID: **33381960**).
+
+Apply (prefer `estimate_logd(...).logd` as an effective lipophilicity proxy at pH 7.4; fallback to RDKit `cLogP` if needed):
+- `2.0 ≤ logD7.4 ≤ 4.0`: **+15**
+- `1.0–2.0`: **+5**
+- `4.0–5.0`: **0**
+- `<1.0`: **−10**
+- `>5.0`: **−10** (often retention/solubility/recovery issues; treat as risk)
+
+### 3.4 Polarity (TPSA)
+Lower TPSA generally helps passive diffusion. For marketed CNS drugs (high passive BBB penetration pressure), PSA often lies below ~120 Å² (contextual reference) (PMID: **19664709**).
+
+Apply:
+- `TPSA < 60`: **+15**
+- `60–90`: **+5**
+- `90–120`: **−10**
+- `>120`: **−25**
+
+### 3.5 Hydrogen bonding load (HBD/HBA)
+Hydrogen bonding generally reduces passive membrane permeation; macrocycles can “hide” donors via intramolecular H-bonds/N-methylation (PMID: **33381960**).
+
+Apply:
+- HBD:
+  - `0–1`: **+10**
+  - `2`: **+5**
+  - `3`: **−5**
+  - `≥4`: **−15**
+- HBA:
+  - `≤6`: **+5**
+  - `7–10`: **0**
+  - `>10`: **−10**
+
+**Macrocycle shielding adjustment:**
+- If `analyze_ring_systems.has_macrocycle == true` AND HBD is high (≥4) but **amide count is high and HBD is lower than amide count** (proxy for N-methylation/tertiary amides): add **+10** (intramolecular H-bonding / donor masking pattern) (PMID: **33381960**).
+
+### 3.6 Size and flexibility penalties
+Apply:
+- MW:
+  - `<350`: **+10**
+  - `350–500`: **0**
+  - `500–700`: **−10**
+  - `>700`: **−25** (unless macrocycle adjustment below)
+- Rotatable bonds:
+  - `≤5`: **+5**
+  - `6–10`: **0**
+  - `>10`: **−10**
+
+**Macrocycle exception:**
+- If `has_macrocycle == true`, soften MW penalty by **+10** (macrocycles can be permeable despite high MW in PAMPA) (PMID: **33381960**).
+
+### 3.7 Functional-group “hard stops” (often very low PAMPA)
+These are strong priors; override only with compelling counter-evidence (e.g., delocalized cation case).
+
+Apply additional penalties:
+- Multiple strong acids: if `carboxylic_acid.count >= 2` OR sulfonic/phosphonic acid present: **−20**
+  - (In a charged series, “two acids” was associated with reduced PAMPA permeability vs fewer acids) (PMID: **17416489**).
+- Highly polar cationic motifs (guanidinium/biguanide-like): if `guanidinium.present`: **−25**
+  - (Example: phenformin shows very low PAMPA Papp unless aided by ion pairing; ion pairing is not inferable from SMILES alone) (PMID: **19264104**).
+
+## 4) Convert score → final calibrated probability (integer 0–100)
+1. Clamp: `score = max(0, min(100, score))`
+2. Round to nearest integer.
+3. **Output that integer only** (no extra text).
+
+### Suggested calibration anchors (sanity checks)
+Use these to keep outputs consistent with literature thresholds:
+- If your rules imply **very low passive diffusion** (e.g., high charge + TPSA>120 + low cLogP): probability should approach **0–10**.
+  - Consistent with “poor” region cutoffs like **Papp < 1×10⁻⁸ cm/s** (PMID: **28478135**).
+- If neutral, TPSA <60–90, cLogP ~2–4, low HBD: probability should be **70–95**.
+  - Consistent with the idea that **Papp/Pe ≥ 1×10⁻⁶ cm/s** is a common “high” region (PMID: **17416489**, **33381960**).
+- For PAMPA-BBB specifically, reserve **90–100** for molecules likely to exceed **4×10⁻⁶ cm/s** (PMID: **25542610**).
+
+## 5) What the agent must NOT do
+- Do **not** output explanations, tool traces, or units in the final response.
+- Do **not** assume transporter effects (PAMPA is passive); only use SMILES-derived passive diffusion cues.
+- Do **not** assume ion-pair/counterion enhancements unless explicitly represented in the SMILES (ion pairing can strongly alter PAMPA in experiments, but it is usually not captured by a single-compound SMILES) (PMID: **19264104**, **16781125**).
+{% endset %}
+{% include "tdc/base.jinja2" %}

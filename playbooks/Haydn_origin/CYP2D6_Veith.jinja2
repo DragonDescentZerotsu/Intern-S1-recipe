@@ -1,0 +1,170 @@
+{% set objective = "Please predict the probability of the given molecule inhibiting CYP2D6." -%}
+{% set prompt_playbook -%}
+# Playbook: Predict CYP2D6 inhibition likelihood from a SMILES
+
+**Goal:** given a molecule (SMILES), output a **calibrated integer probability 0–100** that it inhibits **CYP2D6**.
+
+**Hard constraint on the agent’s final output:**
+- The *final* response must be **only an integer** (0–100). No other text.
+
+---
+
+## 0) Scientific priors to encode (what CYP2D6 “likes”)
+Literature-derived patterns to operationalize:
+- **Cationic/basic nitrogen is a dominant anchor** for CYP2D6 ligands/inhibitors (ionic/H-bond interaction with acidic residues such as Asp301/Glu216) (PMIDs **8487254**, **11922953**, **21470185**, **26315915**).
+- Many inhibitors match a **pharmacophore of (i) positively charged N + (ii) flat hydrophobic/aromatic region + (iii) one or more H-bond acceptors/lone-pair features at defined separations** (PMIDs **8487254**, **11922953**, **21470185**).
+- **Excess flexibility** is often detrimental within at least one inhibitor series (rotatable bond thresholds) (PMID **19291105**).
+- A high-risk subset are **time-dependent / mechanism-based inhibitors (MBI/TDI)**, notably **methylenedioxyphenyl (MDP) / benzodioxole motifs** (paroxetine, MDMA, etc.) that can form carbene intermediate complexes with heme (PMIDs **22372551**, **30114388**, **32477141**, **16808005**).
+
+Use these as *structure-to-risk* heuristics.
+
+---
+
+## 1) Standardize input
+1. `standardize_smiles(smiles, remove_salts=True, canonical_tautomer=True, neutralize=False)`
+   - Keep formal charge meaningful.
+
+If invalid SMILES → output **50** (uninformative default).
+
+---
+
+## 2) Compute the minimum feature set (tool calls)
+Use `standardize=True` where noted.
+
+### 2.1 Ionization / charge at pH 7.4 (most important)
+- `classify_ionization(smiles, ph=7.4, standardize=True)`
+  Record:
+  - `has_positive_states` (key)
+  - `has_negative_states`
+  - `representative.net_charge`
+  - `is_ambiguous`
+
+### 2.2 Physchem descriptors
+- `compute_descriptors(smiles, standardize=True)` at least:
+  - `logp`
+  - `surface_shape_props.tpsa`
+  - `masses.average_mw`
+  - `ring_counts.aromatic_rings`
+  - `num_rotatable_bonds`
+  - `hydrogen_bonding.hba`, `hydrogen_bonding.hbd`
+
+### 2.3 Ring topology (to capture “flat hydrophobic region”)
+- `analyze_ring_systems(smiles, standardize=True)`
+  Use:
+  - `largest_aromatic_system`
+  - `has_pah_like` (≥3 fused aromatics)
+
+### 2.4 Substructure flags (SMARTS)
+Run `match_substructure(smiles, patterns, standardize=True)` with a small, high-signal library:
+
+```json
+{
+  "amide_N": "[NX3][CX3](=O)",
+  "tertiary_amine_nonamide": "[NX3;!$(NC=O);!$([N+](=O)[O-]);!$(N[S,P](=O)=O)]([#6])[#6]", 
+  "quaternary_ammonium": "[N+X4]",
+  "aniline_like": "c[NX3;H2,H1;!$(NC=O)]",
+  "imidazole": "[n]1[c,n][c,n][nH,n]c1",
+  "piperazine": "N1CCNCC1",
+  "benzodioxole_MDP": "c1ccc2OCOc2c1"
+}
+```
+
+**Interpretation hooks:**
+- The positive-N + aromatic/hydrophobe pharmacophore is central for CYP2D6 inhibition (PMIDs **8487254**, **11922953**).
+- MDP/benzodioxole is a structural alert for CYP2D6 TDI/MBI risk (PMIDs **22372551**, **30114388**, **32477141**, **16808005**).
+
+---
+
+## 3) Convert features → a probability (0–100)
+Use a transparent additive rubric (then clamp to 0–100). This is a *calibration scaffold*; adjust weights if you later observe systematic bias.
+
+### 3.1 Initialize
+- Start `P = 10` (CYP2D6 inhibitors are not the majority in arbitrary chemical space).
+
+### 3.2 Charge / ionization contributions
+- If `has_positive_states == true`: `P += 35`
+  - Rationale: basic/protonated N is repeatedly central to CYP2D6 inhibitor pharmacophores and binding (PMIDs **8487254**, **11922953**, **21470185**).
+- If `representative.net_charge >= +1`: `P += 10`
+- If `has_negative_states == true` and **no** positive states: `P -= 20` (anionic-only compounds less consistent with the canonical CYP2D6 cationic anchor).
+- If `is_ambiguous == true`: `P -= 5` (uncertainty penalty; keep modest).
+
+### 3.3 Aromatic / hydrophobe contributions
+- If `aromatic_rings >= 1`: `P += 15`
+- If `aromatic_rings >= 2` **or** `largest_aromatic_system >= 2`: `P += 10`
+- If `has_pah_like == true`: `P += 5` (extra planar hydrophobe; modest).
+
+(Flat hydrophobic region paired with cationic N is core to inhibitor pharmacophore models; PMIDs **8487254**, **11922953**.)
+
+### 3.4 H-bond acceptor “lone-pair” features
+- If `hba >= 1`: `P += 5`
+- If `hba >= 3`: `P += 5`
+
+(Additional acceptor/lone-pair features can enhance potency in inhibitor pharmacophore models; PMIDs **8487254**, **21470185**.)
+
+### 3.5 Lipophilicity windowing (soft)
+Using `logp`:
+- If `1.5 <= logp <= 4.5`: `P += 10`
+- Else if `0.5 <= logp <= 6.0`: `P += 5`
+- Else: `P -= 5`
+
+(Models vary on how strongly logP drives CYP2D6 binding; keep moderate weight; PMIDs **16503427**, **21470185**.)
+
+### 3.6 Flexibility penalty
+- If `num_rotatable_bonds > 11`: `P -= 10`
+- If `num_rotatable_bonds > 16`: `P -= 10` additional
+
+(Excess rotatable bonds/flexibility reduced inhibitor activity in a series model; PMID **19291105**.)
+
+### 3.7 Substructure “boosters” and “reducers”
+From `match_substructure`:
+
+**Boosters**
+- If `tertiary_amine_nonamide.present`: `P += 10`
+- If `piperazine.present`: `P += 5`
+
+(Strong CYP2D6 inhibitors frequently contain basic amines; PMIDs **8487254**, **11922953**.)
+
+**Reducers**
+- If `amide_N.present` and **no** other basic center is suggested by ionization (`has_positive_states==false`): `P -= 10` (amide nitrogens are typically non-basic and less able to provide the cationic anchor).
+
+**Time-dependent / MBI high-risk alert**
+- If `benzodioxole_MDP.present`: `P += 20`
+  - This flags possible CYP2D6 time-dependent/mechanism-based inhibition via carbene/MIC formation; interpret as a strong *risk* signal even if other features are mixed (PMIDs **22372551**, **30114388**, **32477141**, **16808005**).
+
+### 3.8 Final normalization
+- Clamp: `P = max(0, min(100, P))`
+- Round to nearest integer.
+
+---
+
+## 4) Sanity checks / override logic
+Use a few high-precision overrides to avoid extreme miscalibration.
+
+1) **No basicity + low aromaticity → very unlikely**
+- If `has_positive_states == false` **and** `aromatic_rings == 0` → force `P <= 15`.
+
+2) **Canonical CYP2D6 inhibitor-like pattern → likely**
+- If `has_positive_states == true` **and** `aromatic_rings >= 1` **and** `1.5 <= logp <= 4.5` → ensure `P >= 60`.
+
+3) **MBI alert + basic N → very likely**
+- If `benzodioxole_MDP.present == true` **and** `has_positive_states == true` → ensure `P >= 80`.
+
+These align with inhibitor pharmacophore concepts (basic N + hydrophobe) and known MBI motif risk (PMIDs **8487254**, **11922953**, **22372551**, **30114388**).
+
+---
+
+## 5) Optional: similarity-based adjustment (only if you have a vetted reference set)
+If you have an internal list of **known CYP2D6 inhibitors/non-inhibitors** with trusted SMILES:
+- Run `compute_similarity(query_smiles, reference_smiles, fingerprint="morgan", standardize=True)`.
+- If max similarity to a *known strong inhibitor* ≥ 0.6: `P += 10`.
+- If max similarity to a *known non-inhibitor* ≥ 0.6: `P -= 10`.
+- Clamp 0–100.
+
+(This mirrors literature ML practice using similarity-to-exemplars as informative features; PMID **12870924**.)
+
+---
+
+## 6) Output rule
+Return **only** the final integer `P` (0–100).
+{% endset %}
+{% include "tdc/base.jinja2" %}

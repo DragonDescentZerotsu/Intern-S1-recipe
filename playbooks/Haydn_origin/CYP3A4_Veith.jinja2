@@ -1,0 +1,197 @@
+{% set objective = "Please predict the probability of the given molecule inhibiting CYP3A4." -%}
+{% set prompt_playbook -%}
+# CYP3A4 Inhibition Prediction Playbook (SMILES → calibrated 0–100)
+
+## 0) Output constraint
+- You may do any internal analysis needed, but your **final output must be a single integer 0–100** (no extra text).
+
+## 1) Standardize input
+1. `std = standardize_smiles(smiles, remove_salts=True, canonical_tautomer=True, neutralize=False)`
+   - Keep formal charges (do **not** neutralize) because ionization is informative.
+
+## 2) Compute core properties (2D descriptors)
+Run:
+```python
+D = compute_descriptors(std, descriptors=[
+  "masses","atom_counts","surface_shape_props","ring_counts",
+  "logp","num_rotatable_bonds","hydrogen_bonding",
+  "num_amide_bonds","formal_charge","qed"
+], standardize=False)
+I = classify_ionization(std, ph=7.4, standardize=True)
+R = analyze_ring_systems(std, standardize=False)
+FG = get_functional_groups(std, standardize=False)
+```
+Focus on:
+- **Size**: `average_mw`, `heavy_atoms`
+- **Lipophilicity**: `logp` (proxy for logP/logD; lipophilicity is repeatedly linked to stronger inhibition: PMID **11465421**, **16789425**)
+- **Polarity**: `tpsa`, `hbd`, `hba`
+- **Flexibility**: `num_rotatable_bonds` (CYP3A4 inhibitors often large/flexible; PMID **34067565**)
+- **Aromaticity/rings**: `aromatic_rings`, `largest_aromatic_system`, `has_pah_like`
+- **Ionization** at pH 7.4: `I.has_positive_states`, `I.has_negative_states`, `I.representative.net_charge` (strong acids reduce inhibition probability in models: PMID **20814717**)
+
+## 3) Substructure screening (mechanistic motifs)
+Use `match_substructure` with a small library of SMARTS that captures motifs repeatedly associated with CYP3A4 inhibition or reduced inhibition.
+
+### 3A) Heme-coordinating / Type II–like motifs (strong positive evidence)
+Aromatic nitrogens that can ligate heme iron are repeatedly linked to higher potency (PMID **11465421**, **18311908**, **27468154**, **34067565**).
+
+Suggested patterns:
+```python
+P = {
+  # azoles
+  "imidazole_1": "n1cc[nH]c1",
+  "imidazole_2": "n1ccnc1",
+  "triazole_1": "n1cnnc1",
+  "triazole_2": "n1nccn1",
+  "tetrazole": "c1nnnn1",
+
+  # 6-membered N-heteroaromatics
+  "pyridine": "n1ccccc1",
+  "pyrimidine_like_1": "n1ccncc1",
+  "pyrimidine_like_2": "n1cnccc1",
+  "pyridazine_like": "n1ncccc1",
+  "quinoline_like": "c1ccc2ncccc2c1",
+
+  # 5-membered thiazole/oxazole-like heme binders (seen in potent inhibitors; PMID 22765892)
+  "thiazole_1": "c1nccs1",
+  "thiazole_2": "c1ncsc1",
+  "oxazole_1": "c1ncco1",
+  "oxazole_2": "c1ncoc1",
+}
+M = match_substructure(std, P, standardize=False)
+```
+How to use them:
+- **Imidazole and/or non-fused triazole**: treat as **very strong positive evidence** (often large potency boosts; PMID **27485194**, **11465421**).  
+  - Operationally: `imidazole_like = any(imidazole_*)`; `triazole_like = any(triazole_*)`.
+- **Pyridine / quinoline / pyrimidine-like diazines / thiazoles**: **moderate–strong positive evidence**, especially when the overall molecule is lipophilic (PMID **11465421**, **18311908**, **22765892**).
+- **Tetrazole**: ambiguous; can reduce heme coordination strength in some series (PMID **18311908**). Treat as *weak/neutral* unless other evidence is strong.
+
+### 3B) Mechanism-based inhibition “red flags” (positive evidence)
+Certain motifs are enriched among mechanism-based inhibitors, notably **methylenedioxybenzene** (PMID **20814717**).
+```python
+P2 = {
+  "methylenedioxybenzene": "c1ccc2OCOc2c1",  # benzodioxole
+  "aryl_methoxy": "cOC",  # coarse; pair with aromatic context if possible
+}
+M2 = match_substructure(std, P2)
+```
+- If `methylenedioxybenzene` present: add a **large probability bump** (PMID **20814717**).
+
+### 3C) Strongly polar/ionic motifs that often lower inhibition probability
+More polar/ionized compounds tend to inhibit less in several models/SAR examples (PMID **20814717**, **19026469**, **27468154**).
+```python
+P3 = {
+  "carboxylic_acid": "C(=O)[O;H1]",
+  "carboxylate": "C(=O)[O-]",
+  "sulfonic_acid": "S(=O)(=O)[O;H1]",
+  "sulfonate": "S(=O)(=O)[O-]",
+  "quaternary_ammonium": "[N+](C)(C)(C)C",
+  "multiple_amines": "[NX3;H2,H1,H0]",  # count occurrences
+}
+M3 = match_substructure(std, P3, standardize=False)
+```
+- **Carboxylic acid / sulfonic acid** (including their conjugate bases): strong negative evidence (carboxyl substitution strongly reduced predicted probability in a model/SAR series; PMID **20814717**).
+- **Many aliphatic amines**: often negative or mixed; in a large decision-tree model, >1 amine skewed toward non-inhibitors (PMID **19026469**), and some SAR indicates basic groups reduce potency (PMID **22765892**). Treat as negative unless the molecule is also quite lipophilic/large.
+
+## 4) Global “shape of an inhibitor” heuristics (from literature)
+Use these as *soft* signals; they are not sufficient alone.
+
+### 4A) Lipophilicity (strong general driver)
+- Higher lipophilicity correlates with stronger inhibition in multiple analyses (PMID **11465421**, **16789425**).
+- Practical heuristic using RDKit logP:
+  - logP **< 2**: weak evidence for inhibition unless a strong heme-binding motif exists.
+  - logP **2–4**: moderate baseline range.
+  - logP **> 4**: strong positive evidence.
+
+### 4B) Size (CYP3A4 tolerates bulky ligands)
+- In a tree model, **MW ~354+** helped classify inhibitors (PMID **19026469**).
+- A size–potency QSAR suggests an optimum around ketoconazole-like size (PMID **27485194**)—practically:
+  - MW **< 250**: usually low probability unless strong Type-II motif.
+  - MW **250–450**: increasing probability with size.
+  - MW **> 600**: many known inhibitors exist (PMID **34067565**), but very large polar molecules can be uncertain.
+
+### 4C) Polarity / chargeable surface
+- Lower fraction of chargeable surface groups and more hydrophobic surface favored inhibitors in a decision-tree model (PMID **19026469**).
+- Use proxies:
+  - High TPSA (e.g., **> 120 Å²**) and/or persistent negative charge at pH 7.4 → decrease probability.
+  - Mostly neutral at pH 7.4 with moderate TPSA (**~20–90 Å²**) → increase probability.
+
+### 4D) Aromatic/hydrophobic ring systems
+- CYP3A4 inhibition often benefits from aromatic/hydrophobic groups and π–π interactions (PMID **34067565**).
+- Heuristic:
+  - `aromatic_rings >= 2` or a large fused aromatic system → positive.
+
+## 5) Similarity-to-known inhibitors (local evidence / applicability)
+When available, similarity is one of the highest-value signals.
+
+### 5A) Maintain a small reference set
+Keep two curated lists (SMILES):
+- **Known CYP3A4 inhibitors** (diverse): e.g., ketoconazole, itraconazole, clotrimazole, miconazole, ritonavir, clarithromycin/erythromycin, verapamil, diltiazem, mibefradil, troleandomycin.
+- **Known non-inhibitors/weak inhibitors** (matched by size when possible).
+
+### 5B) Compute similarity
+```python
+S_inh = compute_similarity(std, inhibitor_refs, fingerprint="morgan", standardize=True)
+S_non = compute_similarity(std, noninhibitor_refs, fingerprint="morgan", standardize=True)
+```
+Interpretation:
+- If `max(S_inh) >= 0.55`: strong positive bump.
+- If `max(S_non) >= 0.55` and higher than inhibitor similarity: negative bump.
+- If all similarities < 0.30: treat as **out-of-domain**; keep probability closer to baseline and avoid extremes.
+
+(Models using local similarity correction improve reliability; conceptually aligned with similarity-based correction + reliability index approaches: PMID **20814717**.)
+
+## 6) Scoring → calibrated probability (0–100)
+Use a transparent additive score, then map to probability. Keep calibration conservative because CYP3A4 assays are substrate-dependent and heterogeneous (PMID **11465421**, **27485194**, **19026469**).
+
+### 6A) Start from a conservative baseline
+- `p = 20`
+
+### 6B) Add/subtract evidence (typical weights)
+**Strong positive (add):**
+- Imidazole present: `+35` (PMID **27485194**, **11465421**)
+- Non-fused triazole present: `+25` (PMID **27485194**, **11465421**)
+- Pyridine/quinoline/pyrimidine/thiazole present: `+10` each (cap +20 total) (PMID **11465421**, **18311908**, **22765892**)
+- Methylenedioxybenzene: `+25` (PMID **20814717**)
+- logP > 4.0: `+15`; logP 3.0–4.0: `+8` (PMID **11465421**, **16789425**)
+- MW > 350: `+10`; MW 250–350: `+5` (PMID **19026469**)
+- aromatic_rings ≥ 2: `+5`
+- rotatable_bonds ≥ 6: `+5` (profile consistent with many known inhibitors; PMID **34067565**)
+
+**Strong negative (subtract):**
+- Carboxylic acid or sulfonic acid: `-25` (PMID **20814717**)
+- Persistent net negative charge at pH 7.4: `-15`
+- TPSA > 120: `-15`
+- Many aliphatic amines (e.g., count ≥ 2): `-10` (decision-tree / SAR trends; PMID **19026469**, **22765892**)
+
+**Similarity adjustments (if reference sets exist):**
+- max similarity to inhibitors ≥0.55: `+25`
+- max similarity to inhibitors 0.40–0.55: `+10`
+- max similarity to non-inhibitors ≥0.55 and greater than inhibitor similarity: `-20`
+
+### 6C) Clamp and discretize
+- `p = min(100, max(0, p))`
+- Output `int(round(p))`
+
+### 6D) Confidence/“don’t be overconfident” rules
+Because CYP3A4 inhibition is substrate/assay dependent (PMID **11465421**, **27485194**, **19026469**):
+- If no heme-binding motif AND logP < 2 AND MW < 300: cap at **≤30**.
+- If strong heme-binding motif (imidazole/triazole/pyridine-like) AND logP ≥ 3 AND MW ≥ 300: floor at **≥60**.
+- If out-of-domain by similarity (no close refs; all <0.30): cap at **≤80** and floor at **≥10** (avoid extremes).
+
+## 7) Quick mental checks from the SMILES itself (when tools are unavailable)
+Look for:
+- Multiple aromatic rings + hydrophobic atoms (Cl/Br/CF3) → higher.
+- An **azole/pyridine-like aromatic N** not obviously protonated → higher (Type II–like).
+- **Benzodioxole** (…`OCO` fused to phenyl…) → higher.
+- Multiple acids / high heteroatom density / permanent charges → lower.
+
+## 8) Literature anchors (why these features)
+- Lipophilicity is a dominant driver in several potency relationships (PMID **11465421**, **16789425**).
+- Sterically accessible N-heterocycles (pyridine/imidazole/triazole) increase potency markedly, consistent with heme iron ligation (PMID **11465421**, **18311908**, **27468154**).
+- Imidazole/triazole indicators can correspond to very large potency shifts in simplified QSARs (PMID **27485194**).
+- Decision-tree/QSAR classification highlights size and low chargeable surface as key (PMID **19026469**).
+- Methylenedioxybenzene is enriched among mechanism-based inhibitors (PMID **20814717**).
+- CYP3A4 inhibitors often are large, lipophilic, flexible, and aromatic, and may coordinate heme (PMID **34067565**).
+{% endset %}
+{% include "tdc/base.jinja2" %}
