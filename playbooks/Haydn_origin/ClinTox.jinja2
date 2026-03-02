@@ -1,0 +1,240 @@
+{% set objective = "Please predict the probability of the given molecule failing clinical trials due to toxicity." -%}
+{% set prompt_playbook -%}
+# Playbook: Predicting clinical-trial failure due to toxicity from a SMILES string
+
+## 0) Goal, output constraint, and calibration anchor
+**Goal:** Given a molecule (SMILES), estimate **P(fail clinical trials due to toxicity)** and output an **integer 0–100**.
+
+**Calibration anchor (base rate):** Safety/toxicity accounts for a substantial minority of clinical-stage failures.
+- Across reported clinical-stage failures (Phase II through submission, 2013–2015), **~24%** were attributed to safety/insufficient therapeutic index (PMID **27811931**).
+- Across a 1991–2000 industry dataset, toxicity was reported as **~30%** of developmental failures (PMID **15286737**; see also PMID **18202690**).
+- Among agents failing in pivotal trials (1998–2008 cohort), **~17%** of unapproved agents failed for safety (PMID **27723879**).
+
+**Practical baseline:** Start most *drug-like, no-obvious-alert* structures at **~20–30** and then move up/down based on SMILES-derived hazards (below). Avoid outputting extreme probabilities unless multiple strong, convergent risk signals are present.
+
+---
+
+## 1) Preprocessing
+1. **Standardize** the input to remove salts/counterions and canonicalize tautomers:
+   - `standardize_smiles(smiles, remove_salts=True, canonical_tautomer=True, neutralize=False)`
+2. Always keep the **original** SMILES too (some alerts depend on explicit charges/tautomers).
+
+---
+
+## 2) Compute core structure/physchem signals (these drive most of the scoring)
+### 2.1 Descriptors (compute once)
+Use `compute_descriptors(..., standardize=True)` and request at least:
+- `masses` (MW)
+- `logp`
+- `surface_shape_props` (TPSA, fractionCSP3)
+- `ring_counts` (aromatic rings)
+- `hydrogen_bonding` (HBD/HBA)
+- `num_rotatable_bonds`
+- `lipinski_violations`
+- `esol` (solubility class)
+
+**Why:** High lipophilicity, aromaticity, and certain size/polarity regimes correlate with multiple safety liabilities (e.g., hERG, DILI) and also modulate whether substructure alerts become “real risk” in vivo.
+
+### 2.2 Ionization class at physiological pH
+Use `classify_ionization(smiles, ph=7.4, standardize=True)`.
+Record:
+- representative net charge
+- whether the molecule is **basic / acid / zwitterion / neutral**
+- ambiguity in charge state (`is_ambiguous`)
+
+**Why:** Many liabilities (especially hERG and phospholipidosis) increase with **basicity + lipophilicity** (PMID **17239590**, **27783199**, **15088636**).
+
+Also run (recommended):
+- `estimate_logd(smiles, ph=7.4, standardize=True)`
+  - Record `logd` (heuristic logD7.4 estimate), `fraction_neutral`, `most_basic_pka`, `num_basic_sites`.
+
+### 2.3 Ring-system complexity flags
+Use `analyze_ring_systems(..., standardize=True)`.
+Important flags:
+- `has_pah_like` (≥3 fused aromatics)
+- `largest_aromatic_system`
+- `has_macrocycle`
+- counts of fused rings / heteroatom content
+
+**Why:** Large fused aromatics can signal higher non-specific binding, phototoxicity/carcinogenicity concern, and “difficult chemistry” that correlates with attrition risk.
+
+---
+
+## 3) Structural-alert screening (two layers)
+### 3.1 Broad alert catalogs (fast coverage)
+Run `score_structural_alerts(smiles, alert_library="all", standardize=True)` and also separately with:
+- `brenk` (medchem “nasty” groups)
+- `nih` (toxicophores)
+- `pains` (assay interference; also correlates with redox/reactivity risks)
+- `zinc` / `chembl` sets (if available)
+
+**Interpretation:**
+- Many alerts = “hazard present”, but **not** deterministic. Alerts are known to have false positives because toxicity is conditional on metabolism and exposure (PMID **28256829**, **29746101**).
+
+### 3.2 Targeted SMARTS panel (high-value toxophores)
+Use `match_substructure` with a hand-curated set of **high-signal motifs**. Suggested patterns (examples; expand over time):
+
+**Direct electrophiles / hard-reactive groups (often genotox/cytotox unless designed for covalency):**
+- Epoxide: `C1OC1`
+- Aziridine: `C1NC1`
+- Alkyl halide (activated): `[CX4][Cl,Br,I]`
+- Acyl halide: `C(=O)[Cl,Br,I]`
+- Sulfonyl chloride: `S(=O)(=O)Cl`
+- Isocyanate: `N=C=O`
+- Aldehyde: `[#6][CH]=O`
+
+**Michael acceptors / soft electrophiles:**
+- α,β-unsaturated carbonyl: `C=CC(=O)` (refine to avoid false positives)
+- Quinone / quinone-like: `O=[$([c,C])]1[$([c,C])]=[$([c,C])][$([c,C])]=[$([c,C])]1=O` (customize)
+
+**Bioactivation-prone “structural alerts” repeatedly linked to reactive metabolite/idiosyncratic risk:**
+- Aniline / aromatic amine: `Nc1aaaaa1` (more robust aromatic SMARTS recommended)
+- Nitroaromatic: `[$([N+](=O)[O-]),$(N(=O)=O)]c`
+- Phenol/catechol/hydroquinone: `Oc1aaaaa1`, `Oc1aaaaa1O`
+- Furan: `o1cccc1`
+- Thiophene: `s1cccc1`
+- Hydrazine/hydrazide: `NN`, `C(=O)NN`
+- Thioamide/thiourea: `C(=S)N`, `NC(=S)N`
+
+**Why these:** Structural alerts and reactive-metabolite formation are strongly implicated in clinically important idiosyncratic toxicities and trial/market failures (PMID **29746101**, **30258789**, **28256829**, **30500181**).
+
+---
+
+## 4) Map SMILES-derived features to major clinical-toxicity failure modes
+Treat each mode below as a *risk module* contributing to the final probability. Use convergent evidence: **(alert + enabling properties)** is much stronger than either alone.
+
+### 4.1 Cardiotoxicity via hERG / QT prolongation
+**High-risk pattern:** **basic (protonatable amine) + lipophilic + aromatic**.
+- Large dataset analyses show hERG liability increases with **lipophilicity** and is strongly modulated by **ionization class**, with **bases** being highest risk (PMID **17239590**, **27783199**).
+- Practical cutoffs from an AstraZeneca analysis for **>70% chance** of hERG IC50 > 10 µM (i.e., lower risk):
+  - **Bases:** logD7.4 ≲ **1.4**
+  - **Neutrals:** logD7.4 ≲ **3.3** (PMID **17239590**)
+  (Use `estimate_logd(...).logd` as an approximate logD7.4 estimate.)
+- Additional structural context: more aromatic rings and accessible cationic centers tend to increase risk (PMID **36142644**).
+
+**SMILES cues to upweight:**
+- Tertiary/secondary amines, piperidines/piperazines; multiple aromatic rings; high logP; low TPSA.
+
+### 4.2 Hepatotoxicity / DILI (incl. idiosyncratic)
+**Key amplifiers:** lipophilicity, dose/exposure (unknown from SMILES), reactive metabolite potential.
+- DILI risk associations: **logP ≥ 3** plus high exposure/dose is repeatedly implicated (PMID **25912521**).
+- A DILI scoring framework assigns large weight to **reactive metabolite (RM) formation** and also includes **logP** and exposure proxies (PMID **27302180**).
+- Structural-alert driven RM risk (anilines, phenols→quinone-imines, furans/thiophenes, nitroaromatics, etc.) is strongly tied to idiosyncratic mechanisms (PMID **29746101**, **30258789**, **28256829**, **30500181**).
+
+**SMILES cues to upweight:**
+- Phenols/catechols; anilines; thiophenes/furans; nitroaromatics; quinone precursors; multiple alerts in one molecule.
+- High logP and low polarity alongside alerts.
+
+### 4.3 Phospholipidosis (CAD-like)
+**High-risk pattern:** cationic amphiphile = **basic center + hydrophobic/aromatic region**.
+- Drug-induced phospholipidosis is associated with “cationic amphiphilic drugs” and can be screened by **pKa and ClogP** (PMID **15088636**).
+- A practical rule of thumb is given using pKa and ClogP thresholds (PMID **15088636**; echoed in medchem guidance PMID **22065233**): high risk when basicity and lipophilicity are both high.
+
+**SMILES cues to upweight:**
+- One or more protonatable amines **and** ≥1 aromatic ring system plus logP > ~3.
+
+### 4.4 Genotoxicity / mutagenicity potential
+**High-risk pattern:** DNA-reactive electrophiles or easily bioactivated electrophile precursors.
+- Medicinal chemistry reviews emphasize avoiding **reactive electrophiles** (alkyl halides/sulfonates, epoxides, Michael acceptors, etc.) unless intended (PMID **21315927**, **22065233**).
+
+**SMILES cues to upweight:**
+- Epoxides/aziridines; activated alkyl halides; sulfonyl chlorides; acyl halides; strongly activated Michael acceptors; polyfunctional electrophiles.
+
+### 4.5 Immune-mediated/idiosyncratic toxicities (systemic hypersensitivity, blood dyscrasias)
+**High-risk pattern:** RM-forming alerts + exposure-enabling properties.
+- Reviews link many idiosyncratic reactions to bioactivation and covalent protein binding/haptenization (PMID **29746101**, **30258789**).
+
+**SMILES cues to upweight:**
+- Anilines/anilides; thioureas/thioamides; aromatic nitro; phenols capable of quinone-imine formation.
+
+---
+
+## 5) Read-across (optional but powerful): similarity to known problematic compounds
+If you maintain internal lists of reference SMILES for:
+- withdrawn drugs (cardiac QT, severe DILI, genotox)
+- high-risk structural classes
+
+Then run:
+- `compute_similarity(query, reference_smiles, fingerprint="morgan", standardize=True)`
+- `find_mcs(query, reference_smiles, standardize=True)`
+
+**Heuristic:**
+- Similarity **≥0.6–0.7** to a known severe-tox compound should upweight risk (especially if the shared substructure covers core scaffold).
+- Use MCS coverage to distinguish “shared scaffold” vs small common fragment.
+
+---
+
+## 6) Turn features into an integer probability (scoring rubric)
+Use a transparent, additive “hazard points” system, then map to 0–100.
+
+### 6.1 Start point
+- Start at **P = 25** (base rate, reflecting that safety is often ~20–30% of reported clinical failures; PMID **27811931**, **15286737**, **27723879**).
+
+### 6.2 Add/subtract points (example weights)
+**A) hERG/QT risk block (PMID 17239590, 27783199, 36142644)**
+- Use `logD7.4 ≈ estimate_logd(...).logd` as the preferred lipophilicity scalar for this block (heuristic).
+- If ionization shows **basic** at pH 7.4 and logD7.4 **> 1.4**: +15
+- If basic and logD7.4 **≤ 1.4**: +5
+- If **neutral** (no positive states) and logD7.4 **> 3.3**: +10
+- If aromatic rings ≥ 3: +5
+- If TPSA ≤ 60: +5
+
+**B) DILI/reactive metabolite block (PMID 27302180, 25912521, 29746101, 30258789, 28256829)**
+- For each high-value RM alert present (aniline, nitroaromatic, phenol/catechol, thiophene, furan, quinone precursor): +6 (cap at +24)
+- If logP ≥ 3: +8
+- If logP ≥ 4.5: +12 (replace +8)
+
+**C) Direct electrophile/genotox block (PMID 21315927, 22065233)**
+- Epoxide or aziridine: +25
+- Acyl halide / sulfonyl chloride / isocyanate: +25
+- Activated alkyl halide or strong Michael acceptor: +15
+
+**D) Phospholipidosis/CAD block (PMID 15088636)**
+- If `estimate_logd(...).most_basic_pka ≥ 7.5` **and** logP ≥ 3 **and** ≥1 aromatic ring: +10
+- If `estimate_logd(...).num_basic_sites ≥ 2`: +5
+
+**E) “Complexity/exposure uncertainty” modifiers**
+- If ESOL indicates **poor solubility** (very low): +5 (formulation/excipient risk, high dose risk proxy)
+- If MW ≥ 550: +5 (distribution/clearance issues can amplify off-target toxicity)
+- If zwitterionic or strongly acidic at pH 7.4 and logP < 2: −5 (often reduces hERG/CAD-like risk)
+
+### 6.3 Clamp and map
+- Clamp hazard-adjusted P to [0, 100].
+- Output **integer** (round to nearest).
+
+**Suggested interpretation for end users:**
+- 0–20: low structural concern
+- 21–40: moderate; watch specific modules
+- 41–70: high; multiple convergent risks
+- 71–100: very high; strong electrophiles or multiple severe liabilities
+
+---
+
+## 7) Guardrails: avoid common failure modes of a SMILES-only toxicity predictor
+1. **Do not treat any single structural alert as deterministic.** Alerts can be safe depending on metabolism/detox pathways (PMID **28256829**).
+2. **Prefer convergent evidence:** (alert + enabling physchem) > (alert alone).
+3. **Be cautious with PAINS:** PAINS flags can correlate with redox/reactivity, but they also produce many false positives; interpret as “needs scrutiny,” not “will fail.”
+4. **Remember missing context:** Clinical failure depends on dose/exposure, duration, patient population, and therapeutic area tolerance. Without those, keep probabilities away from 0 or 100 unless the chemistry is overtly high hazard (e.g., strong electrophiles).
+
+---
+
+## 8) Minimal execution checklist (what to run for each SMILES)
+1. `standardize_smiles`
+2. `compute_descriptors` (MW, logP, TPSA, aromatic rings, ESOL, HBD/HBA, RB)
+3. `classify_ionization` (pH 7.4)
+3b. `estimate_logd` (pH 7.4; to get logD7.4 estimate + pKa-derived basicity)
+4. `analyze_ring_systems`
+5. `score_structural_alerts` (ALL + Brenk + NIH + PAINS)
+6. `match_substructure` (your high-signal toxophore SMARTS panel)
+7. Apply rubric → output **integer 0–100**
+
+---
+
+## Literature used for grounding (PMIDs)
+- Clinical failure reasons and safety contribution: **27811931**, **15286737**, **18202690**, **27723879**
+- hERG/QT structural/physchem risk: **17239590**, **27783199**, **36142644**, **19759813**
+- DILI and reactive metabolite contribution: **27302180**, **25912521**, **29746101**, **30258789**, **28256829**, **30500181**
+- Phospholipidosis/CAD-like risk: **15088636**
+- Electrophile/genotox structural concerns: **21315927**, **22065233**
+{% endset %}
+{% include "tdc/base.jinja2" %}

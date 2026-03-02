@@ -1,0 +1,282 @@
+{% set objective = "Please predict the probability of the given molecule having activity against the HIV virus." -%}
+{% set prompt_playbook -%}
+# Playbook: Predicting HIV Antiviral Activity from a Molecule’s SMILES (0–100)
+
+This playbook tells an agent what to look for in a SMILES string to estimate the probability that the molecule has **high anti‑HIV activity** (typically nM–low µM whole‑cell EC50/IC50) and to output a **calibrated integer probability 0–100**.
+
+The guidance is grounded in recurring **antiretroviral target classes and pharmacophores** described in the literature: **NRTIs/NtRTIs** (nucleos(t)ide RT inhibitors), **NNRTIs**, **protease inhibitors (PIs)**, **integrase strand‑transfer inhibitors (INSTIs)**, **entry inhibitors (CCR5/CXCR4 antagonists)**, plus rarer classes such as **capsid inhibitors**. Representative structure–feature discussions include PMIDs **19108994**, **22474613**, **19887088**, **20710063**, **21523792**, **1637805**, **9575185**, **22256860**, **19374386**, **34567166**, **21219250**, **21388649**, **40243329**.
+
+---
+
+## 0) Definitions & calibration mindset
+
+- **What you’re predicting**: “Likely to have high HIV activity” means the structure resembles known HIV-active chemotypes and has plausible cell‑active properties.
+- **Base rate prior**: A random drug‑like SMILES is **very unlikely** to be a potent anti‑HIV agent. Start low and move up only with strong evidence.
+- **Use a two-layer approach**:
+  1) **Recognition** (does it look like a known HIV drug class / privileged scaffold / pharmacophore?)
+  2) **Plausibility** (does it have workable physicochemical properties and avoid common artifact motifs?)
+
+---
+
+## 1) Standardize and sanity-check the SMILES
+
+1. **Standardize**
+   - `standardize_smiles(smiles, remove_salts=True, canonical_tautomer=True, neutralize=False)`
+   - Keep charges; many HIV-active classes are ionizable.
+
+2. **Quick invalid/edge cases**
+   - If SMILES is **inorganic**, tiny (e.g., < 8 heavy atoms), or only a counterion → probability near **0**.
+
+---
+
+## 2) Extract core features with tools
+
+Run these on the standardized SMILES (generally with `standardize=True` for descriptors/rings/alerts unless you already standardized):
+
+1. **Descriptors**
+   - `compute_descriptors(..., descriptors=["masses","logp","surface_shape_props","hydrogen_bonding","num_rotatable_bonds","ring_counts","num_amide_bonds","formal_charge","qed","lipinski_violations","esol"], standardize=True)`
+
+2. **Ionization at pH 7.4**
+   - `classify_ionization(smiles, ph=7.4, standardize=True)`
+   - Helpful because several HIV classes rely on **anionic chelators** (INSTIs) or **cationic centers** (CCR5 antagonists).
+
+3. **Ring systems**
+   - `analyze_ring_systems(standardize=True)`
+
+4. **Functional group tree**
+   - `get_functional_groups(standardize=True)`
+
+5. **Structural alerts**
+   - `score_structural_alerts(alert_library="all", standardize=True)`
+   - Penalize PAINS/reactive motifs (reduces confidence of true antiviral activity).
+
+6. **Pharmacophore-like counts**
+   - `extract_pharmacophore_features(standardize=True)`
+   - NNRTI/PI/INSTI activity often depends on **specific donor/acceptor + aromatic/hydrophobe** combinations (e.g., NNRTI pharmacophore features in PMID **27476739**).
+
+---
+
+## 3) Similarity-to-known-HIV-drugs is the strongest single signal
+
+### 3.1 Build (or embed) a reference set of known HIV-active small molecules
+Maintain a curated list of reference SMILES for:
+- **NNRTIs**: efavirenz, nevirapine, etravirine, rilpivirine, doravirine (NNRTI scaffold commonality and “butterfly/horseshoe” binding noted in PMIDs **20710063**, **21523792**, **22998569**).
+- **INSTIs**: raltegravir, elvitegravir, dolutegravir, bictegravir, cabotegravir (metal-binding pharmacophore + hydrophobic group; PMID **22474613**, and detailed chelation + benzyl/aryl role in PMID **22256860**).
+- **PIs**: darunavir, atazanavir, lopinavir, ritonavir, saquinavir, indinavir, tipranavir (transition-state mimetic motifs, cyclic ureas, hydroxyethylene/HEA cores; PMIDs **1637805**, **9575185**, **11818491**, **21806380**).
+- **NRTIs/NtRTIs**: zidovudine, lamivudine, emtricitabine, abacavir, tenofovir (NRTI hallmark = lack of 3′-OH; phosphonate nucleotide analog for tenofovir; PMIDs **19108994**, **19887088**).
+- **Entry inhibitors**: maraviroc (CCR5; basic nitrogen + aromatic/hydrophobe pattern; PMIDs **21219250**, **21388649**).
+- **Capsid**: lenacapavir (difluorobenzyl + pyridine + sulfone + amide linker noted in PMID **40243329**).
+
+### 3.2 Compute similarity
+- `compute_similarity(query_smiles, reference_smiles, fingerprint="morgan", standardize=True)`
+
+### 3.3 Interpret similarity (calibration anchor)
+Use the **max Tanimoto** across reference drugs as a primary anchor:
+- **≥ 0.80**: very likely same chemotype → strong prior for HIV activity.
+- **0.65–0.80**: likely related scaffold → moderate-high prior.
+- **0.45–0.65**: possible distant relationship; rely on class pharmacophore checks.
+- **< 0.45**: treat as “unknown chemical space” unless strong pharmacophore evidence.
+
+---
+
+## 4) Identify HIV drug-class “signatures” directly from SMILES
+
+Use `match_substructure` with SMARTS libraries for **class pharmacophores**. Below are *starter* patterns; tune/refine as needed.
+
+> Important: Don’t overfit to single SMARTS hits. Require **combinations** consistent with known classes.
+
+### 4.1 INSTI-like (integrase strand-transfer inhibitor) signatures
+INSTIs share: **metal-binding pharmacophore** (often 3 coplanar heteroatoms) + **hydrophobic aryl/benzyl** group interacting at the IN–DNA interface (PMIDs **22474613**, **22256860**, **19374386**).
+
+Screen motifs:
+```python
+patterns_inst = {
+  # generic 1,3-dicarbonyl / diketoacid-like chelator
+  "beta_dicarbonyl": "[OX1]=[CX3][CH0,CH1,CH2][CX3](=[OX1])",
+  "carboxylic_acid": "C(=O)[O;H1,-1]",
+  # hydroxypyrimidinone / hydroxylated heteroaromatic chelators (raltegravir-like family)
+  "hydroxypyrimidinone_like": "n1c(=O)[nH]c(=O)ncc1",
+  # N-hydroxyimide-like chelator (common in metal-binding enzyme inhibitors)
+  "n_hydroxy": "[NX3][OX2H]",
+  # hydrophobic benzyl/aryl
+  "benzyl": "c1ccccc1C",
+  "aryl_halogen": "c[Cl,Br,F,I]"
+}
+```
+Heuristic INSTI call:
+- Strong if: (metal-binding motif present) AND (benzyl/aryl present) AND (overall properties plausible for cell entry).
+- Note: acids often help IN binding but can hurt permeability; ester/amide prodrugs may be more cell-active (discussed as permeability tradeoffs in integrase inhibitor series; e.g., PMIDs **17822898**, **19374386**, **34567166**).
+
+### 4.2 NNRTI-like signatures
+NNRTIs bind an **aromatic-rich allosteric pocket** with **multiple aromatic rings** and typically **one donor + one or more acceptors**; pharmacophore examples include **AAHR** features (PMID **27476739**) and common motifs across NNRTI families (PMIDs **21523792**, **20710063**, **22998569**).
+
+Screen motifs:
+```python
+patterns_nnrti = {
+  "diaryl": "c1cccc(c1)c2ccccc2",  # biaryl
+  "aryl_heteroaryl": "c1cccc(c1)n2cccc2",  # crude
+  "sulfone": "S(=O)(=O)",
+  "sulfonamide": "S(=O)(=O)N",
+  "nitrile": "C#N",
+  "cyanovinyl": "C=CC#N",  # rilpivirine-like cyanovinyl motif (see NNRTI reviews)
+  "anilide_or_urea": "NC(=O)",
+  "triazine_pyrimidine_like": "n1cnc(nc1)",
+  "halogens": "[F,Cl,Br,I]"
+}
+```
+Heuristic NNRTI call:
+- Strong if: ≥2 aromatic rings + (nitrile or sulfone/sulfonamide or heteroaromatic core) + donor/acceptor balance.
+- Flexibility can help resistance coverage (“wiggling/jiggling” of DAPY/DATA) (PMID **20710063**).
+
+### 4.3 HIV protease inhibitor (PI)-like signatures
+Many PIs are **transition-state mimetics** (hydroxyethylene/hydroxyethylamine), often **peptidomimetic** with multiple amide/urea/sulfonamide H-bonding elements; cyclic urea inhibitors are also prominent (PMIDs **1637805**, **9575185**, **9171880**, **21806380**, **11818491**).
+
+Screen motifs:
+```python
+patterns_pi = {
+  "hydroxyethylamine": "[CX4][CH]([OX2H])[CH2][NX3]",  # rough HEA motif
+  "secondary_alcohol": "[CH]([OX2H])",
+  "urea": "NC(=O)N",
+  "sulfonamide": "S(=O)(=O)N",
+  "multiple_amides": "C(=O)N",
+  "tert_butyl": "C(C)(C)C"
+}
+```
+Heuristic PI call:
+- Strong if: multiple amide/urea/sulfonamide + TS-mimic alcohol + large, H-bond-rich scaffold.
+- Caveat: Very peptide-like structures can fail permeability; enzyme potency may not translate to cellular activity (cell-vs-enzyme disconnect noted in PI and INSTI series; e.g., PMID **1637805**, **19374386**).
+
+### 4.4 NRTI / nucleotide RT inhibitor signatures
+NRTIs are **nucleos(t)ide analogs** missing a functional 3′‑OH; NtRTIs include **phosphonate** nucleotide analogs (PMIDs **19108994**, **19887088**).
+
+Screen motifs:
+```python
+patterns_nrti = {
+  "nucleobase_like": "n1cnc2n(cnc12)",     # purine-like
+  "pyrimidine_like": "n1ccnc(=O)n1",      # crude
+  "sugar_ring_O": "OC1COCC1",             # crude ribose-like
+  "oxathiolane": "S1CC(O)C(O)O1",         # 3TC/FTC-like (approx)
+  "azido": "[N-]=[N+]=N",
+  "phosphonate": "P(=O)(O)(O)",
+  "phosphoramidate_prodrug": "P(=O)(O)N"  # ProTide-like
+}
+```
+Heuristic NRTI call:
+- Strong if: nucleobase-like + sugar/acyclic sidechain consistent with nucleosides AND “chain terminator” sugar modifications (class definition: lack of 3′‑OH; PMIDs **19108994**, **19887088**).
+- These are often very polar; expect lower logP and higher solubility than many NNRTIs/PIs.
+
+### 4.5 Entry inhibitor (CCR5 antagonist)-like signatures
+CCR5 antagonists often have:
+- **a cationic/basic nitrogen** forming a salt bridge (e.g., with Glu283) plus hydrophobic/aromatic regions (PMIDs **21388649**, **21219250**).
+
+Screen motifs:
+```python
+patterns_ccr5 = {
+  "tertiary_amine": "[NX3;!$(NC=O);!$(NS(=O)=O)]",
+  "cationic": "[N+]",
+  "piperidine": "N1CCCCC1",
+  "piperazine": "N1CCNCC1",
+  "urea": "NC(=O)N",
+  "triazole": "n1nncn1",
+  "diaryl": "c1cccc(c1)c2ccccc2"
+}
+```
+Heuristic CCR5 call:
+- Strong if: basic center + 2+ hydrophobic/aromatic features + overall logP often moderate-high.
+
+### 4.6 Capsid inhibitor (lenacapavir-like) signature (rare but high-impact)
+LEN features mentioned include **difluorobenzyl**, **pyridine core**, **sulfone**, **amide linker** (PMID **40243329**). If a molecule matches this combination and is similarity-close to LEN, probability can jump.
+
+---
+
+## 5) Physicochemical plausibility filters (soft, not hard)
+
+### 5.1 General “drug-like” plausibility
+Many screening pipelines use Lipinski/Veber-style constraints; for example, common filters MW<500, cLogP<5, HBD≤5, HBA≤10, PSA≤140 Å², rotatable bonds ≤10 are frequently used in antiviral virtual screening (PMID **27476739**).
+
+Use these as **soft constraints**:
+- If **MW > 700**, **TPSA > 160**, **rotB > 15**, or **very low QED**, reduce probability unless similarity to known PI/large drug is high.
+- If **logP > 6** and ESOL indicates **poorly soluble** (e.g., `esol.solubility_class == "poorly soluble"`), reduce probability unless the chemotype is known to tolerate high lipophilicity (some PIs/NNRTIs are lipophilic).
+
+### 5.2 Ionization logic
+- **INSTI-like chelators**: often have **anionic states at pH 7.4** (carboxylate/enolate) consistent with metal-binding pharmacophores (PMIDs **22474613**, **22256860**).
+- **CCR5 antagonists**: typically show **positive states at pH 7.4** (basic nitrogen salt bridge; PMIDs **21388649**, **21219250**).
+
+Unexpected ionization patterns can be a red flag:
+- Highly ionized polycations with no clear CCR5-like scaffold → lower.
+- Strong polyacids without a clear INSTI/RNase H chelator scaffold → lower.
+
+---
+
+## 6) Artifact / false-positive handling
+
+Use alerts as confidence penalties:
+- If `score_structural_alerts` finds multiple PAINS/reactive motifs, reduce probability.
+- Nitro/quinone/catechol/polyphenols can be real (some IN/RNase H inhibitor series use catechol/polyhydroxy chelation; e.g., INSTI/RNase H discussions in PMIDs **11886811**, **25618597**, **34567166**), but they also increase risk of nonspecific redox or assay interference. Treat them as **uncertain** unless similarity/class match is strong.
+
+---
+
+## 7) Scoring rubric → calibrated 0–100
+
+### 7.1 Start with a conservative prior
+- **Base = 3** (random small molecule rarely potent anti-HIV).
+
+### 7.2 Add evidence points
+1) **Similarity anchor (strongest)**
+- max Tanimoto ≥ 0.80 → +70
+- 0.65–0.80 → +45
+- 0.45–0.65 → +20
+- < 0.45 → +0
+
+2) **Class signature (choose the best-matching class; don’t double-count heavily)**
+- Strong INSTI signature (chelator triad + aryl/benzyl) → +25
+- Strong NNRTI signature (multi-aryl + donor/acceptor + nitrile/sulfone/heteroaryl core) → +20
+- Strong PI signature (TS-mimic alcohol + multiple amide/urea/sulfonamide) → +20
+- Strong NRTI/NtRTI signature (nucleoside/phosphonate analog) → +20
+- Strong CCR5 signature (basic center + hydrophobe/aromatics + urea/triazole patterns) → +15
+- Lenacapavir-like combined motif (difluorobenzyl+pyridine+sulfone+amide) → +25
+
+3) **Property plausibility boost**
+- If Lipinski/Veber mostly OK OR known class that tolerates violations → +5 to +10
+
+### 7.3 Subtract penalties
+- Multiple strong PAINS/NIH/Brenk alerts → −15 to −40 (severity-based)
+- Physchem extreme outliers with low similarity (e.g., MW>800 & TPSA>200) → −20
+- Highly reactive electrophiles (aziridine/epoxide/aldehyde, etc.) → −20
+
+### 7.4 Clamp and round
+- Clamp to [0,100], round to nearest integer.
+
+### 7.5 Map to final probability bands (interpretation)
+- **0–10**: no HIV-class resemblance; unlikely.
+- **11–30**: weak hints (some motifs) but no strong scaffold match.
+- **31–60**: plausible HIV-like chemotype or moderate similarity.
+- **61–85**: strong class match and/or high similarity to known ARVs.
+- **86–100**: very high similarity to known potent ARVs and good plausibility.
+
+---
+
+## 8) What to log (for self-audit, not in final answer)
+Since the agent must output only an integer, internally record:
+- Standardized SMILES
+- Max similarity and which reference drug matched
+- Which class signature fired and why
+- Key descriptors (MW/logP/TPSA/HBD/HBA/charge)
+- Alerts count
+
+This helps keep the probability calibrated across molecules.
+
+---
+
+## 9) Literature anchors used for the playbook
+- NNRTI pharmacophore/features & screening property filters: **PMID 27476739**
+- SMILES-based QSAR for anti-HIV potential: **PMID 17691912**
+- Multi-target QSAR across HIV targets (RT/PR/IN/CCR5/CXCR4 etc.): **PMID 22688327**
+- Cross-class ARV overview and class-defining scaffold features: **PMID 19108994**, **PMID 22474613**
+- NRTI scaffold hallmark (lack of 3′‑OH; tenofovir phosphonate): **PMID 19887088**
+- Protease inhibitor transition-state mimetics/cyclic ureas and SAR: **PMIDs 1637805, 9575185, 11818491, 21806380**
+- INSTI metal chelation + hydrophobic group pharmacophore/SAR: **PMIDs 22256860, 19374386, 34567166**
+- CCR5 antagonist common features (basic nitrogen salt bridge + hydrophobes): **PMIDs 21219250, 21388649**
+- Lenacapavir feature mentions (difluorobenzyl/pyridine/sulfone/amide linker): **PMID 40243329**
+{% endset %}
+{% include "tdc/base.jinja2" %}

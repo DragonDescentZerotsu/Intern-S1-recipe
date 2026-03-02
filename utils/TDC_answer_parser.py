@@ -30,7 +30,7 @@ def extract_answer(response:str):
 
     return answer_text, format_correct
 
-def parse_answer(answer_text, format_correct, think_is_on:bool):
+def parse_answer(answer_text, format_correct, think_is_on:bool=True):
     """解析答案: (A) -> 0 (负类), (B) -> 1 (正类)"""
     if think_is_on:
         if answer_text is None:

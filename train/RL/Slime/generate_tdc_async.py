@@ -866,6 +866,7 @@ def generate_rollout_fully_async(args, rollout_id, data_buffer, evaluation=False
         total_ans_reward = 0.0
         total_format_reward = 0.0
         total_tool_reward = 0.0
+        total_length_penalty = 0.0
         total_samples = 0
         for group in data:
             for sample in group:
@@ -878,6 +879,7 @@ def generate_rollout_fully_async(args, rollout_id, data_buffer, evaluation=False
                 total_ans_reward += metadata.get("ans_reward", 0.0)
                 total_format_reward += metadata.get("format_reward", 0.0)
                 total_tool_reward += metadata.get("tool_reward", 0.0)
+                total_length_penalty += metadata.get("length_penalty", 0.0)
         
         if total_samples > 0:
             metrics["rollout/num_turns"] = total_turns / total_samples
@@ -885,6 +887,7 @@ def generate_rollout_fully_async(args, rollout_id, data_buffer, evaluation=False
             metrics["rollout/ans_reward"] = total_ans_reward / total_samples
             metrics["rollout/format_reward"] = total_format_reward / total_samples
             metrics["rollout/tool_reward"] = total_tool_reward / total_samples
+            metrics["rollout/length_penalty"] = total_length_penalty / total_samples
             
     return RolloutFnTrainOutput(samples=data, metrics=metrics)
 

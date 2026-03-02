@@ -1,0 +1,334 @@
+{% set objective = "Please predict the probability of the given molecule inhibiting CYP2C19." -%}
+{% set prompt_playbook -%}
+# Playbook: Predict CYP2C19 Inhibition from a SMILES (0–100 calibrated probability)
+
+This playbook guides an agent to infer **likelihood that a molecule inhibits CYP2C19** using only a SMILES string plus the provided structure/descriptor tools. It combines (1) **binding-likelihood features** (lipophilicity, aromaticity, H-bonding, ionization) with (2) **motif-based alerts** for **strong reversible inhibition** and **time-dependent/mechanism-based inhibition (MBI/TDI)**.
+
+Literature grounding for key signals:
+- **Hydrophobicity is a major driver** of CYP2C19 inhibitory potency and binding energy in QSAR/modeling analyses (e.g., PMID: **17059170**, **22239545**, **16918469**, **22864238**).
+- Specific chemotypes show **required subfeatures** for CYP2C19 inhibition (e.g., ticlopidine requires **o-chlorophenyl + tertiary amine + thiophene**; PMID: **11580286**).
+- **Methylenedioxyphenyl (benzodioxole)** motifs are repeatedly linked to **time-dependent/quasi-irreversible** CYP2C19 inactivation (PMID: **21908684**, **28468305**).
+
+---
+
+## 1) High-level intuition (what CYP2C19 “likes”)
+
+### A. Most likely inhibitors tend to be:
+- **Moderately to highly lipophilic** (often higher logP/logD correlates with stronger inhibition within series; PMID: **22239545**, **17059170**).
+- Have **≥1 aromatic ring system** capable of π–π interactions (PMID: **17059170**, **22864238**).
+- Present **H-bond features** (HBA/HBD) in a way that supports anchoring interactions, but not so polar that binding/partitioning into the enzyme environment is disfavored (PMID: **22864238**, **16918469**).
+- Are **neutral or basic** more often than strongly acidic; “low acidity or non-ionizability” was highlighted as important for a CYP2C19 inhibitor series (PMID: **16918469**).
+
+### B. Two inhibition modes to consider
+1) **Reversible inhibition** (competitive/mixed): often driven by noncovalent fit + lipophilicity + H-bonding.  
+2) **Time-dependent/mechanism-based inhibition (TDI/MBI)**: requires **bioactivation-prone motifs** (e.g., thiophenes, methylenedioxyphenyl) that can form reactive intermediates or MICs; CYP2C19 MBIs include ticlopidine (PMID: **11580286**) and MDP-containing natural products (PMID: **21908684**, **28468305**).
+
+---
+
+## 2) Standard workflow (use the tools in this order)
+
+### Step 0 — Standardize the input
+Replace the old `normalize_smiles` with `standardize_smiles`:
+
+```python
+s0 = standardize_smiles(
+  smiles,
+  remove_salts=True,
+  canonical_tautomer=True,
+  neutralize=False
+)
+````
+
+Notes:
+
+* Keep `neutralize=False` so `formal_charge` descriptors remain meaningful.
+* This returns canonical isomeric SMILES.
+
+### Step 1 — Extract functional-group and ring-system signals
+
+```python
+fg_tree = get_functional_groups(s0, standardize=False)
+rings = analyze_ring_systems(s0, standardize=False)
+```
+
+Focus on: number of aromatic rings, fused aromatic systems, heteroaromatic identity (via heteroatoms).
+
+### Step 2 — Compute “binding-likelihood” descriptors
+
+```python
+D = compute_descriptors(
+  s0,
+  descriptors=[
+    "masses", "logp", "surface_shape_props", "ring_counts",
+    "hydrogen_bonding", "num_rotatable_bonds", "num_amide_bonds",
+    "atom_counts", "formal_charge",
+  ],
+  standardize=False
+)
+```
+
+Key fields to use (updated paths):
+
+* `logp = D["logp"]`
+* `MW = D["masses"]["average_mw"]`
+* `TPSA = D["surface_shape_props"]["tpsa"]`
+* `AR = D["ring_counts"]["aromatic_rings"]`
+* `total_rings = D["ring_counts"]["total_rings"]`
+* `HBA = D["hydrogen_bonding"]["hba"]`, `HBD = D["hydrogen_bonding"]["hbd"]`
+* `fraction_csp3 = D["surface_shape_props"]["fraction_csp3"]`
+* `rot = D["num_rotatable_bonds"]`
+* `nitrogen = D["atom_counts"]["nitrogen"]`, `n_plus_o = D["atom_counts"]["n_plus_o"]`
+* `formal_charge = D["formal_charge"]`
+
+### Step 3 — Ionization/protonation at pH 7.4
+
+```python
+I = classify_ionization(s0, ph=7.4, standardize=False)
+rep_charge = I["representative"]["net_charge"]   # primary scalar used in rubric
+rep_class  = I["representative"]["charge_class"] # acid/base/neutral/zwitterion
+ambiguous  = I["is_ambiguous"]
+```
+
+Notes:
+
+* If `is_ambiguous=True`, you can still score using `rep_charge`, but consider being slightly less confident (soften extremes) because multiple charge states exist.
+* If no variants are returned, the tool treats the input as neutral.
+
+### Step 4 — Substructure alerts (explicit SMARTS matching)
+
+Use `match_substructure` with a CYP2C19-focused pattern set (Section 4).
+
+```python
+M = match_substructure(s0, patterns, standardize=False)
+# Each entry: M[name] -> {"present": bool, "count": int}
+```
+
+---
+
+## 3) Feature interpretation: what to look for in the SMILES
+
+### A. Strong positive signals (increase probability)
+
+#### 1) Lipophilicity + aromaticity (global binding propensity)
+
+* **Higher logP** (and often higher aromatic ring count) → higher likelihood of inhibition in many CYP2C19 QSAR/pharmacophore analyses (PMID: **17059170**, **22239545**, **22864238**).
+* Practical heuristic:
+
+  * logP **> 3**: meaningful boost
+  * logP **> 4**: strong boost (noting potent omeprazole-like inhibitors often had LogD7.4 > 4 in one series; PMID: **22239545**)
+
+#### 2) Heme/cofactor-proximal binding motifs (often strong reversible inhibitors)
+
+* **Nitrogen-containing heteroaromatics** (e.g., azoles) commonly act as strong P450 inhibitors by iron coordination + lipophilic binding (general P450 principle; see review discussion in PMID: **33769041**).
+
+  * In CYP2C19-specific inhibitor lists/models, azole drugs such as fluconazole are notable inhibitors (e.g., modeling set in PMID: **17059170**).
+
+#### 3) “Three-element” ticlopidine-like signature (very strong for that chemotype)
+
+* Ticlopidine inhibition and mechanism-based inactivation of CYP2C19 depended on having:
+
+  * **o-chlorophenyl substituent**
+  * **free tertiary amine**
+  * **thiophene ring**
+    (loss of any feature removed spectral interaction and inhibition; PMID: **11580286**).
+
+#### 4) Hydrophobic + H-bonding pharmacophore elements (omeprazole-like benzimidazoles)
+
+* A CYP2C19 inhibitor series derived from omeprazole supported a pharmacophore including **H-bond donor/acceptor features on benzimidazole nitrogens**, plus **hydrophobes** and an **aromatic ring feature** (ADHHR model) (PMID: **22239545**).
+
+### B. Strong MBI/TDI alerts (often push probability up sharply)
+
+These motifs increase the chance of **time-dependent inhibition** (not just reversible binding). They are especially important if the molecule is also sufficiently lipophilic to access the active site.
+
+#### 1) Methylenedioxyphenyl (MDP; benzodioxole)
+
+* Multiple MDP-containing isoquinoline alkaloids showed NADPH-dependent, quasi-irreversible CYP2C19 inactivation consistent with MIC formation (PMID: **21908684**).
+* In a lignan set, the compound containing MDP (fargesin) showed strong time-dependent inhibition of CYP2C19; non-MDP analogs did not (PMID: **28468305**).
+
+#### 2) Thiophene bioactivation (ticlopidine)
+
+* Ticlopidine is a mechanism-based inhibitor; the inactivating species was proposed to involve a reactive thiophene-derived intermediate (possibly thiophene S-oxide) (PMID: **11580286**).
+
+(General MBI alerts like furans/thiophenes/acetylenes are reviewed broadly across CYPs; see PMID: **16248836** for mechanistic context, though it is not CYP2C19-specific.)
+
+### C. Negative signals (decrease probability)
+
+These tend to reduce likelihood of meaningful CYP2C19 inhibition **from first principles** (limited active-site access, poor partitioning, or mismatch with typical inhibitor property space).
+
+* **Very polar / very large**:
+
+  * TPSA **> 120 Å²** or HBA **> 12** (often too polar)
+  * MW **> 650** (often too large)
+* **Strongly anionic at pH 7.4**:
+
+  * carboxylate/sulfonate/phosphonate dominant → penalize; CYP2C19 inhibitor series noted preference for low acidity/non-ionizability (PMID: **16918469**).
+* **Highly aliphatic, low aromaticity**:
+
+  * aromatic_rings = 0 and fraction_csp3 high → penalty
+* **Permanent charges** (e.g., quaternary ammonium) often reduce access to the hydrophobic active site → penalty.
+
+---
+
+## 4) Recommended SMARTS panel for `match_substructure` (updated for valid SMARTS)
+
+The old playbook used `|` alternation inside single SMARTS strings (often invalid in RDKit SMARTS). In the new toolset, **prefer separate patterns** and combine them logically in scoring.
+
+```python
+patterns = {
+  # Aromaticity / hydrophobe anchors
+  "any_aromatic_ring": "a1aaaaa1",
+
+  # Heme-coordinating-ish N-heteroaromatics (general P450 inhibitor motif)
+  "imidazole_1": "n1cc[nH]c1",
+  "imidazole_2": "n1ccnc1",
+  "triazole_1": "n1nccn1",
+  "triazole_2": "n1cnnn1",
+  "pyridine_like": "n1ccccc1",
+
+  # Ticlopidine-like components
+  "thiophene": "c1ccsc1",
+  "aryl_chloro": "c[Cl]",
+  "tertiary_amine": "[NX3;!$(NC=O);!$(NS(=O)=O)]([#6])[#6]",
+
+  # Methylenedioxyphenyl (benzodioxole) MBI alert
+  "methylenedioxyphenyl": "O1COc2ccccc12",
+
+  # Other general MBI-alert motifs (supporting, not CYP2C19-specific)
+  "furan": "c1ccoc1",
+  "terminal_acetylene": "[CX2]#C[H]",
+
+  # Strong acids / permanent charge penalties
+  "carboxylate": "C(=O)[O-]",
+  "sulfonate": "S(=O)(=O)[O-]",
+  "phosphonate": "P(=O)(O)[O-]",
+  "quaternary_ammonium": "[N+]([#6])([#6])([#6])[#6]",
+
+  # Polar motifs that may reduce binding when excessive
+  "polyethylene_glycol": "OCCOCCO",  # rough screen
+  "guanidinium": "NC(=N)N"
+}
+
+M = match_substructure(s0, patterns, standardize=False)
+
+# Convenience booleans for scoring:
+azole_like = (
+  M["imidazole_1"]["present"] or M["imidazole_2"]["present"] or
+  M["triazole_1"]["present"]  or M["triazole_2"]["present"]
+)
+pyridine_like = M["pyridine_like"]["present"]
+```
+
+Notes:
+
+* Prefer **multiple weak indicators** over a single hard rule, except for very strong alerts (MDP, ticlopidine-like triad).
+* Use `analyze_ring_systems(s0)`’s `has_pah_like` for robust fused-aromatic detection rather than fragile “PAH SMARTS”.
+
+---
+
+## 5) Scoring rubric → probability (0–100)
+
+### A. Compute a point score (0–100-ish)
+
+Start from a **prior** of 20 (generic drug-like molecule has non-zero chance to inhibit some CYP, but most are not strong CYP2C19 inhibitors).
+
+Let:
+
+* `logP = D["logp"]`
+* `MW = D["masses"]["average_mw"]`
+* `TPSA = D["surface_shape_props"]["tpsa"]`
+* `AR = D["ring_counts"]["aromatic_rings"]`
+* `HBA = D["hydrogen_bonding"]["hba"]`
+* `HBD = D["hydrogen_bonding"]["hbd"]`
+* `charge = I["representative"]["net_charge"]`
+
+**Additive points (examples):**
+
+**(1) Lipophilicity / aromatic binding** (PMID: 17059170; 22239545)
+
+* +0 if logP < 2
+* +8 if 2 ≤ logP < 3
+* +16 if 3 ≤ logP < 4
+* +22 if logP ≥ 4
+* +5 if AR ≥ 2; +8 if AR ≥ 3
+
+**(2) N-heteroaromatics / heme coordination-like motifs** (general P450; supported by CYP2C19 inhibitor sets incl. azoles, PMID: 17059170; general mechanism in PMID: 33769041)
+
+* +12 if `azole_like` true  (any imidazole/triazole pattern present)
+* +6 if `pyridine_like` true
+
+**(3) Ticlopidine-like triad** (PMID: 11580286)
+
+* +25 if (`thiophene` and `tertiary_amine` and `aryl_chloro`) all present
+* +10 if any two of these are present
+
+Implementation hint:
+
+```python
+triad_hits = sum([
+  M["thiophene"]["present"],
+  M["tertiary_amine"]["present"],
+  M["aryl_chloro"]["present"],
+])
+```
+
+**(4) MBI/TDI alert motifs** (PMID: 21908684; 28468305; 11580286)
+
+* +20 if `methylenedioxyphenyl` present
+* +8 if `thiophene` present (additional to ticlopidine triad)
+* +6 if `furan` present
+* +6 if `terminal_acetylene` present
+
+**(5) H-bonding window** (PMID: 22864238; 16918469)
+
+* +6 if 1 ≤ HBD ≤ 2 and 3 ≤ HBA ≤ 8
+* −6 if HBA > 12 or HBD > 3
+
+**(6) Size/polarity/charge penalties**
+
+* −10 if TPSA > 120; −6 if 90 < TPSA ≤ 120
+* −8 if MW > 650; −4 if 500 < MW ≤ 650
+* −10 if `quaternary_ammonium` present
+* −8 if any of (`sulfonate`,`phosphonate`) present
+* −6 if `carboxylate` present
+* −6 if `charge <= -1` at pH 7.4
+
+Finally clamp:
+
+* `raw_score = clamp(0, 100, prior + sum(points))`
+
+*(Optional guardrail, minimal change)*: if `I["is_ambiguous"]` is true, you can slightly soften extremes (e.g., shrink `(raw_score - 50)` by ~10–20%) to avoid overconfidence when multiple charge states exist.
+
+### B. Convert score → calibrated probability
+
+Use a smooth mapping so the model is not overconfident:
+
+* Recommended: logistic squashing around the middle:
+
+  * `p = round(100 * sigmoid((raw_score - 50)/12))`
+* `sigmoid(x) = 1/(1+exp(-x))`
+
+Use `evaluate_arithmetic` to compute this when needed, e.g.:
+
+```python
+p = evaluate_arithmetic("100 * (1/(1+exp(-((raw_score - 50)/12))))")
+```
+
+(If your `evaluate_arithmetic` environment doesn’t expose `exp`, approximate with a small lookup table; otherwise keep the formula.)
+
+**Interpretation guide**
+
+* 0–20: very unlikely (too polar/charged/no aromatic anchors)
+* 21–50: possible (some binding features, no strong motifs)
+* 51–80: likely (lipophilic + aromatic + plausible anchoring motifs)
+* 81–100: very likely (strong motifs like MDP or ticlopidine-like triad, plus favorable properties)
+
+---
+
+## 6) Common pitfalls and guardrails
+
+* **Do not over-weight a single fragment** if the molecule is very polar/charged; enforce penalties via TPSA/charge rules.
+* **Azole presence** can be a strong general P450 inhibitor signal, but not always CYP2C19-selective; treat as strong but not absolute.
+* **Mechanism-based alerts** (MDP, thiophene) are important because they can produce strong DDIs even when reversible affinity isn’t extreme; this is supported by CYP2C19 MBI examples (PMID: **11580286**; **21908684**; **28468305**).
+* If the SMILES contains **multiple liabilities** (e.g., MDP + high logP + multiple aromatics), allow high probabilities (80–95), but reserve 96–100 for cases that match multiple high-confidence patterns **and** have favorable global properties.
+{% endset %}
+{% include "tdc/base.jinja2" %}

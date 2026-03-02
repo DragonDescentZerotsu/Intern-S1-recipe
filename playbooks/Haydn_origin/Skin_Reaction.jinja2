@@ -1,0 +1,242 @@
+{% set objective = "Please predict the probability of the given molecule causing a skin sensitization reaction." -%}
+{% set prompt_playbook -%}
+# Playbook: Predicting “skin reaction” likelihood from a SMILES string (structure-only)
+
+**Scope note:** Most structure-based models in the literature target **skin sensitization / allergic contact dermatitis** (covalent protein binding → immune response). This playbook therefore prioritizes sensitization chemistry (electrophiles, pre/pro-haptens) and skin bioavailability modifiers, as in Derek/TIMES/QMM approaches (PMIDs: 20693071, 22536822, 16918251, 17226926). “Skin reaction” can also include irritation/corrosion; structure-only prediction for irritation is less reliable and not fully covered here.
+
+**Agent output constraint:** the agent’s *final* response must be an **integer 0–100 only**.
+
+---
+
+## 1) High-level decision strategy (what to look for in SMILES)
+
+Skin sensitizers usually have **(A) an electrophilic (or activatable) motif capable of covalent binding** to protein nucleophiles **and** **(B) sufficient skin bioavailability** (often correlated with logP/permeability and low permanent charge) (PMIDs: 8144710, 20693071, 15962930).
+
+So the agent should:
+1) **Standardize** the structure and identify the major organic fragment.
+2) **Detect protein-reactive mechanisms (“reactivity domains”)** via substructure alerts (SN2, SNAr, Michael, acyl transfer, Schiff base, etc.) (PMIDs: 16918251, 18853302, 20693071).
+3) **Adjust by physicochemical properties** affecting delivery and competing reactions (logP, MW, tPSA, charge/ionization, estimated logKp) (PMIDs: 8144710, 15962930, 17226926).
+4) **Optional but strongly recommended:** similarity/read-across to known sensitizers/non-sensitizers (performance boost with high similarity) (PMID: 26863411).
+5) Convert evidence to a **calibrated 0–100 probability** with conservative handling of uncertainty.
+
+---
+
+## 2) Required tool workflow (always run these)
+
+### Step A — Standardize
+- `standardize_smiles(smiles, remove_salts=True, canonical_tautomer=True, neutralize=False)`
+  - Keep charges (neutralize=False) so charge remains informative for penetration.
+
+### Step B — Core descriptors (physchem)
+- `compute_descriptors(std_smiles, descriptors=["masses","logp","surface_shape_props","hydrogen_bonding","num_rotatable_bonds","formal_charge","esol"], standardize=False)`
+  - You primarily need **MW** and **logP** (plus tPSA, HBD/HBA, formal charge).
+
+### Step B2 — LogD at skin-relevant pH (recommended)
+- `estimate_logd(std_smiles, ph=5.5, standardize=True)`
+  - Use `logd` (approx logD at pH 5.5) and `fraction_neutral` as direct penetration-related signals for ionizable compounds.
+
+### Step C — Ionization at skin-relevant pH
+- `classify_ionization(std_smiles, ph=5.5, standardize=True)`
+  - Penalize molecules that are mostly **ionized** at pH 5.5 (poor penetration is common) (PMID: 8144710).
+
+### Step D — Functional group inventory
+- `get_functional_groups(std_smiles, standardize=False)`
+  - Use as a sanity check (e.g., did we miss an anhydride/isocyanate/epoxide/quinone motif?).
+
+### Step E — Structural alerts
+Use **both**:
+1) `match_substructure(std_smiles, patterns=..., standardize=False)` for skin-sensitization-specific SMARTS, and
+2) `score_structural_alerts(std_smiles, alert_library="all")` as an extra broad “reactive/toxicophore” signal (not skin-specific; treat as weak evidence).
+
+### Step F — Similarity (if you maintain reference sets)
+- `compute_similarity(std_smiles, reference_smiles=known_sensitizers + known_nonsensitizers, fingerprint="morgan")`
+  - Similarity-based read-across can dominate when similarity is high (PMID: 26863411).
+
+---
+
+## 3) Mechanism-first: map SMILES to a reactivity domain
+
+Most known sensitizers fall into a small set of **electrophile/reaction domains** (PMIDs: 16918251, 17226926, 18853302):
+
+1) **Michael acceptors** (α,β-unsaturated EWG systems)
+2) **SN2 electrophiles** (alkyl/benzylic leaving groups; epoxides/aziridines; sulfonates)
+3) **SNAr electrophiles** (activated aromatic halides/heteroaryl halides)
+4) **Acyl transfer** (isocyanates; anhydrides; acyl halides; activated esters)
+5) **Schiff base formers** (aldehydes and some ketones; especially aliphatic carbonyls)
+6) **Redox / pre- & pro-haptens** (catechols/phenols/anilines → quinones/quinone-imines; peroxides/hydroperoxides)
+
+**High-potency category (HPC) flags**: multi-activated SNAr, benzylic halides (esp. Br/I), strained electrophiles (β-propiolactone-like), quinones/quinone-imines/di-imines, isocyanates, organic peroxides (PMID: 25765509).
+
+---
+
+## 4) Suggested SMARTS library (starter set)
+
+Use `match_substructure` with patterns like the below. (These are intentionally *screening-level*; refine over time with validation.)
+
+```python
+patterns = {
+  # Michael acceptors (screening)
+  "michael_enone": "[C;!R]=[C;!R]-[C](=O)[#6]",          # enone
+  "michael_enal":  "[C;!R]=[C;!R]-[CH](=O)",             # enal
+  "michael_acrylate": "[C;!R]=[C;!R]-C(=O)O[#6]",        # acrylate
+  "michael_acrylamide": "[C;!R]=[C;!R]-C(=O)N",          # acrylamide
+  "quinone": "O=C1C=CC(=O)C=CC1",                        # coarse quinone motif
+
+  # SN2 electrophiles
+  "alkyl_halide": "[CX4][Cl,Br,I]",                      # generic; weight higher if benzylic/allylic
+  "benzylic_halide": "c[CH2][Cl,Br,I]",
+  "epoxide": "C1OC1",
+  "aziridine": "C1NC1",
+  "alkyl_sulfonate": "COS(=O)(=O)O",                     # mesylate/tosylate-like (very rough)
+
+  # SNAr electrophiles (activated aryl/heteroaryl halides)
+  "activated_aryl_halide": "[c,n]1[c,n][c,n]([Cl,Br,F])[c,n][c,n]1",  # coarse
+  "dinitro_aryl_halide": "[c]([Cl,Br,F])[c]([N+](=O)[O-])[c]([N+](=O)[O-])",  # very coarse
+
+  # Acyl transfer
+  "isocyanate": "N=C=O",
+  "isothiocyanate": "N=C=S",
+  "acid_chloride": "C(=O)Cl",
+  "sulfonyl_chloride": "S(=O)(=O)Cl",
+  "anhydride": "C(=O)OC(=O)",
+
+  # Schiff base formers
+  "aldehyde": "[CH](=O)",
+  "alpha_dicarbonyl": "C(=O)C(=O)",
+
+  # Pre/pro-haptens (oxidizable to quinones/quinone-imines)
+  "catechol": "c1ccc(O)c(O)c1",
+  "hydroquinone": "c1cc(O)ccc(O)c1",
+  "aniline": "c1ccc(N)cc1",
+
+  # Peroxides (pre-hapten / radical)
+  "peroxide": "OO",
+}
+```
+
+**Implementation guidance:**
+- Treat these matches as *evidence*, not proof; simple “Michael acceptor present” is common and has many false positives (PMID: 26863411).
+- Add domain logic: *activated* Michael acceptors (extra EWGs), *multi-activated* SNAr, strained rings, etc., should score much higher (PMID: 25765509).
+
+---
+
+## 5) Physchem modifiers (delivery/availability) from descriptors
+
+### 5.1 Estimate skin permeability (logKp) from SMILES-derived MW/logD (skin pH)
+Use Potts–Guy (PMID: 15962930):
+
+- **logKp = −2.72 + 0.71·logD(pH=5.5) − 0.0061·MW**
+
+Compute with:
+- `evaluate_arithmetic("-2.72 + 0.71*logD55 - 0.0061*MW")` (after substituting numeric `logD55 = estimate_logd(..., ph=5.5).logd`)
+
+**Rule-of-thumb adjustment:** very low permeability (e.g., **logKp < −5**) should substantially reduce probability even if an alert is present (Derek-style reasoning; PMIDs: 14502468, 15962930).
+
+### 5.2 logD “too high” can reduce effective induction in LLNA
+Very high lipophilicity can become penetration-limited and may lead to overprediction if you only consider reactivity (PMIDs: 16978028, 17226926, 17703504). Apply a penalty for extremely hydrophobic compounds (e.g., logD(pH=5.5) > ~6–7) unless similarity/read-across indicates otherwise.
+
+### 5.3 Ionization/charge penalty
+Strongly ionized molecules at skin-relevant pH (persistent +/− charge) often have reduced penetration; treat ionization as a negative modifier (PMID: 8144710). Use `classify_ionization` and/or `estimate_logd(...).fraction_neutral` at pH 5.5:
+- If mostly **cationic** or **anionic** → subtract points.
+- If **zwitterionic/ambiguous** → small penalty and lower confidence.
+
+### 5.4 Size/polarity
+Avoid hard MW cutoffs: sensitizers exist above 500 Da (PMID: 26863411). Use MW/tPSA as *soft* penalties (large, polar → lower probability).
+
+---
+
+## 6) Evidence-to-probability rubric (calibrated, conservative)
+
+Use a weighted, capped scoring system. Start from an empirical base rate: sensitizer prevalence in large regulatory datasets is on the order of ~20% (PMID: 26863411), so **baseline P ≈ 20** when there are no strong signals.
+
+### 6.1 Core scoring components
+Compute:
+- **P0 = 20**
+- **AlertScore** (0 to +70)
+- **PhyschemAdj** (−40 to +10)
+- **SimilarityAdj** (−30 to +30)
+- **UncertaintyAdj** (−10 to 0) (penalize when ambiguous ionization, multiple competing domains, or out-of-pattern chemistry)
+
+Then:
+- **P = clamp(P0 + AlertScore + PhyschemAdj + SimilarityAdj + UncertaintyAdj, 0, 100)**
+- Round to nearest integer.
+
+### 6.2 AlertScore (mechanism strength)
+Assign the **maximum** of matched domain scores, plus a small add-on for multiple independent domains (cap total):
+
+**Very high concern (+60 to +70)**
+- multi-activated SNAr (e.g., dinitro-aryl halide motifs) (PMID: 25765509)
+- benzylic Br/I (strong SN2) (PMID: 25765509)
+- isocyanate/isothiocyanate (acyl transfer) (PMID: 25765509)
+- quinone/quinone-imine/di-imine–like motifs (PMID: 25765509)
+- organic peroxides / peroxide motifs (PMID: 25765509)
+
+**High (+40 to +55)**
+- clear Michael acceptor (enal/enone/acrylate/acrylamide), especially with extra EWGs (PMIDs: 16918251, 17226926)
+- epoxide/aziridine/strained electrophile (SN2) (PMIDs: 20693071, 18853302)
+- anhydride / acyl halide / sulfonyl chloride (note: may hydrolyze/irritate; still flag as reactive) (PMIDs: 20693071, 31112722)
+
+**Moderate (+20 to +35)**
+- aldehyde (especially aliphatic) / alpha-dicarbonyl (Schiff base domain) (PMIDs: 16978028, 11380542)
+- activated alkyl halide (allylic/benzylic Cl; sulfonates) (PMIDs: 8144710, 17226926)
+
+**Low (+5 to +15)**
+- pre/pro-hapten motifs: catechol/hydroquinone/aniline/phenols (oxidizable) (PMIDs: 8144710, 25765509)
+- broad structural-alert catalog hits (e.g., Brenk/NIH/ChEMBL filters): treat as weak support only
+
+**No domain matched:** AlertScore = 0 (absence is evidence *against* sensitization, but not definitive; specificity tends to be higher than sensitivity for alert-only heuristics) (PMID: 26863411).
+
+### 6.3 PhyschemAdj (delivery/penalty)
+Suggested rules:
+- If **logKp < −5**: **−30** (poor penetration) (PMIDs: 14502468, 15962930)
+- Else if **logKp between −5 and −3**: **−10**
+- If **logD(pH=5.5) > 7** (or logP > 7): **−10** (penetration/solubility limits) (PMIDs: 16978028, 17226926)
+- If representative net charge at pH 5.5 is **±1 or more**: **−10**; if **±2**: **−20** (PMID: 8144710)
+- If **tPSA > 120** or **HBD ≥ 3**: **−5** (soft penalty)
+
+### 6.4 SimilarityAdj (read-across)
+Maintain two reference sets: known sensitizers and known non-sensitizers (from curated internal list).
+
+- If top similarity **≥ 0.90** to a known sensitizer: **+30**
+- If 0.80–0.90 to sensitizer: **+15**
+- If top similarity **≥ 0.90** to a known non-sensitizer: **−30**
+- If 0.80–0.90 to non-sensitizer: **−15**
+
+Justification: similarity-based classifiers can outperform simple alert heuristics at high similarity thresholds (PMID: 26863411).
+
+### 6.5 UncertaintyAdj
+- If `classify_ionization.is_ambiguous` is true: **−5**
+- If the molecule matches **many** alerts but is very polar/charged (high false-positive risk): **−5**
+- If the molecule is clearly outside typical small-molecule space (e.g., very large, many rings + many heteroatoms) and similarity is low: **−10**
+
+---
+
+## 7) Domain-specific “special case” logic (important)
+
+### 7.1 Aromatic aldehydes vs aliphatic aldehydes
+Aromatic aldehydes can be less sensitizing than aliphatic aldehydes due to resonance deactivation; treat a simple benzaldehyde-like motif as lower concern unless additional activating features exist (PMID: 11380542). If the aldehyde is **α,β-unsaturated** (cinnamaldehyde-like), treat as **Michael + Schiff base** (higher) (PMID: 11380542).
+
+### 7.2 Cross-linkers can be exceptionally potent
+Formaldehyde/glutaraldehyde-like cross-linkers may be more potent than simple reactivity rules predict; if multiple aldehydes or strong bifunctionality is present, add an extra +10 to +20 (PMIDs: 17703504, 16978028).
+
+### 7.3 Hydrolyzers in aqueous assays vs real skin
+Highly reactive acylators (anhydrides, peroxides) can hydrolyze in cell assays and produce discordant results; do not down-weight their hazard purely because they “look unstable”—structure-based flag should remain high (PMID: 31112722).
+
+---
+
+## 8) Quality control checks
+
+- If SMILES is invalid/empty → do not guess; return a conservative midpoint like **50** (or follow system policy).
+- If molecule is a mixture/salt with multiple organic fragments and standardization removes most of it → lower confidence; probability should regress toward baseline.
+- If `score_structural_alerts` returns many PAINS/assay-interference motifs: this is **not** direct sensitization evidence; treat as uncertainty, not as high risk.
+
+---
+
+## 9) Final output rule
+
+After computing **P**, output **only**:
+- an integer `0`–`100`
+
+No other text.
+{% endset %}
+{% include "tdc/base.jinja2" %}

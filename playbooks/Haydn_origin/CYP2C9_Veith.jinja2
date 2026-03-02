@@ -1,0 +1,210 @@
+{% set objective = "Please predict the probability of the given molecule inhibiting CYP2C9." -%}
+{% set prompt_playbook -%}
+# Playbook: Predicting CYP2C9 Inhibition From a SMILES String
+
+This playbook guides an agent to output **one integer probability (0–100)** that a molecule is a **likely CYP2C9 inhibitor**, using only SMILES-derived features and the provided molecular-analysis tools.
+
+## 0) Core mechanistic intuition (what CYP2C9 “likes”)
+CYP2C9 ligands/inhibitors are frequently **lipophilic + aromatic** and often contain an **anionic (or H‑bond donor) feature** separated from a hydrophobic region—consistent with an **anion/polar interaction region (e.g., Arg108/related cationic site)** plus **aromatic contacts (e.g., Phe114/Phe476)** (PMIDs **15822186**, **12814975**, **15579109**, **20167000**, **14768974**). Lipophilicity is repeatedly observed as a major driver of affinity/potency, with H‑bonding and π–π interactions as additional contributors (PMIDs **17059170**, **22864238**).
+
+Also note **multiple binding modes / probe dependence** (warfarin-pocket vs heme-proximal site), which means different chemotypes can inhibit differently; don’t overfit to one motif (PMIDs **20167000**, **34272715**).
+
+---
+
+## 1) Standardize and sanity-check input
+1. **Standardize**:
+   - `std = standardize_smiles(smiles, remove_salts=True, canonical_tautomer=True, neutralize=False)`
+2. If standardization fails → output **0** (invalid SMILES).
+3. Work with `std` for all subsequent analyses.
+
+---
+
+## 2) Compute the minimal feature set (always)
+Run:
+- `desc = compute_descriptors(std, descriptors=["masses","logp","surface_shape_props","ring_counts","num_rotatable_bonds","hydrogen_bonding","atom_counts"], standardize=False)`
+- `ion = classify_ionization(std, ph=7.4, standardize=True)`  
+- `rings = analyze_ring_systems(std, standardize=False)`
+- `fg = get_functional_groups(std, standardize=False)`
+- `ph4 = extract_pharmacophore_features(std, standardize=False)`
+
+Record these fields (used later):
+- `logp = desc["logp"]`
+- `mw = desc["masses"]["average_mw"]`
+- `tpsa = desc["surface_shape_props"]["tpsa"]`
+- `arom = desc["ring_counts"]["aromatic_rings"]`
+- `rings_total = desc["ring_counts"]["total_rings"]`
+- `rb = desc["num_rotatable_bonds"]`
+- `hbd = desc["hydrogen_bonding"]["hbd"]`, `hba = desc["hydrogen_bonding"]["hba"]`
+- `frac_csp3 = desc["surface_shape_props"]["fraction_csp3"]`
+- `has_neg = ion["has_negative_states"]`, `has_pos = ion["has_positive_states"]`
+- `charge_classes = ion["charge_class_counts"]` (acid/base/zwitterion/neutral)
+- `has_pah_like = rings["has_pah_like"]`
+
+---
+
+## 3) Substructure screen: motifs that often correlate with CYP2C9 inhibition
+Use `match_substructure` with a targeted CYP2C9 motif panel. These are not “proof” but strong priors.
+
+### 3A) SMARTS panel (starter set)
+Call:
+```python
+hits = match_substructure(std, {
+  # Acidic / anionic motifs common among CYP2C9 ligands (PMID 15822186)
+  "carboxylic_acid": "C(=O)[O;H1,-1]",
+  "tetrazole": "c1nnnn1",
+  "sulfonamide": "S(=O)(=O)N",
+  "sulfone": "S(=O)(=O)[#6]",
+  "phenol": "c[OH]",
+
+  # Coumarin / 4-hydroxycoumarin-like (warfarin/phenprocoumon chemotypes) (PMID 20352297)
+  "coumarin_core": "O=c1oc2ccccc2cc1",
+
+  # Azole heme-ligating nitrogens (type II-like risk; common CYP inhibitors)
+  "imidazole": "c1ncc[nH]1",
+  "triazole": "n1cnnn1",
+
+  # NSAID-like arylacetic/arylpropionic acid patterns (rough proxies)
+  "aryl_acetic_acid": "cC(=O)O",
+  "aryl_propionic_acid": "cCC(=O)O",
+
+  # Highly halogenated aromatic (often increases lipophilicity and can lower phenolic pKa; benzbromarone-like) (PMID 12814975)
+  "aryl_halogen": "c[Cl,Br,I,F]",
+
+  # Large aromatic systems -> π-stacking potential (F114/F476) (PMIDs 20167000, 14768974)
+  "biaryl": "c1cccc(c1)c2ccccc2",
+
+  # Reactive motifs sometimes associated with mechanism-based inhibition (use as weak priors)
+  "terminal_alkyne": "C#C",
+  "thiophene": "c1ccsc1",
+  "furan": "c1ccoc1"
+}, standardize=False)
+```
+
+### 3B) Interpreting motif hits
+- **Strong pro-inhibition priors** (additive signals):
+  - `carboxylic_acid` OR `tetrazole` OR (acidic `sulfonamide`): supports **anion/polar anchoring** typical for many CYP2C9 ligands (PMID **15822186**).
+  - `coumarin_core`: warfarin/phenprocoumon-like inhibitor space (PMID **20352297**).
+  - Many aromatics/biaryls + polar anchor: supports π-stacking + polar interaction (PMIDs **20167000**, **14768974**, **22864238**).
+  - `aryl_halogen` + `phenol` + very high logP: consistent with benzbromarone-like potent inhibition trend (PMIDs **12814975**, **15822186**).
+- **Weak priors**: `terminal_alkyne`, `thiophene`, `furan` (possible time-dependent inhibition risk, but non-specific).
+
+---
+
+## 4) Property heuristics (CYP2C9 bias signals)
+These are coarse but grounded in repeated QSAR/structure discussions emphasizing **lipophilicity, acidity/anion character, and aromatic interactions** (PMIDs **17059170**, **22864238**, **15822186**).
+
+### 4A) Lipophilicity (major driver)
+- If `logp < 1.5` → strong penalty (unlikely to bind strongly) (PMID **17059170**)
+- If `1.5 ≤ logp ≤ 4.5` → strong boost (often “sweet spot”)
+- If `logp > 4.5` → boost, but consider solubility/assay artifacts; still often inhibitory for CYPs.
+
+### 4B) Ionization at pH 7.4 (anion/polar anchoring)
+- If `has_neg == True` (any anionic states at pH 7.4) → boost (consistent with weak-acid bias; Arg108/cationic site concepts) (PMIDs **15822186**, **15579109**, **17915853**)
+- If purely cationic (`has_pos True` and `has_neg False`) → mild penalty (CYP2D6-like bias rather than 2C9)
+- If neutral only → no boost (note: neutrals can still bind tightly; do not zero it out) (PMID **15822186**)
+
+### 4C) Aromaticity / ring character
+- `arom >= 2` → boost (π-stacking / aromatic interaction regions implicated) (PMIDs **20167000**, **14768974**, **22864238**)
+- `has_pah_like True` (≥3 fused aromatic rings) → small boost (more π-surface), but also increases nonspecific binding risk.
+- High `frac_csp3` (>0.6) with low aromaticity (`arom <= 1`) → penalty (often less CYP2C9-like).
+
+### 4D) Size / polarity sanity checks
+- Very small and polar molecules often inhibit weakly:
+  - If `mw < 200` AND `logp < 2` → penalty
+- Very high polarity can reduce binding:
+  - If `tpsa > 120` → penalty
+- Moderate polarity + lipophilicity tends to be compatible:
+  - `tpsa ~ 35–100` and `logp ~ 2–5` → boost
+
+---
+
+## 5) Optional: scaffold similarity (if you maintain a vetted reference library)
+If you have a curated list of **known CYP2C9 inhibitors** with validated SMILES (e.g., sulfaphenazole, diclofenac, warfarin/phenprocoumon, celecoxib, benzbromarone), compute similarity:
+- `sim = compute_similarity(std, reference_smiles=inhibitor_library, fingerprint="morgan", standardize=True)`
+
+Interpretation:
+- If **max Tanimoto ≥ 0.55** to a known inhibitor → strong boost
+- If **0.40–0.55** → moderate boost
+- If **< 0.40** → no change
+
+Rationale: CYP2C9 inhibition is chemotype-dependent; similarity is a strong prior when available (PMIDs **15822186**, **20352297**).
+
+---
+
+## 6) Scoring rubric → calibrated probability (0–100)
+Build a transparent point score, then map to a probability. Use `evaluate_arithmetic` for arithmetic and clamping.
+
+### 6A) Start score
+- `S = 15`  (baseline prior)
+
+### 6B) Add/subtract points
+**Ionization (pH 7.4)**
+- If `has_neg`: `S += 20`
+- If `has_pos and not has_neg`: `S -= 5`
+- If `charge_classes["zwitterion"] > 0`: `S += 5`
+
+**Lipophilicity (logP)** (PMIDs **17059170**, **22864238**)
+- If `logp < 1.5`: `S -= 15`
+- If `1.5 ≤ logp < 2.5`: `S += 5`
+- If `2.5 ≤ logp ≤ 4.5`: `S += 15`
+- If `4.5 < logp ≤ 6.0`: `S += 10`
+- If `logp > 6.0`: `S += 5`
+
+**Aromatic / rings** (PMIDs **20167000**, **14768974**, **22864238**)
+- If `arom == 0`: `S -= 10`
+- If `arom == 1`: `S += 0`
+- If `arom == 2`: `S += 8`
+- If `arom >= 3`: `S += 12`
+- If `rings_total >= 3`: `S += 3`
+- If `has_pah_like`: `S += 3`
+
+**Polarity / H-bonding**
+- If `tpsa > 120`: `S -= 10`
+- If `35 ≤ tpsa ≤ 100`: `S += 5`
+- If `hba >= 4`: `S += 3`
+- If `1 ≤ hbd ≤ 2`: `S += 3`
+- If `hbd >= 3`: `S -= 3`
+
+**Size / flexibility**
+- If `mw < 200`: `S -= 8`
+- If `250 ≤ mw ≤ 500`: `S += 5`
+- If `mw > 650`: `S -= 5`
+- If `rb > 10`: `S -= 3`  (too flexible often weakens tight binding)
+
+**Motif boosts (substructure hits)**
+- If `hits["carboxylic_acid"].present`: `S += 10`
+- If `hits["tetrazole"].present`: `S += 10`
+- If `hits["sulfonamide"].present`: `S += 8`
+- If `hits["coumarin_core"].present`: `S += 10` (warfarin-like space; probe dependence noted) (PMIDs **20352297**, **34272715**)
+- If `hits["imidazole"].present or hits["triazole"].present`: `S += 8` (possible heme ligation risk)
+- If `hits["phenol"].present and hits["aryl_halogen"].count >= 2 and logp > 4`: `S += 10` (benzbromarone-like potent inhibition trend) (PMID **12814975**)
+- If `hits["biaryl"].present`: `S += 5`
+
+**Similarity (optional)**
+- If `max_sim ≥ 0.55`: `S += 20`
+- Else if `0.40 ≤ max_sim < 0.55`: `S += 10`
+
+### 6C) Convert score to probability
+1. Clamp the score: `S = max(0, min(100, S))`
+2. Use **S directly as the probability** (simple, monotonic calibration).
+
+If you want slightly more conservative calibration (to reduce false positives), apply:
+- `P = round(0.85*S + 5)` then clamp 0–100.
+
+---
+
+## 7) Calibration anchors (sanity-check your outputs)
+Use these literature examples as “anchors” for your probability scale:
+- **Very high (80–100):** benzbromarone / benzbromarone-like benzofuran-benzoyl phenols with strong anion character and high lipophilicity; reported Ki can be ~10 nM down to ~1 nM for potent analogs (PMIDs **12814975**, **15822186**).
+- **High (65–85):** classic strong inhibitors like sulfaphenazole (Ki ~0.2 µM in one dataset) and other aromatic + polar-anchor chemotypes (PMID **17059170**).
+- **Moderate (40–65):** many NSAID-like weak acids and aromatic drugs that are inhibitors but not ultra-potent; probe dependence may shift apparent potency (PMIDs **15822186**, **34272715**).
+- **Low (0–30):** small, polar, mostly aliphatic molecules with low logP and no obvious polar anchor for Arg108/cationic site and limited aromatic surface (PMIDs **17059170**, **15822186**).
+
+---
+
+## 8) Final output constraint (must-follow)
+After computing `P`, the agent must output **only**:
+- a **single integer** between **0 and 100**
+- with **no additional text**.
+{% endset %}
+{% include "tdc/base.jinja2" %}

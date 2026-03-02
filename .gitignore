@@ -23,6 +23,11 @@
 !/DataPrepare/TDC_train_prompts_label_scaffold/*.md
 !/DataPrepare/TDC_train_prompts_label_scaffold/*.json
 
+/DataPrepare/TDC_valid_prompts_label_scaffold/*
+!/DataPrepare/TDC_valid_prompts_label_scaffold/*.py
+!/DataPrepare/TDC_valid_prompts_label_scaffold/*.md
+!/DataPrepare/TDC_valid_prompts_label_scaffold/*.json
+
 /DataPrepare/TDC_test_prompts_label_scaffold/*
 !/DataPrepare/TDC_test_prompts_label_scaffold/*.py
 !/DataPrepare/TDC_test_prompts_label_scaffold/*.md
@@ -48,6 +53,9 @@
 !/DataPrepare/Slime_RL_data/**/*.py
 !/DataPrepare/Slime_RL_data/**/*.md
 !/DataPrepare/Slime_RL_data/**/*.gitkeep
+
+/train/RL/Tinker/rollouts/**
+/train/RL/Tinker/Josh_notebooks/**
 
 /wandb
 /unsloth_compiled_cache

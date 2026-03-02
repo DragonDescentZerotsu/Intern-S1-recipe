@@ -24,7 +24,7 @@ from transformers import AutoTokenizer
 
 from utils.TDC_answer_parser import extract_answer, parse_answer
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '6,7'  # TODO: device GPU #
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'  # TODO: device GPU #
 
 
 # Setup logging
@@ -36,7 +36,7 @@ def get_args():
     parser = argparse.ArgumentParser(description='Test TDC tasks with vLLM using preprocessed CoT data (F1 Score)')
 
     parser.add_argument('--model-path', type=str,
-                        default='openai/gpt-oss-120b',
+                        default='openai/gpt-oss-20b',
                         # zai-org/GLM-4.7-Flash
                         # internlm/Intern-S1-mini
                         # openai/gpt-oss-120b
@@ -55,7 +55,7 @@ def get_args():
                                  'TrialOutcome', 'PeptideMHC', 'all'],
                         help='Task groups to run')
     parser.add_argument('--max-model-len', type=int, default=1024 * 30, help='Max model length')
-    parser.add_argument('--tensor-parallel-size', type=int, default=2, help='Tensor parallel size')
+    parser.add_argument('--tensor-parallel-size', type=int, default=1, help='Tensor parallel size')
     parser.add_argument('--gpu-memory-utilization', type=float, default=0.92, help='GPU memory utilization')
     parser.add_argument('--max-num-seqs', type=int, default=256, help='Max number of sequences')
     
@@ -65,7 +65,7 @@ def get_args():
 
     parser.add_argument('--strip-smiles-tags', action='store_false', help='Remove <SMILES> and </SMILES> from prompts before inference')
     parser.add_argument('--log-file', action='store_false', help='Enable logging to file')
-    parser.add_argument('--log-file-name', type=str, default="no_Tools_gpt-oss-120b_{model_name}_{t_stamp}_4.log", help='Log file name pattern')  # TODO: log file name 
+    parser.add_argument('--log-file-name', type=str, default="no_Tools_gpt-oss-20b_{model_name}_{t_stamp}_test_4.log", help='Log file name pattern')  # TODO: log file name 
 
     args = parser.parse_args()
     return args

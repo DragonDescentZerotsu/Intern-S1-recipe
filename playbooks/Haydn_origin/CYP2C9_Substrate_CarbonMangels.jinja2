@@ -1,0 +1,201 @@
+{% set objective = "Please predict the probability of the given molecule being a CYP2C9 substrate." -%}
+{% set prompt_playbook -%}
+# Playbook: Predicting CYP2C9 substrate likelihood from a SMILES (output 0–100)
+
+## 0) Goal and definition
+- **Goal:** Given a molecule’s **SMILES**, estimate probability it is a **CYP2C9 substrate** (i.e., is metabolized by CYP2C9).
+- CYP2C9 substrates are often **aromatic, lipophilic, and neutral to weakly acidic**, frequently containing an **anionizable group** and H-bonding features (review/modeling: **PMID:14768974**, **PMID:22364953**).
+- CYP2C9 binding commonly involves **hydrophobic + π-stacking interactions** with aromatic residues (e.g., Phe114/Phe476) (crystal structure/mutagenesis: **PMID:12861225**, **PMID:12464247**) and often features an **acidic/anionic pharmacophore element** in many classic substrates (ligand-based pharmacophore/SAR: **PMID:7654690**).
+
+## 1) Standardize input
+1. `std = standardize_smiles(smiles, remove_salts=True, canonical_tautomer=True, neutralize=False)`
+2. Use `std` for all downstream steps.
+
+## 2) Compute core properties (fast, always do)
+Run:
+- `compute_descriptors(std, standardize=False, descriptors=[
+  "masses","logp","surface_shape_props","hydrogen_bonding",
+  "atom_counts","ring_counts","num_rotatable_bonds","formal_charge"
+])`
+- `classify_ionization(std, ph=7.4, standardize=False)`
+- `analyze_ring_systems(std, standardize=False)`
+- `extract_pharmacophore_features(std, standardize=False)`
+
+**Why these matter (literature grounding):**
+- Lipophilicity/partitioning + ionization (pKa/logD) + HBD are repeatedly important in CYP2C9 substrate binding QSARs (**PMID:11996013**, **PMID:15141126**, **PMID:10445400**).
+- Many CYP2C9 substrates are **weak acids** (often pKa ~4–6; phenytoin is a notable higher-pKa exception) (**PMID:14768974**, **PMID:9574814**).
+
+## 3) Substructure screening: detect CYP2C9-typical motifs
+Use `match_substructure` with a focused SMARTS panel.
+
+### 3.1 Acidic/anionizable motifs (strong positives)
+CYP2C9 classic substrates frequently carry an anionizable group (carboxylate, tetrazole, enolate-like systems, imides, sulfonylureas) (**PMID:7654690**).
+
+Suggested SMARTS (tune as needed):
+```json
+{
+  "carboxylic_acid": "C(=O)[O;H1,-]",
+  "tetrazole": "c1nnnn1",
+  "sulfonamide": "S(=O)(=O)N",
+  "sulfonylurea_like": "S(=O)(=O)N[C](=O)N",
+  "imide_like": "C(=O)N(C(=O))",
+  "enolizable_1_3_dicarbonyl": "C(=O)C=C(O)",
+  "phenol": "c[OH]",
+  "oxicam_enol_like": "O=C1C(=O)N(C)S(=O)(=O)N1" 
+}
+```
+Interpretation:
+- Presence of **carboxylic acid** or **tetrazole** is often a strong positive (common among NSAIDs/ARBs; SAR emphasizes anionic forms for recognition in some series: **PMID:7654690**).
+- Presence of **sulfonylurea-like** motifs supports similarity to tolbutamide-class substrates (**PMID:14768974**, **PMID:9574814**).
+
+### 3.2 Aromatic/π systems (positive)
+Aromatic rings often contribute via π-stacking in the active site (Phe114/Phe476) (structure/mutagenesis: **PMID:12861225**, **PMID:12464247**).
+SMARTS examples:
+```json
+{
+  "phenyl_or_aryl": "a1aaaaa1",
+  "diaryl": "a1aaaaa1.*a1aaaaa1"
+}
+```
+
+### 3.3 Heme-ligating heteroaromatics (often negative for “substrate”, can be inhibitor-like)
+Strong coordinating heterocycles (imidazole/triazole-like) frequently indicate **inhibitors** rather than efficient substrates; treat as a **penalty** not a hard rule.
+SMARTS examples:
+```json
+{
+  "imidazole": "c1ncc[nH]1",
+  "triazole": "c1nncn1",
+  "pyridine": "n1ccccc1"
+}
+```
+
+## 4) Similarity-to-known-substrates check (high value signal)
+Use `compute_similarity` (Morgan fingerprint, standardize=True) against a **reference panel** of well-known CYP2C9 substrates.
+
+### 4.1 Suggested reference substrate SMILES (seed list)
+Use canonical/typical SMILES; adjust if you maintain your own curated list.
+- Diclofenac: `O=C(O)Cc1ccccc1Nc2c(Cl)cccc2Cl`
+- Ibuprofen: `CC(C)Cc1ccc(cc1)C(C)C(=O)O`
+- Flurbiprofen: `CC(C)Cc1ccc(cc1)C(C)C(=O)O)c1ccc(F)cc1` (may need correction; keep a curated set)
+- Warfarin: `CC(=O)CC(c1ccccc1)Oc2cc(O)ccc2C(=O)O` (tautomer-dependent)
+- Tolbutamide: `CCCCNC(=O)NS(=O)(=O)c1ccc(C)cc1`
+- Phenytoin: `O=C1NC(=O)N(C1)c2ccccc2c3ccccc3`
+- Tienilic acid: `O=C(O)c1ccc(S(=O)(=O)C2=CC=CS2)cc1Cl` (approx.)
+
+**How to use similarity:**
+- If **Tanimoto ≥ 0.60** to any reference: strong positive.
+- If **0.45–0.60**: moderate positive.
+- If **<0.30** to all: no boost (stay property-based).
+
+(References: substrate sets and SAR/recognition described across CYP2C9 models/QSARs: **PMID:7654690**, **PMID:14768974**, **PMID:11996013**.)
+
+## 5) Property heuristics: what “looks like” a CYP2C9 substrate
+These are *rules of thumb* derived from common CYP2C9 substrate space in modeling/QSAR and structural literature.
+
+### 5.1 Ionization at pH 7.4 (very important)
+From `classify_ionization`:
+- **Has negative states** (e.g., net charge includes −1): strong positive (weak-acid bias) (**PMID:14768974**, **PMID:9574814**, SAR emphasis in certain series: **PMID:7654690**).
+- **Only positive states** (amines; net charge +1 dominant): usually negative for CYP2C9 (more consistent with CYP2D6-like substrate space), but not impossible.
+
+### 5.2 Lipophilicity and size
+From `compute_descriptors`:
+- **LogP ~2–5** often supports CYP2C9 binding (lipophilicity repeatedly important in QSARs: **PMID:11996013**, **PMID:15141126**).
+- **MW ~200–500** is common drug-like space; extremely small polar molecules are less likely.
+
+### 5.3 Aromaticity / ring systems
+From `ring_counts` / `analyze_ring_systems`:
+- 1–3 **aromatic rings** (often phenyl) increases likelihood (π-stacking pocket: **PMID:12861225**, **PMID:12464247**).
+- Very large polyaromatic (PAH-like fused ≥3) can bind but is less “typical drug-like”; treat cautiously.
+
+### 5.4 H-bonding
+From `hydrogen_bonding` + `extract_pharmacophore_features`:
+- CYP2C9 substrate models commonly include at least one **H-bond acceptor** and limited HBD count; HBD appears in binding QSARs (**PMID:11996013**, **PMID:15141126**, **PMID:14768974**).
+- Too many HBD/HBA plus very high TPSA can reduce permeability and access to hydrophobic active site.
+
+## 6) Scoring rubric → calibrated probability (0–100)
+Use a transparent points system and then clamp to [0,100]. This is designed to be stable and monotonic; calibrate later with internal validation.
+
+### 6.1 Start from a base rate
+- `score = 15`
+
+### 6.2 Add/subtract evidence (recommended weights)
+**A) Ionization / acidic character (largest signal)**
+- If `classify_ionization.has_negative_states == True`: `+25`
+- If representative `net_charge == -1`: additional `+10`
+- If `has_positive_states == True` AND `has_negative_states == False`: `-20`
+- If `is_ambiguous == True`: `-5` (uncertainty penalty)
+
+**B) Acidic/anionizable motifs (from substructure matches)**
+- carboxylic acid present: `+20`
+- tetrazole present: `+18`
+- sulfonylurea-like present: `+15`
+- imide-like present: `+10`
+- phenol present (as sole acidity): `+5`
+
+**C) Aromaticity / ring pattern**
+- aromatic_rings 1–3: `+12`
+- aromatic_rings == 0: `-10`
+- has_pah_like == True: `-5`
+
+**D) Lipophilicity (LogP)**
+- 2.0 ≤ logP ≤ 5.0: `+10`
+- logP < 1.0: `-10`
+- logP > 6.0: `-5`
+
+**E) Size & polarity**
+- 200 ≤ MW ≤ 500: `+8`
+- MW < 150: `-8`
+- MW > 600: `-15`
+- 20 ≤ TPSA ≤ 90: `+6`
+- TPSA > 120: `-15`
+
+**F) H-bond donors and flexibility**
+- HBD 0–2: `+4`
+- HBD ≥ 4: `-10`
+- rotatable_bonds 2–8: `+3`
+- rotatable_bonds > 12: `-8`
+
+**G) “Inhibitor-like” heme ligators (soft negative)**
+- imidazole OR triazole present: `-15`
+- pyridine present (and no acidity): `-8`
+
+**H) Similarity boost (best single yes/no signal when available)**
+Using `compute_similarity` vs curated CYP2C9-substrate references:
+- max Tanimoto ≥ 0.60: `+30`
+- 0.45–0.60: `+18`
+- 0.30–0.45: `+8`
+- < 0.30: `+0`
+
+### 6.3 Convert score to probability
+- `prob = clamp(round(score), 0, 100)`
+
+If you prefer a smoother calibration curve:
+- `prob = round( 100 / (1 + exp(-(score - 50)/10)) )` and clamp [0,100].
+(Use `evaluate_arithmetic` for the math.)
+
+## 7) Guardrails / applicability domain (AD)
+Because CYP2C9 substrate space is broad, apply AD checks (modeling best practice; similarity-based AD used in substrate models: **PMID:22364953**):
+- If **no aromatic rings** AND **TPSA > 120** AND **logP < 1**, force `prob ≤ 20`.
+- If **max similarity to reference substrates < 0.25** AND MW > 650, treat prediction as low-confidence; cap at `prob ≤ 60` unless strong acidity + aromaticity is present.
+- If molecule is **permanently charged** (formal charge ±2 or higher) at pH 7.4, usually cap `prob ≤ 30`.
+
+## 8) Quick mental patterns (SMILES “looks like”)
+Strong CYP2C9-substrate patterns commonly resemble:
+- **Aryl-(CH2/CH)-CO2H** (NSAID-like arylacetic/arylpropionic acids)
+- **Diaryl + acid** (diclofenac-like)
+- **Sulfonylurea with a para-substituted phenyl** (tolbutamide-like)
+- **Hydantoin/imide with two phenyl rings** (phenytoin-like)
+- **Coumarin-like aromatic lactone/ketone motifs** (warfarin-like)
+
+These align with repeated emphasis on **weak-acid character + aromatic/π + H-bonding** in CYP2C9 binding/substrate models (**PMID:7654690**, **PMID:14768974**, **PMID:12861225**, **PMID:12464247**).
+
+---
+
+## Minimal implementation checklist (always do)
+1. Standardize SMILES.
+2. Compute descriptors + ionization.
+3. Screen for acid/anionizable motifs and aromatic rings.
+4. Similarity to curated CYP2C9 substrates.
+5. Apply scoring rubric → output **integer 0–100 only**.
+{% endset %}
+{% include "tdc/base.jinja2" %}

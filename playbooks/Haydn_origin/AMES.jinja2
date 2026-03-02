@@ -1,0 +1,177 @@
+{% set objective = "Please predict the probability of the given molecule being mutagenic." -%}
+{% set prompt_playbook -%}
+# Playbook: Predict AMES (bacterial reverse mutation) mutagenicity from a SMILES
+
+## 0) Output constraint
+- Your **final output must be a single integer 0–100** representing a **calibrated probability** the molecule is **AMES-positive**.
+- **Do not output any other text.**
+
+## 1) High-level intuition (what you’re looking for in SMILES)
+AMES positives are enriched for:
+1) **DNA-reactive electrophiles** (direct-acting alkylators) such as **epoxides** and **aziridines** (Ames positives reported for epoxides/aziridines; e.g., epoxides: PMID 6764475; aziridines/epoxides listed as Ames-positive: PMID 8790633).
+2) **Metabolically activated “pro-electrophiles”** such as **aromatic amines** (nitrenium ion pathway; PMID 24389210) and **nitroarenes/nitroheteroarenes** (nitroreduction → hydroxylamine derivatives; bacterial O-acetyltransferase is rate-limiting; PMID 2215547).
+3) **Planar polyaromatic systems** (intercalation/activation contexts) and **multiple fused aromatic rings**, especially when combined with nitro substituents (nitro-PAH potency; fused-ring indicator; PMID 1995902; also public datasets enriched with PAH/nitro motifs; PMID 24389210).
+
+Important negative evidence:
+- **Not all historically “alerted” groups are truly alerting**: simple **aromatic N-oxides** are often **not** a general Ames DNA-reactive alert; only certain subclasses appear enriched (PMID 30189015).
+- **No-alert does not mean non-mutagenic**; even with a curated alert set, a substantial fraction remain positive when no alert fires (≈21–27%; PMID 22918548).
+
+## 2) Standard workflow (always do this)
+### Step A — Standardize input
+1. `standardize_smiles(smiles, remove_salts=True, canonical_tautomer=True, neutralize=False)`
+   - Work from the standardized SMILES for all subsequent steps.
+
+### Step B — Basic chemical profile (helps modulate risk)
+2. `compute_descriptors(..., descriptors=["masses","atom_counts","ring_counts","logp","surface_shape_props","hydrogen_bonding","num_amide_bonds","formal_charge"], standardize=True)`
+3. `classify_ionization(..., ph=7.4, standardize=True)`
+4. `analyze_ring_systems(..., standardize=True)`
+5. `get_functional_groups(..., standardize=True)`
+
+### Step C — Structural alerts (2 layers)
+6. **Generic alert catalogs** (broad net):
+   - `score_structural_alerts(smiles, alert_library="all", standardize=True)`
+   - Treat any alert hit as evidence of increased probability, but **don’t over-trust** (expert systems can have low sensitivity in some chemical spaces; PMID 24389210; PMID 22918548).
+
+7. **Targeted Ames-toxicophore screen** (you control these SMARTS):
+   - `match_substructure(smiles, patterns=AMES_SMARTS, standardize=True)`
+
+## 3) AMES_SMARTS: substructures to detect explicitly
+Use a curated set of SMARTS patterns. Below are *starting points*; refine/expand over time.
+
+### 3.1 Strong direct-acting electrophiles (very high risk)
+These often push probability high even without other context.
+- **Epoxide (oxirane):** `"C1OC1"` (epoxide mutagenicity in Salmonella reported; PMID 6764475; epoxide-containing chemicals listed Ames-positive; PMID 8790633)
+- **Aziridine:** `"C1NC1"` (examples Ames-positive; PMID 8790633)
+- **Aziridinium/activated aziridines:** include substituted/aryl-aziridines as separate patterns.
+- **Nitrogen mustard (bis(2-chloroethyl)amine motif):** `"N(CCCl)CCCl"` (and variants with Br, sulfonate leaving groups)
+- **Alkyl halides (primary/benzylic/allylic):** start with `"[CX4;H2,H1,H0][Cl,Br,I]"` and a **benzylic** variant `"c[CH2][Cl,Br,I]"`
+- **Acyl halides:** `"C(=O)[Cl,Br,I]"`
+- **Sulfonate esters (mesylate/tosylate-like leaving groups):** `"OS(=O)(=O)"` with alkyl attached
+
+### 3.2 Pro-electrophiles requiring metabolic/bacterial activation (high risk)
+- **Aromatic nitro:** `"[$([N+](=O)[O-]),$(N(=O)=O)]c"`  
+  - Nitroarenes are frequently strong bacterial mutagens; activation via reduction → hydroxylamine intermediates; bacterial O-acetyltransferase dependence; PMID 2215547.
+- **Nitroso / N-nitroso:**
+  - Nitroso: `"N=O"` (use additional patterns to distinguish C-nitroso vs N-nitroso)
+  - N-nitroso: `"N(N=O)"`
+- **Aromatic amine (primary/secondary):**
+  - Primary aniline-like: `"c[NH2]"`
+  - Secondary aryl amine: `"c[NH][#6]"`
+  - Aromatic amines are metabolically activated to nitrenium ions; PMID 24389210.
+- **Azo bond (possible release of aromatic amines):** `"N=N"`  
+  - Many azo dyes require activation; azo reduction can generate aromatic amines and show S9 dependence; PMID 828073; PMID 3889630; PMID 7043259.
+- **Hydrazines/arylhydrazines:** `"NN"` with aryl attachment patterns (commonly present among alerting rules in Ames model comparisons; PMID 12110629).
+
+### 3.3 “Softer” electrophiles / reactivity motifs (moderate risk)
+- **Michael acceptor (α,β-unsaturated carbonyl):** `"C=CC(=O)"` and variants for amides/esters/nitriles  
+  - Michael acceptor rationale for mutagenicity discussed broadly; PMID 22147565.
+- **Aldehyde:** `"[CH](=O)"` (aldehyde alert discussed as electrophile; PMID 22147565; aldehydes highlighted in QSAR alerts; PMID 20122717)
+- **Quinone / quinone-like:** implement patterns for `"O=c1ccc(=O)"` and related; quinone + multiple aromatics appears in mined alerts in TA98 domain; PMID 12376997.
+
+### 3.4 Patterns that should *not* automatically drive risk upward
+- **Simple aromatic N-oxide (pyridine N-oxide-like):** treat as *neutral-to-slightly-decreasing* unless it matches specific enriched subclasses (PMID 30189015).
+
+## 4) Context modifiers (raise or lower probability)
+Apply these after alert detection.
+
+### 4.1 Polycyclic aromaticity / planarity (raises)
+Use `analyze_ring_systems` + ring descriptors:
+- If `has_pah_like == true` (≥3 fused aromatic rings): increase risk, especially with nitro/amine substituents (nitro-PAH enrichment; PMID 1995902).
+
+### 4.2 Electron-withdrawing groups near aromatic amines (can reduce)
+Aromatic amines are high-risk, but activity can drop when the ring bearing the amine has strong EWGs (rule refinement described for “specific aromatic amine” toxicophore; PMID 24389210). In SMILES, look for amine on a ring that also bears:
+- `C(F)(F)F` (trifluoromethyl)
+- `S(=O)(=O)` (sulfonamide/sulfonyl)
+- `C(=O)O` (carboxylic acid/esters)  
+Apply a **mitigation** if these are directly on the same aromatic ring as the amine.
+
+### 4.3 Strong acids / high polarity (can reduce *observed* mutagenicity)
+Extremely polar/ionic compounds may have reduced bacterial uptake (general physicochemical constraint; PMID 22147565). Use:
+- `classify_ionization` (multiple charged states; high net charge magnitude)
+- TPSA (very high)
+- Presence of sulfonic/sulfamic acids (reported as decreasing modifiers in nitroaromatic subclasses; PMID 12376997)
+
+### 4.4 Lipophilicity “sweet spot” (contextual)
+For certain mutagenic domains like nitro-PAHs, hydrophobicity affects potency (bilinear logP relationship, optimum around ~5 in one nitroarene QSAR; PMID 1995902). As a general heuristic:
+- Very low logP + high polarity → may reduce observed Ames signal.
+- Moderate logP (roughly 1–4) → may increase likelihood of reaching DNA.
+- Extremely high logP with very low solubility → could reduce apparent activity (assay-limited), but don’t rely on this to dismiss strong alerts.
+
+## 5) Similarity/read-across (optional but powerful)
+If you maintain internal reference sets:
+- **ReferenceMut+**: canonical SMILES of known Ames positives
+- **ReferenceMut−**: canonical SMILES of known Ames negatives
+
+Run:
+- `compute_similarity(query, ReferenceMut+, fingerprint="morgan", standardize=True)`
+- `compute_similarity(query, ReferenceMut-, fingerprint="morgan", standardize=True)`
+
+Heuristic:
+- If top similarity to Mut+ ≥ 0.6 and exceeds Mut− similarities by ≥0.1, increase probability.
+- If top similarity to Mut− ≥ 0.6 and exceeds Mut+ by ≥0.1, decrease probability.
+
+This mirrors real-world chemical-space confidence practices (model AD based on similarity; PMID 27762155).
+
+## 6) Scoring to a calibrated probability (0–100)
+### 6.1 Start from a baseline prior
+Use a conservative prior reflecting that **no-alert compounds still have non-trivial positivity**:
+- Set `P0 = 25`.
+  - Baselines around ~22–27% are seen in large Ames corpora and “no alert” residues (e.g., 22.5% across 35k compounds; PMID 30189015; and ~26–27% positives when no selected alert fires; PMID 22918548).
+
+### 6.2 Additive points model (simple, robust)
+Compute `score = P0 + Σ(points)` then clamp to [0,100].
+
+#### A) Strong direct-acting electrophiles
+- Epoxide present: `+40`
+- Aziridine present: `+45`
+- Nitrogen mustard motif: `+50`
+- Acyl halide: `+35`
+- Primary/benzylic alkyl halide: `+25`
+- Multiple strong electrophiles (2+ from this group): additional `+15`
+
+#### B) High-risk pro-electrophiles
+- Aromatic nitro: `+35` (nitroarenes frequently potent; PMID 2215547)
+- N-nitroso: `+40`
+- Nitroso (non-nitrosamine): `+25`
+- Primary aromatic amine: `+25` (activation to nitrenium; PMID 24389210)
+- Azo bond: `+15` (possible release of aromatic amines; S9 dependence shown; PMID 828073; PMID 7043259)
+
+#### C) Moderate-risk reactivity motifs
+- Michael acceptor (α,β-unsaturated carbonyl/amide/ester/nitrile): `+15` (electrophilic rationale; PMID 22147565)
+- Aldehyde: `+10` (electrophile/QSAR alert; PMID 20122717)
+- Quinone-like + aromatic system: `+10` (enriched oxygen-containing alerts in TA98 mining; PMID 12376997)
+
+#### D) Ring-system potentiation
+- `has_pah_like == true`: `+15`
+- `largest_aromatic_system` large (e.g., ≥3 fused rings): `+10` extra if also aromatic nitro or aromatic amine is present.
+
+#### E) Mitigations (subtract points; never below 0 after clamping)
+- Aromatic amine *with strong EWG on same ring* (CF3, sulfonyl/sulfonamide, carboxyl/ester): `−10` (refinement rule; PMID 24389210)
+- Sulfonic/sulfamic acid present: `−10` (decreasing modifier in nitroaromatic subclasses; PMID 12376997)
+- Highly ionized at pH 7.4 (representative net charge magnitude ≥2): `−10` (uptake constraint concept; PMID 22147565)
+- Simple aromatic N-oxide only (no other alerts): `−10` (general N-oxide alert not supported; PMID 30189015)
+
+### 6.3 Post-processing: map points to probability and calibrate behavior
+After computing `score`:
+- Clamp: `P = min(100, max(0, round(score)))`
+- If **no alerts** from both `score_structural_alerts` and `match_substructure` AND molecule is small/drug-like (MW 150–500, logP 1–3): keep near prior **20–35**, not near zero (no-alert residual positives; PMID 22918548).
+- If **multiple independent high-risk alerts** (e.g., epoxide + aromatic nitro, or aziridine + alkyl halide): force **P ≥ 85**.
+
+## 7) Practical decision checklist (what to “notice” in SMILES quickly)
+1. Does SMILES contain **3-membered heterocycles** (`C1OC1`, `C1NC1`)?
+2. Does it contain **good leaving groups** adjacent to sp3 carbons (alkyl-Cl/Br/I; sulfonate esters)?
+3. Does it contain **Ar-NO2**, **N=O**, **N(N=O)**?
+4. Does it contain **aniline-like Ar–NH2/Ar–NH–**?
+5. Does it contain **N=N** and aromatic amine-like rings?
+6. Is it **highly polyaromatic/fused**?
+7. Any **mitigators**: sulfonic acids, strong EWGs near aromatic amines, very high charge/polarity?
+
+## 8) Always remember
+- Structural alerts are useful but incomplete; absence of an alert does not guarantee a negative (PMID 22918548; PMID 24389210).
+- Some historical alerts (e.g., generic aromatic N-oxide) may over-predict and should be down-weighted (PMID 30189015).
+
+---
+
+**Implementation note:** Keep the scoring deterministic so you can output only the final integer probability.
+{% endset %}
+{% include "tdc/base.jinja2" %}
