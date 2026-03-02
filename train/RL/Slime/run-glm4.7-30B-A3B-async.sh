@@ -36,7 +36,7 @@ source "${SCRIPT_DIR}/glm4.7-30B-A3B.sh"  # 我的配置路径
 CKPT_ARGS=(
    --hf-checkpoint checkpoints/megatron/hf_version/GLM-4.7-Flash #checkpoints/megatron/hf_version/GLM-4.7-Flash
    --ref-load checkpoints/megatron/megatron_version/GLM-4.7-Flash
-   --save checkpoints/megatron/megatron_version/GLM-4.7-Flash-RL
+   --save checkpoints/megatron/megatron_version/GLM-4.7-Flash-RL-no-tool-reward-w-length-penalty # TODO: change the name
    --save-interval 231  # 半个 epoch save 一次
 )
 
@@ -208,7 +208,7 @@ ray job submit --address="http://127.0.0.1:8265" \
    --actor-num-nodes 1 \
    --actor-num-gpus-per-node 2 \
    --rollout-num-gpus 6 \
-   --save-debug-rollout-data "data-partial-rollout-new-reward-sbatch.pt" \
+   --save-debug-rollout-data "data-partial-rollout-no-tool-reward-w-length-penalty-sbatch.pt" \  # TODO: change the name
    ${MODEL_ARGS[@]} \
    ${CKPT_ARGS[@]} \
    ${ROLLOUT_ARGS[@]} \
