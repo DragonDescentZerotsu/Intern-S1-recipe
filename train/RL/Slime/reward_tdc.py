@@ -91,9 +91,17 @@ async def reward_func(args, sample: Sample, **kwargs) -> float:
     tool_reward = 0.0
     if sample.metadata is not None:
         num_tool_calls = sample.metadata.get("num_tool_calls", 0)
-        tool_reward = 0.07 * np.tanh(0.4 * num_tool_calls)
+        tool_reward = 0.07 * np.tanh(1 * num_tool_calls)
 
-    total_reward = ans_reward + format_reward + ans_reward * tool_reward
+    response_length = getattr(sample, 'response_length', 0)
+    if response_length <= 4000:
+        length_penalty = 0.0
+    elif response_length >= 6000:
+        length_penalty = -1.0
+    else:
+        length_penalty = - (response_length - 4000) / 2000.0
+
+    total_reward = ans_reward + format_reward + ans_reward * tool_reward + length_penalty
     
     # Store individual components in metadata for wandb logging
     if sample.metadata is None:
@@ -101,6 +109,7 @@ async def reward_func(args, sample: Sample, **kwargs) -> float:
     sample.metadata["ans_reward"] = ans_reward
     sample.metadata["format_reward"] = format_reward
     sample.metadata["tool_reward"] = ans_reward * tool_reward
+    sample.metadata["length_penalty"] = length_penalty
     sample.metadata["total_reward"] = total_reward
 
     logger.debug(
