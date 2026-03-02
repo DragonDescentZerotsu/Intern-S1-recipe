@@ -6,6 +6,7 @@ import random
 import time
 import wandb
 import sys
+import math
 from config import cfg, TINKER_TO_HF, EvalConfig, PROJECT_ROOT
 sys.path.append(str(PROJECT_ROOT))  # to import utils and tools
 
@@ -58,7 +59,7 @@ def main():
     random.shuffle(all_samples)
     
     # 计算总共需要跑多少个 batch (Calculate the total number of batches to run)
-    n_batches_per_epoch = len(all_samples) // cfg.batch_size
+    n_batches_per_epoch = math.ceil(len(all_samples) / cfg.batch_size)
     n_batches = n_batches_per_epoch * cfg.epochs
     logger.info(f"Batches: {n_batches}, Samples: {len(all_samples)}")
 
@@ -125,7 +126,7 @@ def main():
         # ── SAMPLER SETUP (设定当前周期的采样器权重) ─────────────────────────────────────
         t_sampler_start = time.time()
         # 切片截出本批次的样本数据 (Slice the sample data for this batch)
-        batch = all_samples[bi * cfg.batch_size : (bi + 1) * cfg.batch_size]
+        batch = all_samples[bi_in_epoch * cfg.batch_size : (bi_in_epoch + 1) * cfg.batch_size]
         
         # 将训练客户端最新的权重落盘，从而交给采样器推理 
         # (Save the latest weights from the training client to disk to hand them over to the sampler for inference)
