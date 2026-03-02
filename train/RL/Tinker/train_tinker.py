@@ -55,7 +55,7 @@ def main():
 
     # 加载和打乱 TDC 训练数据集 (Load and shuffle the TDC training dataset)
     random.seed(cfg.data_seed)
-    all_samples = load_train_data(cfg.data_dir, cfg.exclude_tasks)
+    all_samples = load_train_data(cfg.data_dir, cfg.exclude_tasks, getattr(cfg, "task", None))
     random.shuffle(all_samples)
     
     # 计算总共需要跑多少个 batch (Calculate the total number of batches to run)

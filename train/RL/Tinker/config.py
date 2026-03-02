@@ -70,6 +70,16 @@ EXCLUDED_TASKS = (
         'MHC2_IEDB_Jensen'  # 26856
     )
 
+save_every_dict = {
+    "BBB_Martins": 44,
+    "DILI": 10,
+}
+
+eval_every_dict = {
+    "BBB_Martins": 11,
+    "DILI": 5,
+}
+
 @dataclass
 class TrainConfig:
     model_name: str = "openai/gpt-oss-20b"
@@ -80,8 +90,8 @@ class TrainConfig:
     max_tokens: int = 16384
     max_turns: int = 40
     format_bonus: float = 0
-    save_every: int = 44
-    eval_every: int = 11
+    save_every: int = save_every_dict['DILI']
+    eval_every: int = eval_every_dict['DILI']
     eval_max_samples: int = 1000
     eval_temperature: float = 1
     eval_n_samples: int = 1
@@ -92,6 +102,7 @@ class TrainConfig:
     wandb_name: Optional[str] = "Naive GRPO DILI 3 epochs"
     data_dir: Path = PROJECT_ROOT / "DataPrepare/TDC_train_prompts_label_scaffold"
     log_path: str = PROJECT_ROOT / "logs/tinker/DILI/3-epochs-naive-grpo"
+    task: Optional[str] = DILI # None
     exclude_tasks: tuple = EXCLUDED_TASKS
     resume_from: Optional[str] = None # "tinker://be372b79-3da0-589d-b696-ebb65c3a86ec:train:0/weights/step_000470"
     resume_step: int = 470

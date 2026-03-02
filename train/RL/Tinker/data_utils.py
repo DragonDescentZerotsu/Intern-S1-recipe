@@ -6,14 +6,16 @@ from config import PROJECT_ROOT, EvalConfig
 
 logger = logging.getLogger(__name__)
 
-def load_train_data(data_dir: Path, exclude: tuple) -> list[dict]:
+def load_train_data(data_dir: Path, exclude: tuple, task: str | None = None) -> list[dict]:
     if not data_dir.exists():
         data_dir = PROJECT_ROOT / "DataPrepare" / "TDC_train_prompts_label_scaffold"
     if not data_dir.exists():
         raise FileNotFoundError(f"No data dir found at {data_dir}")
     samples = []
     for fp in sorted(data_dir.glob("*.jsonl")):
-        if fp.stem in exclude: continue
+        if task is not None:
+            if fp.stem != task: continue
+        elif fp.stem in exclude: continue
         with open(fp) as f:
             for line in f:
                 if not line.strip(): continue
