@@ -349,6 +349,28 @@ def classify_ionization(
 # 1) BASIC tool list (always include)
 # ============================================================
 
+classify_ionization_openai = {
+    "type": "function",
+    "function": {
+        "name": "classify_ionization",
+        "description": "Classify the ionization state of a molecule at a target pH using Dimorphite-DL. Returns a formatted string with charge distributions.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "smiles": {
+                    "type": "string",
+                    "description": "SMILES string of the molecule."
+                },
+                "ph": {
+                    "type": "number",
+                    "description": "Target pH for protonation (default: 7.4, physiological)."
+                }
+            },
+            "required": ["smiles"],
+        }
+    }
+}
+
 RDKIT_BASIC_OPENAI_TOOLS = [
     _tool("get_molecular_weight", "Return the average molecular weight (Daltons)."),
     _tool("get_exact_molecular_weight", "Return the monoisotopic exact molecular weight (Daltons)."),
@@ -366,7 +388,8 @@ RDKIT_BASIC_OPENAI_TOOLS = [
     _tool("get_qed", "Return QED (Quantitative Estimate of Drug-likeness) as implemented in RDKit."),
     _tool("get_num_heteroatoms", "Return heteroatom count (non C/H)."),
     _tool("analyze_ring_systems", "Analyze fused ring systems (clusters of rings sharing bonds) and report their topology, aromaticity, and heteroatom content. Distinguishes fused polycyclic systems from isolated rings. Useful for AMES mutagenicity (detecting PAH-like systems), hERG (extended flat aromatic surfaces), and general structural classification of ring complexity."),
-    _tool("classify_ionization", "Classify the ionization state of a molecule at a target pH using Dimorphite-DL. Returns a formatted string with charge distributions at physiological pH."),
+    classify_ionization_openai,
+    compute_similarity_openai
 ]
 
 # ============================================================
@@ -515,6 +538,81 @@ def get_num_unspecified_atom_stereo_centers(smiles: str) -> str:
     v = int(rdMolDescriptors.CalcNumUnspecifiedAtomStereoCenters(_mol_from_smiles(smiles)))
     return f"Unspecified atom stereocenter count: {v}"
 
+def compute_similarity(
+    smiles: str,
+    reference_smiles: list[str],
+    fingerprint: FingerprintType = FingerprintType.MORGAN,
+    standardize: bool = False,
+) -> str:
+    """
+    Compute fingerprint similarity between a query SMILES and a list of reference SMILES.
+
+    Defaults are fixed: Morgan radius=2, 2048 bits, and chirality included.
+
+    Args:
+        smiles (str): Query SMILES.
+        reference_smiles (list[str]): Reference SMILES to compare against.
+        fingerprint (FingerprintType): Fingerprint type.
+        standardize (bool): Standardize all SMILES first (remove salts, canonical tautomer).
+
+    Returns:
+        str: A formatted string describing the similarity scores between the query SMILES
+             and the reference SMILES, sorted descending by similarity.
+    """
+    # mol = _validate_smiles(smiles, standardize=standardize)
+    mol = Chem.MolFromSmiles(smiles)
+    refs = [Chem.MolFromSmiles(ref) for ref in reference_smiles]
+
+    fp_key = _coerce_enum(fingerprint, FingerprintType, InvalidFingerprintError)
+
+    def get_fp(m: Chem.Mol) -> DataStructs.ExplicitBitVect:
+        return _FINGERPRINT_BUILDERS[fp_key](m)
+
+    qfp = get_fp(mol)
+    ref_fps = [get_fp(m) for m in refs]
+
+    # C++ bulk compute (much faster than Python loop)
+    sims = DataStructs.BulkTanimotoSimilarity(qfp, ref_fps)
+
+    similarities = [
+        {"reference_smiles": ref_smi, "similarity": _round_output(float(sim))}
+        for ref_smi, sim in zip(reference_smiles, sims, strict=False)
+    ]
+    similarities.sort(key=lambda x: x["similarity"], reverse=True)
+
+    lines = [
+        f"Fingerprint Similarity Analysis (Method: {fp_key.value}):",
+        f"Query SMILES: {smiles}",
+        "Top similarities (sorted descending):"
+    ]
+    
+    for entry in similarities:
+        lines.append(f"  - {entry['reference_smiles']}: {entry['similarity']:.4f}")
+        
+    return "\n".join(lines)
+
+compute_similarity_openai = {
+        "type": "function",
+        "function": {
+            "name": "compute_similarity",
+            "description": "Compute fingerprint similarity (Morgan by default) between a query SMILES and a list of reference SMILES. Returns a formatted string.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "smiles": {
+                        "type": "string",
+                        "description": "Query SMILES string."
+                    },
+                    "reference_smiles": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of reference SMILES strings to compare against."
+                    }
+                },
+                "required": ["smiles", "reference_smiles"],
+            }
+        }
+    }
 # ============================================================
 # 2) Task-specific packs (add on top of BASIC)
 #    (No fragments; relaxed but still interpretable.)

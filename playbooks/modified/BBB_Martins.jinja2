@@ -39,7 +39,7 @@ Collect at minimum:
 - **MW**, **TPSA**, **LogP** (Wildman–Crippen), **HBD/HBA**, **rotatable bonds**, **amide bonds**, **formal charge**, ring counts.
 
 ### Step C — Ionization / charge at physiological pH
-3. `classify_ionization(smiles, ph=7.4, standardize=True)`
+3. `classify_ionization(smiles, ph=7.4)`
 
 Use:
 - `representative.net_charge` and `charge_class` (neutral/base/acid/zwitterion)
@@ -48,7 +48,7 @@ Use:
 Why: ionization strongly affects BBB passage; anions are often particularly disfavored (e.g., anionic outliers noted in BBB datasets; ionization emphasized in BBB reviews and curated datasets; PMID: **27377191**, **10837716**).
 
 3b. **pKa-derived neutral fraction and logD estimate (recommended)**
-- `estimate_logd(smiles, ph=7.4, standardize=True)`
+- `estimate_logd(smiles, ph=7.4)`
   - Use `fraction_neutral` as a direct proxy for “how much of the molecule is unionized at pH 7.4”.
   - Use `logd` as a check for effective lipophilicity at pH 7.4 (approximate; not experimental).
 
