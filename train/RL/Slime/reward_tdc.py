@@ -84,14 +84,14 @@ async def reward_func(args, sample: Sample, **kwargs) -> float:
 
     # Format bonus: encourage the model to use "Answer:" prefix
     if format_correct:
-        format_reward = 0.05
+        format_reward = 0.0  # 0.05
     else:
         format_reward = 0.0
 
     tool_reward = 0.0
     if sample.metadata is not None:
         num_tool_calls = sample.metadata.get("num_tool_calls", 0)
-        tool_reward = 0.07 * np.tanh(1 * num_tool_calls)
+        tool_reward = 0.0 * np.tanh(1 * num_tool_calls)  # 0.07
 
     response_length = getattr(sample, 'response_length', 0)
     if response_length <= 4000:

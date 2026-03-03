@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=Slime-RL-GLM-4.7-Flash
+#SBATCH --job-name=Slime-RL-GLM-4.7-Flash-length-penalty-no-tool-reward
 #SBATCH --partition=dgx-b200
 #SBATCH --gpus=8
 #SBATCH --ntasks=1
