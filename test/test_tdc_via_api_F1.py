@@ -71,10 +71,10 @@ def get_args():
     parser.add_argument('--enable-tools', action='store_true', default=True, help='Enable tool calling')  # TODO: 注意是否使用了 tool ， debug 可能关了
     parser.add_argument('--log-file', action='store_true', default=False, help='Save logs to file')  # TODO: 注意这里 log-file 到底是开了还是没开
     parser.add_argument('--log-file-name', type=str, default="Tools_gpt-oss-120b_{t_stamp}_dev_4.log", help='logs file name')   # TODO: log file name
-    parser.add_argument('--langfuse', action='store_true', default=False, help='Save traces to langfuse')  # TODO: 注意这里 langfuse trace 到底是开了还是没开
+    parser.add_argument('--langfuse', action='store_true', default=True, help='Save traces to langfuse')  # TODO: 注意这里 langfuse trace 到底是开了还是没开
     parser.add_argument('--max-retry', type=int, default=4, help='Max retries for answer parsing failure')
-    parser.add_argument('--use-playbook', action='store_true', default=False, help='Inject playbook into the prompt')
-    parser.add_argument('--score-based', action='store_true', default=False, help='If true, expect and parse a 0-100 probability instead of (A)/(B)')
+    parser.add_argument('--use-playbook', action='store_true', default=True, help='Inject playbook into the prompt')
+    parser.add_argument('--score-based', action='store_true', default=True, help='If true, expect and parse a 0-100 probability instead of (A)/(B)')
     
     args = parser.parse_args()
     return args
@@ -376,8 +376,8 @@ def run_turn_base(client, messages, model_name, thinking=False, tools=None, use_
             
         # Check if the set of tool names is the same as the previous turn to prevent infinite loops
         current_tool_names = set(tool_call.function.name for tool_call in tool_calls)
-        if current_tool_names == last_tool_names:
-            break
+        # if current_tool_names == last_tool_names:
+        #     break
         last_tool_names = current_tool_names
             
         for tool_call in tool_calls:
@@ -468,16 +468,19 @@ def worker_process_sample(args):
     
     if score_based:
         # Change prompt text to require 0-100 instead of A/B
-        text = re.sub(r'\(A\)[^\n]*\(B\)[^\n]*\n', '', text)
-        text = text.replace('predict whether it\n', 'predict its property, outputting a probability (0-100).\n')
-        text = text.replace('((A) or (B))', 'as a probability from 0 to 100')
+        if "Drug SMILES:" in text:
+            text = text.split("Drug SMILES:")[1].split("\n")[0].strip()
+        user_text = f'The given SMILES is {text}, follow the above instructions and think step by step to make your prediction. Output a probability from 0 to 100 after "Answer: " (e.g. "Answer: 50").'
     
     if use_playbook:
         playbook_text = load_playbook(task_name)
-        if playbook_text:
-            text = playbook_text + "\n\n" + text
+        # if playbook_text:
+        #     text = playbook_text + "\n\n" + text
 
-    messages = [{'role': 'user', 'content': text}]
+    messages = [
+        {'role': 'system', 'content': playbook_text},
+        {'role': 'user', 'content': text}
+        ]
 
     for attempt in range(max_retry):
         try:
@@ -523,13 +526,13 @@ def load_tasks_map(data_dir):
             # 'AMES.jsonl',  # 1457
             # 'Tox21.jsonl',  # 15584
             # -----------------------------------------
-            'herg_central_hERG_inhib.jsonl',  # 61379    leave out
-            'ToxCast.jsonl'  # 307282    leave out
+            # 'herg_central_hERG_inhib.jsonl',  # 61379    leave out
+            # 'ToxCast.jsonl'  # 307282    leave out
         ],
         'ADME': [
             # 'PAMPA_NCATS.jsonl',  # 408
             # 'HIA_Hou.jsonl',  # 117
-            # 'BBB_Martins.jsonl',  # 406
+            'BBB_Martins.jsonl',  # 406
             # 'Pgp_Broccatelli.jsonl',  # 245
             # 'Bioavailability_Ma.jsonl',  # 128
             # 'CYP2C9_Substrate_CarbonMangels.jsonl',  # 135
@@ -552,9 +555,9 @@ def load_tasks_map(data_dir):
         # 'PPI': ['HuRI.jsonl'],  # 20282
         # 'TCREpitopeBinding': ['Weber.jsonl'],  # not in our test set yet
         'TrialOutcome': [
-            'phase1.jsonl', 
-            'phase2.jsonl', 
-            'phase3.jsonl'
+            # 'phase1.jsonl', 
+            # 'phase2.jsonl', 
+            # 'phase3.jsonl'
             ],
         'PeptideMHC': [
             # 'MHC1_IEDB-IMGT_Nielsen.jsonl',  # 37197
