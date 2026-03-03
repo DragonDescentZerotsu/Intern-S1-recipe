@@ -90,7 +90,8 @@ class TrainConfig:
     max_tokens: int = 16384
     max_turns: int = 40
     reward_format_bonus: float = 0
-    reward_use_tools: float = 0.1
+    reward_use_tools: float = 0.01
+    reward_length_penalty: bool = True
     save_every: int = save_every_dict['BBB_Martins']
     eval_every: int = eval_every_dict['BBB_Martins']
     eval_max_samples: int = 1000
@@ -101,15 +102,15 @@ class TrainConfig:
     filter_easy_samples: bool = True  # whether to filter out easy samples
     wandb_project: str = "tdc-tinker-grpo"
     wandb_run_id: Optional[str] = None #"hbnj1kto"
-    wandb_name: Optional[str] = "GRPO BBB 3 epochs filter easy samples & tool reward"
+    wandb_name: Optional[str] = "GRPO BBB 3 epochs filter easy samples & tool reward 0.01"
     data_dir: Path = PROJECT_ROOT / "DataPrepare/TDC_train_prompts_label_scaffold"
-    log_path: str = PROJECT_ROOT / "logs/tinker/BBB/3-epochs-grpo-filter-easy-samples-tool-reward"
+    log_path: str = PROJECT_ROOT / "logs/tinker/BBB/3-epochs-grpo-filter-easy-samples-tool-reward-0.01"
     task: Optional[str] = 'BBB_Martins' # None
     exclude_tasks: tuple = EXCLUDED_TASKS
     resume_from: Optional[str] = None # "tinker://be372b79-3da0-589d-b696-ebb65c3a86ec:train:0/weights/step_000470"
     resume_step: int = 470
     data_seed: int = 1
-    rollout_save_dir: Optional[str] = PROJECT_ROOT / "train/RL/Tinker/rollouts/BBB/3-epochs-grpo-filter-easy-samples-tool-reward"
+    rollout_save_dir: Optional[str] = PROJECT_ROOT / "train/RL/Tinker/rollouts/BBB/3-epochs-grpo-filter-easy-samples-tool-reward-0.01"
     epochs: int = 3
 
 @dataclass

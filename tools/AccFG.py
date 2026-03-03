@@ -10,6 +10,7 @@ from rdkit import Chem
 from pathlib import Path
 import json
 from .RDKit_tools import _tool
+from pydantic import BaseModel, Field
 
 Current_dir = Path(__file__).parent.resolve()
 
@@ -357,6 +358,47 @@ def describe_high_level_fg_fragments_no_special_token(smiles:str):
     return FGs_description
 
 #-------------------------------------------
+# FG related but not AccFG
+#-------------------------------------------
+
+def match_substructure(
+    smiles: str, patterns: dict[str, str], standardize: bool = False
+) -> str:
+    """
+    Test whether a molecule contains the given SMARTS substructures and count occurrences.
+
+    Args:
+        smiles (str): The SMILES string of the molecule. Do not pass in an ellipsis (`...`) or other abbreviation.
+        patterns (dict[str, str]): Mapping of pattern name to SMARTS string.
+        standardize (bool): Standardize SMILES first (remove salts, canonical tautomer).
+
+    Returns:
+        str: A formatted string describing the substructure match results, which is easier for language models to read.
+
+    Raises:
+        ValueError: If *smiles* or any SMARTS pattern is invalid.
+    """
+    # mol = _validate_smiles(smiles, standardize=standardize)
+    mol = Chem.MolFromSmiles(smiles)
+    
+    output = []
+    for name, smarts in patterns.items():
+        query = Chem.MolFromSmarts(smarts)
+        if query is None:
+            raise ValueError(f"Invalid SMARTS pattern for '{name}': {smarts}")
+        matches = mol.GetSubstructMatches(query)
+        count = len(matches)
+        if count > 0:
+            output.append(f"- {name}: Present (count: {count})")
+        else:
+            output.append(f"- {name}: Not present")
+            
+    if not output:
+        return "No patterns provided for matching."
+        
+    return "Substructure Match Results:\n" + "\n".join(output)
+
+#-------------------------------------------
 # AccFG OpenAI tool list
 #-------------------------------------------
 
@@ -378,7 +420,33 @@ AccFG_OPENAI_TOOLS = [{
             ]
         }
     }
-}, 
+}, {
+    'type': 'function',
+    'function': {
+        'name': 'match_substructure',
+        'description': 'Test whether a molecule contains the given SMARTS substructures and count occurrences.',
+        'parameters': {
+            'type': 'object',
+            'properties': {
+                'smiles': {
+                    'type': 'string',
+                    'description': 'The SMILES string of the molecule. Do not pass in an ellipsis (`...`) or other abbreviation.'
+                },
+                'patterns': {
+                    'type': 'object',
+                    'description': 'Mapping of pattern name to SMARTS string.',
+                    'additionalProperties': {
+                        'type': 'string'
+                    }
+                }
+            },
+            'required': [
+                'smiles',
+                'patterns'
+            ]
+        }
+    }
+}
 ]
 
 if __name__ == "__main__":
@@ -389,3 +457,31 @@ if __name__ == "__main__":
     # print(describe_high_level_fg_fragments(smiles))
     # print('\n')
     # print(describe_high_level_fg_fragments_no_special_token(smiles))
+
+    BBB_SMARTS_LIBRARY = {
+        # Strong negatives / permanent charge
+        "quaternary_ammonium": "[N+](C)(C)(C)C",
+        "sulfonate": "S(=O)(=O)[O-]",
+
+        # Acids that often create anionic species
+        "carboxylic_acid": "C(=O)[O;H1,-1]",
+        "tetrazole": "c1nnnn1",
+        "phosphonate": "P(=O)(O)(O)",
+
+        # Common basic centers
+        "tertiary_amine": "[NX3;!$(NC=O);!$(NS(=O)=O)](C)(C)",
+        "piperidine_like": "N1CCCCC1",
+        "piperazine_like": "N1CCNCC1",
+
+        # H-bond rich motifs
+        "guanidine": "NC(=N)N",
+        "urea": "NC(=O)N",
+        "sulfonamide": "S(=O)(=O)N",
+        "amide": "C(=O)N",
+
+        # Highly polar substituents
+        "nitro": "[N+](=O)[O-]",
+        "poly_ether": "OCCO",  # crude proxy for PEG-like
+        }
+
+    print(match_substructure(smiles, BBB_SMARTS_LIBRARY))

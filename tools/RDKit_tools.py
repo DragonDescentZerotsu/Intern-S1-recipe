@@ -1,6 +1,8 @@
 from rdkit import Chem
 from rdkit.Chem import Descriptors, rdMolDescriptors, Lipinski, Crippen, GraphDescriptors, Fragments, QED
 from typing import Dict, Any, List
+from dimorphite_dl import protonate_smiles
+from collections import Counter
 
 
 # -------------------------
@@ -130,6 +132,219 @@ def get_num_heteroatoms(smiles: str) -> str:
     v = int(Lipinski.NumHeteroatoms(_mol_from_smiles(smiles)))
     return f"Heteroatom count (non C/H): {v}"
 
+def analyze_ring_systems(smiles: str, standardize: bool = False) -> str:
+    """
+    Analyze fused ring systems in a molecule.
+
+    Detects ring systems (clusters of rings sharing bonds) and reports their topology,
+    aromaticity, and heteroatom content. Distinguishes fused polycyclic systems from
+    isolated rings.
+
+    Useful for:
+    - AMES mutagenicity: detecting PAH-like systems (>=3 fused aromatic rings)
+    - hERG: extended flat aromatic surfaces increase binding risk
+    - General structural classification of ring complexity
+
+    Args:
+        smiles (str): The SMILES string of the molecule.
+        standardize (bool): Standardize SMILES first (remove salts, canonical tautomer).
+
+    Returns:
+        str: A formatted string describing the analyzed ring systems, including
+             topological, aromaticity, and heteroatom metrics.
+    """
+    # mol = _validate_smiles(smiles, standardize=standardize)
+    mol = Chem.MolFromSmiles(smiles)
+    ring_info = mol.GetRingInfo()
+    atom_rings: tuple[tuple[int, ...], ...] = ring_info.AtomRings()
+    bond_rings: tuple[tuple[int, ...], ...] = ring_info.BondRings()
+
+    if not atom_rings:
+        return "No ring systems found."
+
+    # Build ring adjacency: two rings are fused if they share at least one bond
+    bond_sets = [set(br) for br in bond_rings]
+    n = len(atom_rings)
+    adj: dict[int, set[int]] = {i: set() for i in range(n)}
+    for i in range(n):
+        for j in range(i + 1, n):
+            if bond_sets[i] & bond_sets[j]:
+                adj[i].add(j)
+                adj[j].add(i)
+
+    # BFS to find connected components (fused ring systems)
+    visited: set[int] = set()
+    components: list[list[int]] = []
+    for seed in range(n):
+        if seed in visited:
+            continue
+        component: list[int] = []
+        queue = [seed]
+        while queue:
+            node = queue.pop()
+            if node in visited:
+                continue
+            visited.add(node)
+            component.append(node)
+            queue.extend(adj[node] - visited)
+        components.append(component)
+
+    # Analyze each ring system
+    # We will format the output lines sequentially
+    largest_aromatic = 0
+    largest_system = 0
+    
+    system_descriptions = []
+
+    for component in components:
+        system_atoms: set[int] = set()
+        ring_sizes: list[int] = []
+        aromatic_count = 0
+
+        for ring_idx in component:
+            ring_atom_indices = atom_rings[ring_idx]
+            system_atoms.update(ring_atom_indices)
+            ring_sizes.append(len(ring_atom_indices))
+            if all(mol.GetAtomWithIdx(a).GetIsAromatic() for a in ring_atom_indices):
+                aromatic_count += 1
+
+        heteroatom_symbols: set[str] = set()
+        for atom_idx in system_atoms:
+            atom = mol.GetAtomWithIdx(atom_idx)
+            if atom.GetAtomicNum() != 6:
+                heteroatom_symbols.add(atom.GetSymbol())
+
+        num_rings = len(component)
+        largest_system = max(largest_system, num_rings)
+        largest_aromatic = max(largest_aromatic, aromatic_count)
+
+        desc = (
+            f"  - System has {num_rings} fused ring(s) ({', '.join(map(str, sorted(ring_sizes)))}-membered). "
+            f"Aromatic rings: {aromatic_count}. "
+            f"Total atoms: {len(system_atoms)}. "
+        )
+        if heteroatom_symbols:
+            desc += f"Heteroatoms: {', '.join(sorted(heteroatom_symbols))}."
+        else:
+            desc += "No heteroatoms."
+        
+        system_descriptions.append((num_rings, aromatic_count, desc))
+
+    # Sort largest first by number of rings then aromatic rings
+    system_descriptions.sort(key=lambda s: (-s[0], -s[1]))
+
+    # Macrocycle analysis (threshold: 12 atoms)
+    all_ring_sizes = [len(ring) for ring in atom_rings]
+    largest_ring_size = max(all_ring_sizes) if all_ring_sizes else 0
+    num_macrocycles = sum(1 for size in all_ring_sizes if size >= 12)
+    
+    lines = [
+        "Ring System Analysis:",
+        f"- Total fused ring systems: {len(components)}",
+        f"- Largest fused system size (rings): {largest_system}",
+        f"- Largest aromatic system size (rings): {largest_aromatic}",
+        f"- Has PAH-like system (>=3 fused aromatic rings): {'Yes' if largest_aromatic >= 3 else 'No'}",
+        f"- Largest individual ring size: {largest_ring_size}",
+        f"- Has macrocycle (>=12 atoms): {'Yes' if num_macrocycles > 0 else 'No'} (Count: {num_macrocycles})",
+        f"- Spiro centers: {rdMolDescriptors.CalcNumSpiroAtoms(mol)}",
+        f"- Bridgehead atoms: {rdMolDescriptors.CalcNumBridgeheadAtoms(mol)}",
+        "- Systems (Largest first):"
+    ]
+    
+    for _, _, desc in system_descriptions:
+        lines.append(desc)
+
+    return "\n".join(lines)
+
+def classify_ionization(
+    smiles: str,
+    ph: float = 7.4,
+    standardize: bool = False,
+) -> str:
+    """
+    Classify the ionization state of a molecule at a target pH.
+
+    Uses Dimorphite-DL to enumerate protonation states, then analyzes the distribution
+    of charge states. Returns both summary statistics and a representative variant.
+
+    Args:
+        smiles (str): The SMILES string of the molecule.
+        ph (float): Target pH for protonation (default: 7.4, physiological).
+        standardize (bool): Standardize SMILES first (remove salts only, no tautomer canonicalization).
+
+    Returns:
+        str: A formatted string describing the ionization state classification, including
+             number of variants, net charges, charge classes, and the most representative state.
+    """
+    # For ionization, only remove salts (no tautomer canonicalization)
+    # mol = _validate_smiles(smiles, standardize=standardize, canonical_tautomer=False)
+    mol = Chem.MolFromSmiles(smiles)
+    smiles = Chem.MolToSmiles(mol, canonical=True)  # Need SMILES string for Dimorphite
+
+    # Dimorphite-DL may return empty for molecules it can't handle
+    try:
+        variants = protonate_smiles(smiles, ph_min=ph, ph_max=ph, precision=0.5)
+    except Exception:
+        variants = []
+
+    # Analyze all variants
+    variant_data: list[dict] = []
+    for variant_smi in variants:
+        mol = Chem.MolFromSmiles(variant_smi)
+        if mol is None:
+            continue
+
+        pos = neg = 0
+        for atom in mol.GetAtoms():
+            fc = atom.GetFormalCharge()
+            if fc > 0:
+                pos += fc
+            elif fc < 0:
+                neg += abs(fc)
+
+        net = pos - neg
+        if pos > 0 and neg > 0:
+            charge_class = "zwitterion"
+        elif pos > 0:
+            charge_class = "base"
+        elif neg > 0:
+            charge_class = "acid"
+        else:
+            charge_class = "neutral"
+
+        variant_data.append({"smiles": variant_smi, "net_charge": net, "charge_class": charge_class})
+
+    # If no variants, treat input as neutral
+    if not variant_data:
+        variant_data = [{"smiles": smiles, "net_charge": 0, "charge_class": "neutral"}]
+
+    # Compute distribution
+    
+    net_charges = sorted(set(v["net_charge"] for v in variant_data))
+    charge_class_counts = Counter(v["charge_class"] for v in variant_data)
+
+    # Pick representative: mode net charge, then lowest |net_charge|
+    net_charge_counts = Counter(v["net_charge"] for v in variant_data)
+    mode_charge = max(net_charge_counts.keys(), key=lambda c: (net_charge_counts[c], -abs(c)))
+    representative_data = next(v for v in variant_data if v["net_charge"] == mode_charge)
+    
+    # Format the output string
+    lines = [
+        f"Ionization State Classification (at pH {ph}):",
+        f"- Number of protonation states enumerated: {len(variant_data)}",
+        f"- Unique net charges observed: {', '.join(map(str, net_charges))}",
+        f"- Charge class distribution: {', '.join(f'{k}: {v}' for k, v in charge_class_counts.items())}",
+        f"- Has positive states: {'Yes' if any(c > 0 for c in net_charges) else 'No'}",
+        f"- Has negative states: {'Yes' if any(c < 0 for c in net_charges) else 'No'}",
+        f"- Is ambiguous (pKa near target pH): {'Yes' if len(net_charges) > 1 else 'No'}",
+        "- Most representative state:",
+        f"  - SMILES: {representative_data['smiles']}",
+        f"  - Net charge: {representative_data['net_charge']}",
+        f"  - Charge class: {representative_data['charge_class']}"
+    ]
+
+    return "\n".join(lines)
+
 # ============================================================
 # 1) BASIC tool list (always include)
 # ============================================================
@@ -150,6 +365,8 @@ RDKIT_BASIC_OPENAI_TOOLS = [
     _tool("get_formal_charge", "Return net formal charge (sum of atom formal charges as encoded in the SMILES)."),
     _tool("get_qed", "Return QED (Quantitative Estimate of Drug-likeness) as implemented in RDKit."),
     _tool("get_num_heteroatoms", "Return heteroatom count (non C/H)."),
+    _tool("analyze_ring_systems", "Analyze fused ring systems (clusters of rings sharing bonds) and report their topology, aromaticity, and heteroatom content. Distinguishes fused polycyclic systems from isolated rings. Useful for AMES mutagenicity (detecting PAH-like systems), hERG (extended flat aromatic surfaces), and general structural classification of ring complexity."),
+    _tool("classify_ionization", "Classify the ionization state of a molecule at a target pH using Dimorphite-DL. Returns a formatted string with charge distributions at physiological pH."),
 ]
 
 # ============================================================
@@ -548,5 +765,5 @@ def calc_all_rdkit_descriptors(smiles: str):
 if __name__ == "__main__":
     smiles = "CCOC(=O)C(=NOC(C)(C)C(=O)OC(C)(C)C)c1csc(NC(c2ccccc2)(c2ccccc2)c2ccccc2)n1"
     # results, errors = calc_all_rdkit_descriptors(smiles)
-    print(get_qed(smiles))
+    print(classify_ionization(smiles))
     # print(errors)
