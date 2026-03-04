@@ -352,8 +352,12 @@ PYTHONPATH=/root/Megatron-LM python tools/convert_hf_to_torch_dist.py \
 ```
 # 4. Prepare Slime RL data
 Prepared data is stored in `Slime_RL_data/by_task/`
+
+You need to prepare data for `train`, `test`, and `valid` splits separately by running:
 ```bash
-python prepare_slime_RL_data.py
+python prepare_slime_RL_data.py --split train
+python prepare_slime_RL_data.py --split test
+python prepare_slime_RL_data.py --split valid
 ```
 # 5. Run the training script
 ```bash

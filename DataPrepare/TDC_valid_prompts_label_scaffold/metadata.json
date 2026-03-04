@@ -100,7 +100,7 @@
         "split_method": "random"
     },
     "HuRI": {
-        "num_samples": 1098,
+        "num_samples": 1093,
         "split_method": "cold_split:{'column_name': ['Protein1', 'Protein2']}"
     },
     "Weber": {

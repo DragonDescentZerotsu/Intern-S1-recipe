@@ -37,7 +37,8 @@ CKPT_ARGS=(
    --hf-checkpoint checkpoints/megatron/hf_version/GLM-4.7-Flash #checkpoints/megatron/hf_version/GLM-4.7-Flash
    --ref-load checkpoints/megatron/megatron_version/GLM-4.7-Flash
    --save checkpoints/megatron/megatron_version/GLM-4.7-Flash-RL-no-tool-reward-w-length-penalty # TODO: change the name
-   --save-interval 231  # 半个 epoch save 一次
+   --save-interval 100  
+   --no-save-optim  # 防止save model的时候 node OOM 
 )
 
 ROLLOUT_ARGS=(
@@ -64,7 +65,7 @@ ROLLOUT_ARGS=(
 )
 
 EVAL_ARGS=(
-   --eval-interval 232
+   --eval-interval 5
    --eval-prompt-data \
       AMES_test DataPrepare/Slime_RL_data/by_task/test/AMES.jsonl \
       BBB_Martins_test DataPrepare/Slime_RL_data/by_task/test/BBB_Martins.jsonl \
@@ -176,7 +177,10 @@ MISC_ARGS=(
 
    --moe-token-dispatcher-type flex
    --moe-enable-deepep
+
+   --log-probs-chunk-size 512
 )
+
 
 # launch the master node of ray in container
 export MASTER_ADDR=${MLP_WORKER_0_HOST:-"127.0.0.1"}
@@ -208,7 +212,7 @@ ray job submit --address="http://127.0.0.1:8265" \
    --actor-num-nodes 1 \
    --actor-num-gpus-per-node 2 \
    --rollout-num-gpus 6 \
-   --save-debug-rollout-data "data-partial-rollout-no-tool-reward-w-length-penalty-sbatch.pt" \  # TODO: change the name
+   --save-debug-rollout-data "data-partial-rollout-no-tool-reward-w-length-penalty-sbatch.pt" \
    ${MODEL_ARGS[@]} \
    ${CKPT_ARGS[@]} \
    ${ROLLOUT_ARGS[@]} \
