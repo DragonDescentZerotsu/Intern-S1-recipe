@@ -56,5 +56,9 @@ def get_function_by_name(name):
         "predict_pka": predict_pka,
         "estimate_logd": estimate_logd,
         "remove_salts": remove_salts,
+        "match_substructure": match_substructure,
+        "analyze_ring_systems": analyze_ring_systems,
+        "classify_ionization": classify_ionization,
+        "score_structural_alerts": score_structural_alerts,
     }
     return tool_map.get(name)

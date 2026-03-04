@@ -1,0 +1,199 @@
+{% set objective = "Please predict the probability of the given molecule being a CYP2D6 substrate." -%}
+{% set prompt_playbook -%}
+# Playbook: Predicting CYP2D6 substrate likelihood from SMILES (output a calibrated 0–100 integer)
+
+## 0) What you are predicting
+A **CYP2D6 substrate** is a molecule likely to be metabolized by CYP2D6. Literature converges on a common recognition motif:
+- **A protonatable/basic nitrogen** that is typically **cationic at physiological pH** and can form an electrostatic interaction with acidic residues (Asp301/Glu216) (e.g., PMID: **12871098**, **19514836**, **22039821**).
+- One or more **hydrophobic/aromatic features**; many substrates show **π–π stacking with Phe120** (PMID: **19514836**, **22039821**).
+- A characteristic **topological separation** between the basic N and the (often aromatic-proximal) **site of metabolism**, frequently described as **5 Å or 7 Å** classes (also 10 Å in some models) or **~8–10 intervening atoms** to the oxidized position (PMID: **1379482**, **12871098**, **19514836**, **19544194**, **22039821**).
+
+Use those principles to compute a **probability (0–100)** from SMILES-derived features.
+
+**Important constraint:** your final output must be **only an integer** (0–100) and nothing else.
+
+---
+
+## 1) Standardize input first
+1. `remove_salts(smiles)`
+   - Desalt a SMILES by removing salts/counterions and keeping ONLY the largest organic fragment.
+
+---
+
+## 2) Compute core properties (must-run tool calls)
+Run these on the standardized SMILES:
+
+### 2.1 Ionization at pH 7.4 (most important)
+- `classify_ionization(smiles, ph=7.4)`
+- Key fields:
+  - `has_positive_states` (strongly increases CYP2D6 substrate likelihood; CYP2D6 substrates are commonly **cationic** (PMID: **19645588**))
+  - `representative.net_charge` and `charge_class`
+
+### 2.2 Physicochemical descriptors
+- Use the individual descriptor tools:
+   - `get_molecular_weight(std)`
+   - `get_tpsa(std)`
+   - `get_mol_logp(std)`
+   - `get_hbd(std)`
+   - `get_hba(std)`
+   - `get_num_rotatable_bonds(std)`
+   - `get_num_amide_bonds(std)`
+   - `get_formal_charge(std)`
+   - `get_ring_count(std)`
+Use especially:
+- `logp` (lipophilicity is repeatedly linked to CYP2D6 binding/substrate behavior; e.g., PMID: **12871098**, **19661215**, **19645588**)
+- `tpsa` (substrates in one kinetic database tended to have lower PSA than non-substrates when binned by Km; PMID: **19661215**)
+- `aromatic_rings`, `total_rings` (ring count often appears as a key determinant alongside lipophilicity; PMID: **19661215**)
+- `average_mw` (CYP2D6 cavity volume reported ~540 Å³ suggests a size/shape limit; very large drugs may fail to dock; PMID: **22039821**, **19645588**)
+- `num_amide_bonds` (amide formation often reduces amine basicity; reduces odds of a protonated N)
+
+### 2.3 Functional group inventory (for “acid/base + liabilities”)
+- `describe_high_level_fg_fragments(smiles)`
+Use this to spot:
+- Protonatable amines (aliphatic amine, piperidine, morpholine, etc.)
+- Strong acids (carboxylic acids, sulfonic acids, phosphates)
+- Many carbonyls/ureas/sulfonamides that suppress basicity
+
+### 2.4 Ring system shape (optional but helpful)
+- `analyze_ring_systems(smiles)`
+Look for:
+- At least one aromatic ring system (often present; not strictly required, but common; PMID: **12871098**)
+- Excessively large fused aromatics (can increase hydrophobicity but may cause atypical behavior)
+
+---
+
+## 3) Substructure “motif screening” (SMILES-visible patterns)
+Use `match_substructure` with SMARTS patterns to detect motifs tied to CYP2D6 recognition.
+
+### 3.1 Protonatable/basic nitrogen (exclude amides/sulfonamides)
+Suggested SMARTS (edit as needed):
+```json
+{
+  "tertiary_amine_nonamide": "[NX3;!$(NC=O);!$(NS(=O)=O)]([#6])[#6]",
+  "secondary_amine_nonamide": "[NX3H;!$(NC=O);!$(NS(=O)=O)]([#6])[#6]",
+  "ring_amine_nonamide": "[NX3;R;!$(N[C,S](=O))]",
+  "quaternary_ammonium": "[N+X4]",
+
+  "carboxylic_acid": "C(=O)[O;H,-]",
+  "sulfonic_acid": "S(=O)(=O)[O;H,-]",
+  "phosphate": "P(=O)(O)(O)O"
+}
+```
+
+### 3.2 Aryl/heteroaryl–alkyl–amine spacing proxies (approximate the 5–7 Å concept)
+Because you don’t have a direct “bond-distance” tool, use motif proxies that often correspond to the classic CYP2D6 pharmacophore where a basic N is a few bonds away from a hydrophobic/aromatic region (PMID: **19544194**, **1379482**, **12871098**):
+```json
+{
+  "aryl_2C_to_amine": "a-[CH2]-[CH2]-[NX3;!$(NC=O);!$(NS(=O)=O)]",
+  "aryl_3C_to_amine": "a-[CH2]-[CH2]-[CH2]-[NX3;!$(NC=O);!$(NS(=O)=O)]",
+  "aryl_ether_2C_to_amine": "a-O-[CH2]-[CH2]-[NX3;!$(NC=O);!$(NS(=O)=O)]",
+  "phenoxypropanolamine_like": "a-O-CC(C)[NX3;!$(NC=O);!$(NS(=O)=O)]"
+}
+```
+Interpretation:
+- Presence of these motifs supports the idea of an **aromatic/hydrophobic region** + **basic N** separated by a short linker (common across many CYP2D6 substrates; PMID: **19544194**, **12871098**).
+
+---
+
+## 4) Evidence-based heuristics to translate features into probability
+These are intentionally simple and SMILES-operational, grounded in recurring literature themes:
+- **Cationic/basic center is the strongest single cue** (PMID: **12871098**, **19514836**, **19645588**).
+- **Aromatic/ring content + hydrophobicity** often matters (PMID: **19645588**, **19661215**, **22039821**).
+- **Lower PSA** tends to associate with “better substrates” in one kinetic compilation (PMID: **19661215**).
+
+### 4.1 Quick “gate” rules (hard overrides)
+Apply these first:
+1. **No protonatable/basic N at pH 7.4** (`has_positive_states == false`) **AND** net charge is 0 or negative  
+   → strongly downweight (many CYP2D6 substrates are cationic; PMID: **19645588**). Set probability ceiling **≤25** unless strong similarity/motif evidence suggests otherwise.
+2. **Predominantly anionic at pH 7.4** (negative states present, positive absent)  
+   → probability ceiling **≤10**.
+3. **Very large/complex**: `MW > 600` or many ring systems + high PSA  
+   → downweight (docking failures reported for large anti-HIV drugs; PMID: **22039821**). Ceiling **≤40** unless strong CYP2D6-like base/aromatic motif evidence.
+
+### 4.2 Point-based scoring rubric (convert to 0–100)
+Start with `score = 10` (baseline prior). Then add/subtract:
+
+**A) Ionization / charge at pH 7.4 (max +45, min −40)**
+- If `has_positive_states` true: **+35**
+- If representative `net_charge >= +1`: **+10** more
+- If `has_negative_states` true and `has_positive_states` false: **−40**
+- If zwitterionic/ambiguous: **+10** (but handle with PSA penalty below)
+
+**B) Aromatic & ring content (max +20, min −10)**
+- If `aromatic_rings >= 1`: **+10** (π–π with Phe120 is common; PMID: **22039821**)
+- If `aromatic_rings >= 2`: **+5** more
+- If `total_rings >= 3`: **+5** more (ring count often emerges as important; PMID: **19661215**)
+- If `aromatic_rings == 0` and `total_rings <= 1`: **−10**
+
+**C) Aryl–alkyl–amine spacing proxy motifs (max +20)**
+From `match_substructure`:
+- If any of (`aryl_2C_to_amine`, `aryl_3C_to_amine`, `aryl_ether_2C_to_amine`, `phenoxypropanolamine_like`) present: **+15**
+- If 2+ of these are present (multiple aromatic–amine linkers): **+5** more
+(These approximate the classic “basic N at a characteristic distance from an aromatic oxidation region” pharmacophore; PMID: **19544194**, **1379482**, **12871098**.)
+
+**D) Lipophilicity (max +15, min −15)**
+Use `logp`:
+- If `1.5 <= logp <= 5.0`: **+15** (CYP2D6 substrates span roughly ~0.75–5.04 with mean ~3 in one compilation; PMID: **12871098**)
+- If `0.5 <= logp < 1.5`: **+5**
+- If `logp < 0.5`: **−10**
+- If `logp > 6.5`: **−15** (very hydrophobic may be atypical/limited by solubility)
+
+**E) Polar surface area (max +10, min −25)**
+Use `tpsa`:
+- If `15 <= tpsa <= 60`: **+10** (PSA around ~30–40 Å² common in one substrate set; PMID: **19661215**)
+- If `60 < tpsa <= 90`: **0**
+- If `90 < tpsa <= 120`: **−10**
+- If `tpsa > 120`: **−25**
+
+**F) Size (max +10, min −20)**
+Use `average_mw`:
+- If `180 <= MW <= 450`: **+10** (many classic substrates are “medium-sized”; PMID: **12871098**)
+- If `120 <= MW < 180`: **0**
+- If `MW < 120`: **−10**
+- If `450 < MW <= 600`: **−5**
+- If `MW > 600`: **−20**
+
+**G) Amide penalty (min −15)**
+Use `num_amide_bonds`:
+- If `num_amide_bonds >= 1`: **−8**
+- If `num_amide_bonds >= 3`: **−15** total
+(Amides/sulfonamides commonly reduce protonatable amine availability and can reduce CYP2D6-like cationic binding.)
+
+**H) Strong acid penalty (min −25)**
+From functional groups/substructure:
+- If `carboxylic_acid` present or strong acids present: **−25**
+
+### 4.3 Convert score → probability
+- `prob = round(clamp(score, 0, 100))`
+- If a “gate” rule set a ceiling, apply `prob = min(prob, ceiling)`.
+
+---
+
+## 5) Calibration sanity checks (recommended)
+After computing `prob`, adjust to maintain calibration consistency:
+- If **cationic** at pH 7.4 **and** (`aromatic_rings >= 1`) **and** `1.5<=logp<=5` **and** `tpsa<=60`:
+  - set a floor: `prob = max(prob, 70)` (fits common substrate profile: “lipophilic base + planar aromatic + protonatable N”; PMID: **22039821**, **19645588**)
+- If **no positive state** and **strong acid present**:
+  - set `prob = min(prob, 5)`
+
+---
+
+## 6) Common “CYP2D6-substrate-like” SMILES-visible patterns
+Upweight (especially if also cationic at pH 7.4):
+- **Aryl-ethyl/propyl tertiary amines** (classic pharmacophore proxy; PMID: **19544194**)
+- **Benzylic O-demethylation candidates** (anisole-like motifs) paired with a basic N (many CYP2D6 reactions include O-demethylation/hydroxylation; PMID: **1379482**, **19514836**)
+- **Tricyclic antidepressant-like scaffolds** (multiple rings + tertiary amine; enriched among substrates in QSAR fragment analyses; PMID: **19544194**)
+
+Downweight:
+- Strong acids (carboxylate/sulfonate/phosphate)
+- Very high TPSA / many heteroatoms with low lipophilicity
+- Very large bulky molecules (possible active-site fit issues; PMID: **22039821**)
+
+---
+
+## 7) Output rule (must follow)
+After all calculations, output:
+- **only** the final integer `prob` (0–100)
+- no additional text, no units, no explanation
+{% endset %}
+{% include "tdc/base.jinja2" %}

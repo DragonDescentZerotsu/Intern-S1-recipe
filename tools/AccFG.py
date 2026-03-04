@@ -3,13 +3,15 @@ This script is used to use AccFG to parse SMILES string into functional groups (
 '''
 
 from rdkit import RDConfig
+from rdkit.Chem import rdFMCS
 import os, csv, re
-from accfg import AccFG, draw_mol_with_fgs, molimg
+from accfg import AccFG, draw_mol_with_fgs, molimg, compare_mols
 from accfg.draw import print_fg_tree
 from rdkit import Chem
 from pathlib import Path
 import json
-from .RDKit_tools import _tool
+from .RDKit_tools import _tool, _round_output
+from pydantic import BaseModel, Field
 
 Current_dir = Path(__file__).parent.resolve()
 
@@ -357,6 +359,106 @@ def describe_high_level_fg_fragments_no_special_token(smiles:str):
     return FGs_description
 
 #-------------------------------------------
+# FG related but not AccFG
+#-------------------------------------------
+
+def match_substructure(
+    smiles: str, patterns: dict[str, str], standardize: bool = False
+) -> str:
+    """
+    Test whether a molecule contains the given SMARTS substructures and count occurrences.
+
+    Args:
+        smiles (str): The SMILES string of the molecule. Do not pass in an ellipsis (`...`) or other abbreviation.
+        patterns (dict[str, str]): Mapping of pattern name to SMARTS string.
+        standardize (bool): Standardize SMILES first (remove salts, canonical tautomer).
+
+    Returns:
+        str: A formatted string describing the substructure match results, which is easier for language models to read.
+
+    Raises:
+        ValueError: If *smiles* or any SMARTS pattern is invalid.
+    """
+    # mol = _validate_smiles(smiles, standardize=standardize)
+    mol = Chem.MolFromSmiles(smiles)
+    
+    output = []
+    for name, smarts in patterns.items():
+        query = Chem.MolFromSmarts(smarts)
+        if query is None:
+            raise ValueError(f"Invalid SMARTS pattern for '{name}': {smarts}")
+        matches = mol.GetSubstructMatches(query)
+        count = len(matches)
+        if count > 0:
+            output.append(f"- {name}: Present (count: {count})")
+        else:
+            output.append(f"- {name}: Not present")
+            
+    if not output:
+        return "No patterns provided for matching."
+        
+    return "Substructure Match Results:\n" + "\n".join(output)
+
+#-------------------------------------------
+# Structure related but not AccFG
+#-------------------------------------------
+
+def find_mcs(
+    smiles: str,
+    reference_smiles: list[str],
+    complete_rings_only: bool = True,
+    ring_matches_ring_only: bool = True,
+    standardize: bool = False,
+) -> str:
+    """
+    Find the maximum common substructure (MCS) across query + reference SMILES.
+
+    Args:
+        smiles (str): Query SMILES.
+        reference_smiles (list[str]): Reference SMILES to include in the MCS search.
+        complete_rings_only (bool): MCS must contain complete rings, not partial (default True).
+        ring_matches_ring_only (bool): Ring atoms only match other ring atoms (default True).
+        standardize (bool): Standardize all SMILES first (remove salts, canonical tautomer).
+
+    Returns:
+        str: A formatted string describing the MCS search results, which is easier for language models to read.
+    """
+    # mol = _validate_smiles(smiles, standardize=standardize)
+    mol = Chem.MolFromSmiles(smiles)
+    refs = [Chem.MolFromSmiles(ref) for ref in reference_smiles]
+
+    mcs = rdFMCS.FindMCS(
+        [mol, *refs],
+        timeout=5,
+        completeRingsOnly=complete_rings_only,
+        ringMatchesRingOnly=ring_matches_ring_only,
+    )
+
+    mcs_smiles = None
+    if mcs.smartsString:
+        mcs_mol = Chem.MolFromSmarts(mcs.smartsString)
+        if mcs_mol is not None:
+            mcs_smiles = Chem.MolToSmiles(mcs_mol, canonical=True)
+
+    mcs_atoms = int(mcs.numAtoms)
+    query_atoms = mol.GetNumHeavyAtoms()
+    query_coverage = mcs_atoms / query_atoms if query_atoms > 0 else 0.0
+    ref_coverages = [mcs_atoms / r.GetNumHeavyAtoms() if r.GetNumHeavyAtoms() > 0 else 0.0 for r in refs]
+
+    output = (
+        "Maximum Common Substructure (MCS) Results:\n"
+        f"- smarts: {mcs.smartsString}\n"
+        f"- smiles: {mcs_smiles}\n"
+        f"- num_atoms: {mcs_atoms}\n"
+        f"- num_bonds: {int(mcs.numBonds)}\n"
+        f"- canceled: {bool(mcs.canceled)}\n"
+        f"- query_coverage: {_round_output(query_coverage)}\n"
+        f"- ref_coverages: {_round_output(ref_coverages)}"
+    )
+
+    return output
+
+#-------------------------------------------
 # AccFG OpenAI tool list
 #-------------------------------------------
 
@@ -378,14 +480,98 @@ AccFG_OPENAI_TOOLS = [{
             ]
         }
     }
-}, 
+}, {
+    'type': 'function',
+    'function': {
+        'name': 'match_substructure',
+        'description': 'Test whether a molecule contains the given SMARTS substructures and count occurrences.',
+        'parameters': {
+            'type': 'object',
+            'properties': {
+                'smiles': {
+                    'type': 'string',
+                    'description': 'The SMILES string of the molecule. Do not pass in an ellipsis (`...`) or other abbreviation.'
+                },
+                'patterns': {
+                    'type': 'object',
+                    'description': 'Mapping of pattern name to SMARTS string.',
+                    'additionalProperties': {
+                        'type': 'string'
+                    }
+                }
+            },
+            'required': [
+                'smiles',
+                'patterns'
+            ]
+        }
+    }
+}, {
+    'type': 'function',
+    'function': {
+        'name': 'find_mcs',
+        'description': 'Find the maximum common substructure (MCS) across query + reference SMILES. The output is a single structure present in ALL provided molecules. To compare very different molecules, call this tool multiple times individually rather than placing all molecules in a single list.',
+        'parameters': {
+            'type': 'object',
+            'properties': {
+                'smiles': {
+                    'type': 'string',
+                    'description': 'Query SMILES.'
+                },
+                'reference_smiles': {
+                    'type': 'array',
+                    'items': {
+                        'type': 'string'
+                    },
+                    'description': 'Reference SMILES to include in the MCS search.'
+                }
+            },
+            'required': [
+                'smiles',
+                'reference_smiles'
+            ]
+        }
+    }
+}
 ]
 
 if __name__ == "__main__":
     # example usage
     smiles = "CCC=CCC=CCC=CCCCCCCCC(=O)OS(C)(=O)=O"
-    print(high_level_fg_fragments_w_attach_points_no_special_tokens_w_atom_ids(smiles))
+    smiles_2 = "CCC=CCC=CCC=CCCC(=O)OS(C)(=O)=O"
+    smiles_3 = "CCC=CCC=CCCCCCC=CCCCCCCCC(=O)OS(C)(=O)=O"
+    # print(high_level_fg_fragments_w_attach_points_no_special_tokens_w_atom_ids(smiles))
     # print('\n')
     # print(describe_high_level_fg_fragments(smiles))
     # print('\n')
     # print(describe_high_level_fg_fragments_no_special_token(smiles))
+
+    BBB_SMARTS_LIBRARY = {
+        # Strong negatives / permanent charge
+        "quaternary_ammonium": "[N+](C)(C)(C)C",
+        "sulfonate": "S(=O)(=O)[O-]",
+
+        # Acids that often create anionic species
+        "carboxylic_acid": "C(=O)[O;H1,-1]",
+        "tetrazole": "c1nnnn1",
+        "phosphonate": "P(=O)(O)(O)",
+
+        # Common basic centers
+        "tertiary_amine": "[NX3;!$(NC=O);!$(NS(=O)=O)](C)(C)",
+        "piperidine_like": "N1CCCCC1",
+        "piperazine_like": "N1CCNCC1",
+
+        # H-bond rich motifs
+        "guanidine": "NC(=N)N",
+        "urea": "NC(=O)N",
+        "sulfonamide": "S(=O)(=O)N",
+        "amide": "C(=O)N",
+
+        # Highly polar substituents
+        "nitro": "[N+](=O)[O-]",
+        "poly_ether": "OCCO",  # crude proxy for PEG-like
+        }
+
+    # print(match_substructure(smiles, BBB_SMARTS_LIBRARY))
+
+    print(find_mcs(smiles, [smiles_2, smiles_3]))

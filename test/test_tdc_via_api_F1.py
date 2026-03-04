@@ -8,6 +8,8 @@ from pathlib import Path
 from tqdm import tqdm
 import multiprocessing
 import numpy as np
+import re
+import jinja2
 from sklearn.metrics import f1_score, classification_report
 from openai import OpenAI  # use this when don't need langfuse
 # import logfire
@@ -69,8 +71,10 @@ def get_args():
     parser.add_argument('--enable-tools', action='store_true', default=True, help='Enable tool calling')  # TODO: 注意是否使用了 tool ， debug 可能关了
     parser.add_argument('--log-file', action='store_true', default=False, help='Save logs to file')  # TODO: 注意这里 log-file 到底是开了还是没开
     parser.add_argument('--log-file-name', type=str, default="Tools_gpt-oss-120b_{t_stamp}_dev_4.log", help='logs file name')   # TODO: log file name
-    parser.add_argument('--langfuse', action='store_true', default=False, help='Save traces to langfuse')  # TODO: 注意这里 langfuse trace 到底是开了还是没开
+    parser.add_argument('--langfuse', action='store_true', default=True, help='Save traces to langfuse')  # TODO: 注意这里 langfuse trace 到底是开了还是没开
     parser.add_argument('--max-retry', type=int, default=4, help='Max retries for answer parsing failure')
+    parser.add_argument('--use-playbook', action='store_true', default=True, help='Inject playbook into the prompt')
+    parser.add_argument('--score-based', action='store_true', default=True, help='If true, expect and parse a 0-100 probability instead of (A)/(B)')
     
     args = parser.parse_args()
     return args
@@ -372,8 +376,8 @@ def run_turn_base(client, messages, model_name, thinking=False, tools=None, use_
             
         # Check if the set of tool names is the same as the previous turn to prevent infinite loops
         current_tool_names = set(tool_call.function.name for tool_call in tool_calls)
-        if current_tool_names == last_tool_names:
-            break
+        # if current_tool_names == last_tool_names:
+        #     break
         last_tool_names = current_tool_names
             
         for tool_call in tool_calls:
@@ -406,14 +410,49 @@ def run_turn_base(client, messages, model_name, thinking=False, tools=None, use_
             
     return final_content, total_tool_calls
 
+def load_playbook(task_name):
+    project_root = Path(__file__).resolve().parent.parent
+    playbook_file = f"{task_name}.jinja2"
+    
+    modified_path = project_root / "playbooks" / "modified" / playbook_file
+    origin_path = project_root / "playbooks" / "Haydn_origin" / playbook_file
+    
+    if modified_path.exists():
+        target_path = modified_path
+    elif origin_path.exists():
+        target_path = origin_path
+    else:
+        return ""
+        
+    class PlaybookLoader(jinja2.BaseLoader):
+        def get_source(self, environment, template):
+            if template == "tdc/base.jinja2":
+                path = project_root / "playbooks" / "modified" / "base.jinja2"
+                if not path.exists():
+                    path = project_root / "playbooks" / "Haydn_origin" / "base.jinja2"
+            else:
+                path = project_root / "playbooks" / "modified" / template
+                if not path.exists():
+                    path = project_root / "playbooks" / "Haydn_origin" / template
+            
+            if not path.exists():
+                raise jinja2.TemplateNotFound(template)
+            with open(path, 'r', encoding='utf-8') as f:
+                source = f.read()
+            return source, str(path), lambda: True
+
+    env = jinja2.Environment(loader=PlaybookLoader())
+    template = env.get_template(playbook_file)
+    return template.render()
+
 def worker_process_sample(args):
     """
-    Args: (index, text, label_dummy, api_base, api_key, model_name, thinking, enable_tools, task_name, max_retry)
+    Args: (index, text, label_dummy, api_base, api_key, model_name, thinking, enable_tools, task_name, use_langfuse, max_retry, use_playbook, score_based)
     Returns: (index, prediction_int_or_None)
     """
     global _CLIENT, _RUN_TURN
 
-    index, text, label, api_base, api_key, model_name, thinking, enable_tools, task_name, use_langfuse, max_retry = args
+    index, text, label, api_base, api_key, model_name, thinking, enable_tools, task_name, use_langfuse, max_retry, use_playbook, score_based = args
     ground_truth_label = int(label)  # Keep track of ground truth for Langfuse metadata
     
     # client = OpenAI(
@@ -422,13 +461,27 @@ def worker_process_sample(args):
     # )
     client = _CLIENT
 
-    messages = [{'role': 'user', 'content': text}]
-    
     # Determine tools
     tools = None
     if enable_tools:
         tools = get_tools_for_task(task_name)
     
+    if score_based:
+        # Change prompt text to require 0-100 instead of A/B
+        if "Drug SMILES:" in text:
+            text = text.split("Drug SMILES:")[1].split("\n")[0].strip()
+        user_text = f'The given SMILES is {text}, follow the above instructions and think step by step to make your prediction. Output a probability from 0 to 100 after "Answer: " (e.g. "Answer: 50").'
+    
+    if use_playbook:
+        playbook_text = load_playbook(task_name)
+        # if playbook_text:
+        #     text = playbook_text + "\n\n" + text
+
+    messages = [
+        {'role': 'system', 'content': playbook_text},
+        {'role': 'user', 'content': text}
+        ]
+
     for attempt in range(max_retry):
         try:
             # We need to make a copy of messages because _RUN_TURN might append to it (though in current impl it appends, but if we retry we want fresh start? 
@@ -444,7 +497,7 @@ def worker_process_sample(args):
                 from utils.TDC_answer_parser import extract_answer, parse_answer
                 
                 ans_txt, fmt_ok = extract_answer(response_text)
-                prediction = parse_answer(ans_txt, fmt_ok, think_is_on=thinking) # Assuming thinking affects parsing logic?
+                prediction = parse_answer(ans_txt, fmt_ok, think_is_on=thinking, score_based=score_based) # Assuming thinking affects parsing logic?
                 # Note: parse_answer signature might vary. 
                 # In skin-reaction.py: parse_answer(ans_txt, fmt_ok, think_is_on=True)
                 
@@ -473,13 +526,13 @@ def load_tasks_map(data_dir):
             # 'AMES.jsonl',  # 1457
             # 'Tox21.jsonl',  # 15584
             # -----------------------------------------
-            'herg_central_hERG_inhib.jsonl',  # 61379    leave out
-            'ToxCast.jsonl'  # 307282    leave out
+            # 'herg_central_hERG_inhib.jsonl',  # 61379    leave out
+            # 'ToxCast.jsonl'  # 307282    leave out
         ],
         'ADME': [
             # 'PAMPA_NCATS.jsonl',  # 408
             # 'HIA_Hou.jsonl',  # 117
-            # 'BBB_Martins.jsonl',  # 406
+            'BBB_Martins.jsonl',  # 406
             # 'Pgp_Broccatelli.jsonl',  # 245
             # 'Bioavailability_Ma.jsonl',  # 128
             # 'CYP2C9_Substrate_CarbonMangels.jsonl',  # 135
@@ -502,9 +555,9 @@ def load_tasks_map(data_dir):
         # 'PPI': ['HuRI.jsonl'],  # 20282
         # 'TCREpitopeBinding': ['Weber.jsonl'],  # not in our test set yet
         'TrialOutcome': [
-            'phase1.jsonl', 
-            'phase2.jsonl', 
-            'phase3.jsonl'
+            # 'phase1.jsonl', 
+            # 'phase2.jsonl', 
+            # 'phase3.jsonl'
             ],
         'PeptideMHC': [
             # 'MHC1_IEDB-IMGT_Nielsen.jsonl',  # 37197
@@ -594,10 +647,9 @@ def main():
                 continue
 
             # Prepare args for multiprocessing
-            # tasks[i] = (index, text, label, ...)
             worker_tasks = []
             for idx, item in enumerate(raw_data):
-                task_tuple = (idx, item['text'], item['Y'], args.api_base, args.api_key, args.model, args.thinking, args.enable_tools, task_name, args.langfuse, args.max_retry)
+                task_tuple = (idx, item['text'], item['Y'], args.api_base, args.api_key, args.model, args.thinking, args.enable_tools, task_name, args.langfuse, args.max_retry, args.use_playbook, args.score_based)
                 for _ in range(args.n_samples):
                     worker_tasks.append(task_tuple)
             

@@ -5,3 +5,4 @@ accfg
 tinker
 nest_asyncio
 wandb
+dimorphite_dl
