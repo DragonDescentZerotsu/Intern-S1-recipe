@@ -572,6 +572,6 @@ if __name__ == "__main__":
         "poly_ether": "OCCO",  # crude proxy for PEG-like
         }
 
-    # print(match_substructure(smiles, BBB_SMARTS_LIBRARY))
+    print(match_substructure(smiles, BBB_SMARTS_LIBRARY))
 
-    print(find_mcs(smiles, [smiles_2, smiles_3]))
+    # print(find_mcs(smiles, [smiles_2, smiles_3]))

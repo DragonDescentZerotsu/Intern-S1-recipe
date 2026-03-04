@@ -5,3 +5,4 @@ accfg
 numpy==1.26.4
 langfuse
 dimorphite_dl
+simpleeval

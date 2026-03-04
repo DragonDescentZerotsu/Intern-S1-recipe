@@ -6,3 +6,4 @@ freesasa
 rdkit
 accfg
 dimorphite_dl
+simpleeval
