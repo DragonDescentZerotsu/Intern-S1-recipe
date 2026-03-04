@@ -79,6 +79,7 @@ Evidence-based thresholds:
 
 Use:
 - `describe_high_level_fg_fragments(smiles)` to enumerate ionizable groups and polar motifs.
+- `score_structural_alerts(…, alert_library="brenk" or "nih" or "all")` to flag reactive/toxic/assay-interfering motifs (these can indirectly reduce oral viability via safety/instability).
 - `analyze_ring_systems(…)` to detect **PAH-like fused aromatics**, macrocycles, and large rigid systems.
 - `match_substructure(…, patterns=…)` to explicitly detect motifs that often drive (non)absorption.
 
