@@ -1,0 +1,216 @@
+{% set objective = "Please predict the probability of the given molecule having high human intestinal absorption (HIA)." -%}
+{% set prompt_playbook -%}
+# Playbook: Predict High Human Intestinal Absorption (HIA) from SMILES (Output 0–100)
+
+## 0) What you are predicting
+**Target:** likelihood the molecule has **high human intestinal absorption** (fraction absorbed, HIA/FA), primarily reflecting **passive GI absorption**.
+
+**Important limitation:** Many “rule” models are strongest for **passively absorbed** compounds; **active uptake/efflux** can create exceptions (e.g., some high-PSA drugs can still be absorbed via transporters) (PMIDs: 10430547, 27218427, 12587124).
+
+**Final output constraint:** your *final answer must be a single integer* `0–100` **only**.
+
+---
+
+## 1) Standard workflow (use tools in this order)
+1. **Standardize**
+   - `standardize_smiles(smiles, remove_salts=True, canonical_tautomer=True, neutralize=False)`
+   - Keep formal charges (don’t neutralize) so charge-based penalties remain meaningful.
+
+2. **Compute core descriptors** (`standardize=True`)
+   - Use the individual descriptor tools:
+   - `get_molecular_weight(smiles)`
+   - `get_tpsa(smiles)`
+   - `get_mol_logp(smiles)`
+   - `get_hbd(smiles)`
+   - `get_hba(smiles)`
+   - `get_num_rotatable_bonds(smiles)`
+   - `get_num_amide_bonds(smiles)`
+   - `get_formal_charge(smiles)`
+   - `get_ring_count(smiles)`
+   - `get_qed(smiles)`
+   - You will use: **MW, WlogP (RDKit), tPSA, HBD, HBA, rotatable bonds (RB), formal charge, ring counts**.
+
+3. **Ionization class at pH 7.4**
+   - `classify_ionization(smiles, ph=7.4)`
+   - Use `representative.net_charge` and `charge_class` (neutral/acid/base/zwitterion), plus whether multiple charge states exist (`is_ambiguous`).
+
+4. **Functional groups + substructure flags**
+   - `describe_high_level_fg_fragments(smiles)` for a human-readable scan.
+   - `match_substructure(smiles, patterns=...)` for specific “hard penalties” (e.g., quaternary ammonium, bisphosphonate).
+
+5. (Optional) **Ring system / scaffold sanity checks**
+   - `analyze_ring_systems` and `get_murcko_scaffold` to recognize very large fused aromatics, macrocycles, or extreme scaffold fractions that often correlate with permeability/solubility issues.
+
+---
+
+## 2) Primary signals to extract from SMILES (mechanistic rationale)
+### A) Polarity / H-bonding burden (strongest simple predictor)
+**Use tPSA as the main axis**.
+- Human FA shows a strong inverse sigmoidal relationship with PSA; classic actionable cut points:
+  - **High/complete absorption often when PSA ≲ ~60 Å²**
+  - **Poor absorption often when PSA ≳ ~140 Å²** (PMIDs: 9165525, 10430547)
+- In a large rule-based HIA filter, for typical drug-like MW (255–580), **tPSA >154 Å² → poor HIA** (PMID: 12587124).
+
+**Interpretation:** High PSA generally means high H-bonding + high desolvation penalty → lower passive transcellular permeation.
+
+### B) Lipophilicity (needed, but “Goldilocks”)
+Use RDKit **WlogP** as a practical proxy.
+- Two-descriptor “egg/ellipse” models (WlogP vs tPSA) can classify passive HIA well; BOILED-Egg was validated on a curated human passive HIA set and achieves strong accuracy/MCC (PMID: 27218427).
+- Very low logP suggests insufficient membrane partitioning; very high logP can impair effective absorption via low solubility (nonlinear trade-off discussed broadly in permeability/absorption modeling reviews; see also PMIDs: 11052792, 12769700).
+
+### C) Size and flexibility (secondary modifiers)
+- **MW**: large size often reduces permeability; classic screening uses MW≤500 (PMID: 11259830).
+- **Rotatable bonds (RB)**: high flexibility is associated with worse permeability/oral absorption; Veber-style heuristics often use **RB ≤10** and **PSA ≤140** as favorable (reviewed in PMID: 16584131).
+
+### D) Ionization/charge class at physiological pH (often decisive)
+- Strong/constant charges generally reduce passive permeability.
+- **Quaternary ammonium** is a strong “poor HIA” signal (PMID: 12587124). BOILED-Egg authors note many misclassified false positives bear **positive charges** (PMID: 27218427), so explicitly penalize permanently/mostly charged molecules.
+
+---
+
+## 3) Hard rules (override / cap the probability)
+Implement these as “if present, cap maximum score,” because literature shows they are strong negative predictors.
+
+### 3.1 Quaternary nitrogen → cap very low
+**If quaternary ammonium / permanently charged N** present (e.g., `[N+](C)(C)(C)C`, imidazolium, pyridinium):
+- **Cap probability at 15** (very unlikely high HIA), unless you have strong external evidence (not available here).
+- Evidence: “quaternary nitrogen” flagged as MW-independent poor absorption rule (PMID: 12587124).
+
+### 3.2 Geminal bisphosphonate motif → cap extremely low
+If motif consistent with **>C[PO(OH)2]2** (bisphosphonate-like):
+- **Cap probability at 10**.
+- Evidence: bisphosphonates flagged as poor absorption (chelation/complexation) (PMID: 12587124).
+
+### 3.3 Extreme polarity
+If **tPSA ≥ 200 Å²** (or many heteroatoms/polyols):
+- **Cap probability at 10–20** unless you suspect active uptake.
+- Evidence basis: PSA-based human FA models place poor absorption around PSA ~140+ (PMIDs: 9165525, 10430547) and rule-based HIA filters penalize high tPSA (PMID: 12587124).
+
+---
+
+## 4) Scoring rubric to produce a calibrated 0–100 probability
+Use this as a consistent, explainable conversion from descriptors → probability.
+
+### Step 4.1 Base score from tPSA (anchor to human FA evidence)
+Anchors: **~60 Å² → very high**, **~140 Å² → very low** (PMIDs: 9165525, 10430547).
+
+Set `score =`:
+- tPSA ≤ 60: **90**
+- 60 < tPSA ≤ 90: **75**
+- 90 < tPSA ≤ 120: **55**
+- 120 < tPSA ≤ 140: **35**
+- 140 < tPSA ≤ 154: **20** (aligns with “poor” zone; PSA thresholding + AB/HIA tree) (PMIDs: 10430547, 12587124)
+- 154 < tPSA ≤ 200: **10**
+- tPSA > 200: **3**
+
+### Step 4.2 Adjust for lipophilicity (WlogP)
+Rationale: BOILED-Egg uses WlogP+tPSA; extreme hydrophilicity or extreme lipophilicity can hurt absorption (PMID: 27218427; broader context PMIDs: 11052792, 12769700).
+
+Add:
+- WlogP < 0: **−20**
+- 0 ≤ WlogP < 1: **−10**
+- 1 ≤ WlogP ≤ 3: **+5**
+- 3 < WlogP ≤ 5: **0**
+- 5 < WlogP ≤ 6: **−5**
+- WlogP > 6: **−15**
+
+### Step 4.3 Adjust for MW
+Use Ro5-style penalty (PMID: 11259830) and AB/HIA MW regimes (PMID: 12587124).
+
+Add:
+- MW < 255: **+5** (small molecules often absorb well unless extremely polar)
+- 255 ≤ MW ≤ 500: **0**
+- 500 < MW ≤ 580: **−10**
+- MW > 580: **−20**
+
+### Step 4.4 Adjust for flexibility (rotatable bonds)
+Veber-style preference for RB≤10 (reviewed in PMID: 16584131).
+
+Add:
+- RB ≤ 5: **+5**
+- 6–10: **0**
+- 11–15: **−10**
+- >15: **−20**
+
+### Step 4.5 Adjust for H-bond counts (Ro5-style)
+Ro5 flags poor absorption/permeation when HBD>5 or HBA>10 (PMID: 11259830). (tPSA already captures much of this; treat these as *secondary* penalties.)
+
+Add penalties:
+- If HBD > 5: **−10**; if HBD > 8: **−20**
+- If HBA > 10: **−10**; if HBA > 15: **−20**
+- If (HBD + HBA) > 12: **−10** (Veber surrogate noted in reviews) (PMID: 16584131)
+
+### Step 4.6 Adjust for ionization/charge at pH 7.4
+Use `classify_ionization` output.
+
+Add:
+- Representative net_charge = 0 and charge_class neutral: **+5**
+- net_charge = +1 (base): **0**
+- net_charge = −1 (acid): **−10**
+- zwitterion: **−15**
+- |net_charge| ≥ 2: **−25**
+- is_ambiguous = True: **−5**
+
+### Step 4.7 Apply hard-rule caps
+After adjustments:
+- If quaternary ammonium present: `score = min(score, 15)` (PMID: 12587124)
+- If bisphosphonate motif present: `score = min(score, 10)` (PMID: 12587124)
+- If tPSA > 200: `score = min(score, 10–20)` (choose 10 unless you have a strong transporter suspicion)
+
+Finally:
+- Clamp: `score = max(0, min(100, round(score)))`
+- Output as integer.
+
+---
+
+## 5) Substructure screening patterns (SMARTS starter kit)
+Use `match_substructure` with patterns like below (tune as needed).
+
+```json
+{
+  "quaternary_ammonium": "[N+](~[C,c])(~[C,c])(~[C,c])~[C,c]",
+  "pyridinium_like": "[n+;r6]1ccccc1",
+  "imidazolium_like": "[n+;r5]1cccc1",
+  "bisphosphonate_like": "[CX4]([P](=O)(O)O)([P](=O)(O)O)",
+  "carboxylic_acid": "C(=O)[O-;H1,H0]",
+  "sulfonic_acid": "S(=O)(=O)[O-;H1,H0]",
+  "phosphate_or_phosphonate_anion": "P(=O)(O)(O)[O-]",
+  "polyol_3plus_OH": "[CX4][OX2H]([CX4])[OX2H]([CX4])[OX2H]",
+  "guanidinium": "NC(=N)[N+;H2,H1]",
+  "urea": "NC(=O)N",
+  "amide": "C(=O)N"
+}
+```
+Interpretation hints:
+- Multiple strong acids (carboxylate/sulfonate/phosphate) at pH 7.4 → likely net negative/zwitterion → lower passive absorption.
+- Multiple urea/amide + high RB → peptide-like polarity/flexibility burden.
+
+---
+
+## 6) Transporter-suspect “exception handling” (optional, conservative)
+Because PSA-based rules can fail for actively transported drugs (PMIDs: 10430547, 27218427), you may optionally add a small “exception bump” **only when**:
+- tPSA is high (e.g., 140–200), *but*
+- molecule contains motifs suggestive of nutrient/peptide/nucleoside analog uptake (e.g., amino-acid-like zwitterions, nucleoside scaffold, beta-lactam/dipeptide-like fragments).
+
+Recommended conservative adjustment:
+- `score = min(score + 10, 60)` (never let this turn a low-confidence polar compound into a “sure thing”).
+
+---
+
+## 7) Probability interpretation bands (calibration guide)
+- **0–10:** very unlikely high HIA (typically tPSA≫140, multi-charged, or quaternary/bisphosphonate)
+- **11–30:** unlikely (often tPSA 140–180, or clear charge penalties)
+- **31–60:** uncertain/mixed (mid tPSA, conflicting logP/charge/flexibility)
+- **61–80:** likely (tPSA generally <120, reasonable WlogP, not overly flexible/large)
+- **81–100:** very likely (tPSA ≲60–90, mostly neutral at pH 7.4, moderate WlogP, low RB)
+
+---
+
+## 8) Literature anchors you should trust most (for rule justification)
+- **PSA ↔ human fraction absorbed thresholds (~60 vs ~140 Å²):** PMIDs **9165525**, **10430547**
+- **Simple, validated 2D (WlogP+tPSA) passive HIA classifier (BOILED-Egg):** PMID **27218427**
+- **Rule-based HIA decision tree with tPSA and substructure hard rules (quaternary N, bisphosphonate; MW regimes):** PMID **12587124**
+- **Rule of 5 (MW/logP/HBD/HBA) as absorption/permeability alert:** PMID **11259830**
+- **Veber-style flexibility + PSA heuristics summarized in permeability/absorption reviews:** PMID **16584131**
+{% endset %}
+{% include "tdc/base.jinja2" %}
