@@ -46,6 +46,12 @@ def train(args):
         else:
             ray.get(actor_model.async_train(rollout_id, rollout_data_curr_ref))
 
+        if (rollout_id + 1) % args.update_weights_interval == 0:
+            # sync generate before update weights to prevent update weight in the middle of generation
+            rollout_data_curr_ref = ray.get(x) if (x := rollout_data_next_future) is not None else None
+            rollout_data_next_future = None
+            actor_model.update_weights()
+
         if should_run_periodic_action(rollout_id, args.save_interval, num_rollout_per_epoch, args.num_rollout):
             actor_model.save_model(
                 rollout_id,
@@ -58,12 +64,6 @@ def train(args):
                 )
             if args.rollout_global_dataset:
                 ray.get(rollout_manager.save.remote(rollout_id))
-
-        if (rollout_id + 1) % args.update_weights_interval == 0:
-            # sync generate before update weights to prevent update weight in the middle of generation
-            rollout_data_curr_ref = ray.get(x) if (x := rollout_data_next_future) is not None else None
-            rollout_data_next_future = None
-            actor_model.update_weights()
 
         if should_run_periodic_action(rollout_id, args.eval_interval, num_rollout_per_epoch):
             ray.get(rollout_manager.eval.remote(rollout_id))

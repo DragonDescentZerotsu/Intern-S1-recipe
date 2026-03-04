@@ -6,16 +6,10 @@ adds a "metadata" field with SMILES, label, task_name, in_task_id,
 and saves per-task JSONL files to Slime_RL_data/by_task/.
 """
 
+import argparse
 import json
 import os
 import re
-
-split = 'test'
-
-SRC_DIR = os.path.join(os.path.dirname(__file__),
-                       f"TDC_{split}_prompts_label_sm_wo_herg-c_ToxCast_butkiewicz")
-DST_DIR = os.path.join(os.path.dirname(__file__),
-                       "Slime_RL_data", "by_task", split)
 
 
 def extract_smiles(text: str) -> str:
@@ -66,12 +60,32 @@ def process_file(src_path: str, task_name: str, dst_path: str):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Prepare Slime RL data")
+    parser.add_argument(
+        "--split",
+        type=str,
+        default="train",
+        choices=["train", "test", "valid"],
+        help="Dataset split to process (train, test, or valid)"
+    )
+    args = parser.parse_args()
+    
+    split = args.split
+    src_dir = os.path.join(os.path.dirname(__file__),
+                           f"TDC_{split}_prompts_label_sm_wo_herg-c_ToxCast_butkiewicz")
+    dst_dir = os.path.join(os.path.dirname(__file__),
+                           "Slime_RL_data", "by_task", split)
+
     total = 0
-    files = sorted(f for f in os.listdir(SRC_DIR) if f.endswith(".jsonl"))
+    if not os.path.exists(src_dir):
+        print(f"Directory not found: {src_dir}")
+        return
+
+    files = sorted(f for f in os.listdir(src_dir) if f.endswith(".jsonl"))
     for fname in files:
         task_name = fname.replace(".jsonl", "")
-        src_path = os.path.join(SRC_DIR, fname)
-        dst_path = os.path.join(DST_DIR, fname)
+        src_path = os.path.join(src_dir, fname)
+        dst_path = os.path.join(dst_dir, fname)
         n = process_file(src_path, task_name, dst_path)
         print(f"[{task_name}] {n} records written to {dst_path}")
         total += n

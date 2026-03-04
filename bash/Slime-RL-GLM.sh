@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --job-name=Slime-RL-GLM-4.7-Flash-length-penalty-no-tool-reward
+#SBATCH --job-name=Slime-RL-GLM-4.7-Flash-length-penalty-w-tool-reward
 #SBATCH --partition=dgx-b200
 #SBATCH --gpus=8
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=64
 #SBATCH --mem=1024G
-#SBATCH --time=7-00:00:00
+#SBATCH --time=03:00:00
 #SBATCH --output=/vast/projects/xia6/apex-gen/tianang/projects/Intern-S1/logs/B200/%x-%j.out
 #SBATCH --error=/vast/projects/xia6/apex-gen/tianang/projects/Intern-S1/logs/B200/%x-%j.err
 
