@@ -1,0 +1,267 @@
+{% set objective = "Please predict the probability of the given molecule causing drug-induced liver injury (DILI)." %}
+{% set prompt_playbook -%}
+# SMILES→DILI Risk Playbook (agent instructions)
+
+## 0) Output contract
+- **Output a single integer 0–100** as the calibrated probability that the molecule causes **human drug-induced liver injury (DILI)**.
+- 0 = very unlikely; 100 = very likely.
+- This playbook only uses information derivable from the **SMILES** (no dose, no exposure, no clinical context).
+
+> Evidence basis (for why these checks matter): structure-derived DILI models repeatedly find risk signal in **(i) specific substructures/“structural alerts”** (e.g., hydrazines, furans, anilines, sulfonamides, halogenated motifs) and **(ii) physicochemical properties** (notably **lipophilicity** and **aromatic ring count**) (PMIDs **25717346**, **27491923**, **33461600**, **38173043**, **20843939**, **27640149**). Cholestatic DILI is often linked to **BSEP-related** mechanisms and certain chemotypes (PMIDs **28092392**, **33314907**).
+
+---
+
+## 1) Standardize input (always)
+1. `remove_salts(smiles)`
+   - Desalt a SMILES by removing salts/counterions and keeping ONLY the largest organic fragment.
+
+If standardization fails → return **50** (unknown).
+
+---
+
+## 2) Compute core features (always)
+Run the following on `std` with `standardize=False` (it is already standardized):
+
+### 2.1 Physicochemical descriptors
+Use the individual descriptor tools:
+   - `get_molecular_weight(smiles)`
+   - `get_tpsa(smiles)`
+   - `get_mol_logp(smiles)`
+   - `get_hbd(smiles)`
+   - `get_hba(smiles)`
+   - `get_num_rotatable_bonds(smiles)`
+   - `get_num_amide_bonds(smiles)`
+   - `get_formal_charge(smiles)`
+   - `get_ring_count(smiles)`
+   - `get_esol(smiles)`
+Track at minimum:
+- **MW** (`average_mw`)
+- **LogP**
+- **TPSA**
+- **Aromatic rings** (`aromatic_rings`)
+- **Total rings**
+- **Rotatable bonds**
+- **HBD/HBA**
+- **Formal charge**
+- **ESOL logS** (solubility proxy)
+
+### 2.2 Ionization at physiologic pH
+`I = classify_ionization(std, ph=7.4)`
+Capture:
+- `representative.net_charge` and `charge_class`
+- `has_positive_states`, `has_negative_states`, `is_ambiguous`
+
+### 2.3 Ring system analysis
+`R = analyze_ring_systems(std)`
+Key flags:
+- `has_pah_like` (≥3 fused aromatic rings)
+- `largest_aromatic_system`
+- `has_macrocycle`
+
+### 2.4 Functional group tree
+`FG = get_functional_groups(std)`
+Use it to quickly spot electrophiles, leaving groups, heterocycles, thiols, anilines, etc.
+
+### 2.5 Generic “structural alert” catalogs (broad toxicity priors)
+Run at least one of:
+- `score_structural_alerts(std, alert_library="brenk")`
+- `score_structural_alerts(std, alert_library="nih")`
+- `score_structural_alerts(std, alert_library="chembl")`
+
+Use catalog hits as a **weak** risk prior (not DILI-specific), but useful when combined with the DILI-focused alerts below.
+
+---
+
+## 3) DILI-focused substructure alert screening (SMARTS)
+Use `match_substructure` with the following **DILI-enriched** motifs (derived from human DILI label mining / ML fragment analyses):
+
+### 3.1 High-confidence DILI alerts to include
+These are repeatedly reported as enriched in DILI-positive drugs or mined as high-precision alerts:
+- **Hydrazine / hydrazide** motifs (PMIDs **25717346**, **33461600**, **38173043**)
+- **Furan** motif (PMID **33461600**)
+- **Aniline** motif (PMIDs **25717346**, **38173043**)
+- **Sulfonamide / sulfone-like** motifs (PMID **25717346**)
+- **Alkyl halides / alkyl fluorides; C–F** motifs (PMIDs **25717346**, **27491923**, **38173043**, **28521054**)
+- **Vinylogous carbonyl / Michael acceptor-like enone** motifs and related reactive systems (PMID **27491923**; also reactive-substructure emphasis in PMID **20843939**)
+- **Alkyl thiol** motifs (PMID **27491923**)
+- **Aryl carboxylic acid** motifs (PMID **25717346**); note potential acyl-glucuronide reactivity (cholestasis-related discussions in PMID **33314907**)
+
+### 3.2 Recommended SMARTS library
+Call:
+
+```python
+hits = match_substructure(std, {
+  # Hydrazines / hydrazides
+  "hydrazine_NN": "NN",
+  "acyl_hydrazide": "[CX3](=O)NN",
+  "sulfonyl_hydrazide": "S(=O)(=O)NN",
+
+  # Furan (aromatic 5-membered O-heteroaromatic)
+  "furan": "c1ccco1",
+
+  # Aniline (primary aniline; broaden if desired)
+  "aniline_primary": "c1ccccc1[NH2]",
+
+  # Aryl carboxylic acid (aromatic–CH–C(=O)OH like in PMID 25717346 alert)
+  "aryl_alkyl_carboxylic_acid": "a[C!R]C(=O)[OH]",
+
+  # Sulfonamide (PMID 25717346 alert)
+  "sulfonamide": "[#6]S(=O)(=O)N[#6]",
+
+  # Thioether / sulfide (non-ring divalent sulfur; PMID 25717346 has [S;X2&!R])
+  "thioether_nonring": "[S;X2&!R]",
+
+  # Sulfoxide / sulfone (captures S(=O) motifs)
+  "sulfoxide": "[S;X3](=O)",
+  "sulfone": "S(=O)(=O)",
+
+  # Alkyl halide / alkyl fluoride pattern (broad; PMID 25717346 has C[F,Cl,Br,I])
+  "alkyl_halide": "C[F,Cl,Br,I]",
+
+  # Epoxide (reactive metabolite proxy)
+  "epoxide": "[OX2]1CC1",
+
+  # Michael acceptor (simple enone; vinylogous carbonyl proxy)
+  "enone_michael_acceptor": "[CX3]=[CX3][CX3](=O)[#6]",
+
+  # Alkyl thiol
+  "thiol": "[SX2H]",
+
+  # Tertiary amine (broad proxy for the “tertiary mixed amine” alert; PMID 27491923)
+  "tertiary_amine": "[NX3;!$(NC=O);!$(NS(=O)=O)]([#6])[#6]",
+
+  # Imide / lactam-ish (rough proxy; imidolactam concept in PMID 27491923)
+  "imide_like": "[NX3]C(=O)[NX3]C(=O)",
+
+  # Trimethylamine-like quaternizable motif proxy (not quaternary necessarily)
+  "trialkylamine": "N([CH3])([CH3])[CH3]"
+})
+```
+
+Interpretation rules:
+- Treat **hydrazine/hydrazide** and **furan** hits as strong red flags (high precision but low coverage in DILI datasets) (PMID **33461600**).
+- Treat **aniline**, **sulfonamide**, **alkyl halide/fluoride**, **thiol/thioether**, **enone/Michael acceptor**, **epoxide** as moderate–strong flags (PMIDs **25717346**, **27491923**, **38173043**, **20843939**).
+
+---
+
+## 4) Build a SMILES-only risk score (0–100) before calibration
+Compute a **raw risk points** score `P_raw` starting from a conservative base rate.
+
+### 4.1 Base rate
+Set `P_raw = 20`.
+- Rationale: without dose/exposure, pure-structure DILI is uncertain; start low-ish and let alerts/properties move it.
+
+### 4.2 Add points for DILI-focused structural alerts (from Section 3)
+Add:
+- **+30** if `hydrazine_NN` OR `acyl_hydrazide` present (PMIDs **25717346**, **33461600**, **38173043**)
+- **+25** if `furan` present (PMID **33461600**)
+- **+15** if `aniline_primary` present (PMIDs **25717346**, **38173043**)
+- **+10** if `sulfonamide` present (PMID **25717346**)
+- **+8** each for `alkyl_halide`, `thioether_nonring`, `thiol`, `sulfoxide`, `epoxide`, `enone_michael_acceptor` (cap these “other-alert” adds at **+25 total**) (PMIDs **25717346**, **27491923**, **20843939**)
+
+### 4.3 Add points for physicochemical risk trends
+These are consistently highlighted as important predictors in DILI models:
+- Lipophilicity and aromatic ring count (PMID **38173043**; also descriptor-based models PMIDs **20843939**, **27640149**)
+
+Add:
+- **LogP** (`D["logp"]`):
+  - +0 if <2
+  - +5 if 2–3
+  - +12 if 3–4
+  - +18 if ≥4
+- **Aromatic rings** (`aromatic_rings`):
+  - +0 if 0–1
+  - +6 if 2
+  - +12 if 3
+  - +18 if ≥4
+- **MW** (`average_mw`):
+  - +0 if <300
+  - +4 if 300–399
+  - +8 if 400–499
+  - +12 if ≥500
+- **Solubility proxy (ESOL logS)**:
+  - +0 if logS > -3
+  - +5 if -4 to -3
+  - +10 if ≤ -4 (very low predicted solubility → exposure/accumulation concern)
+
+### 4.4 Add points for ring-system “liability”
+- If `R.has_pah_like` is true: **+10** (large fused aromatics often track with lipophilicity/reactivity risk)
+
+### 4.5 Add points for “cholestasis/BSEP-like” exposure proxy (structure-only)
+Direct BSEP inhibition needs assays, but structure-only proxies are useful. BSEP inhibition is a major cholestatic DILI mechanism (PMID **28092392**).
+
+Add **+8** if all are true:
+- `logP ≥ 3`
+- `I.has_positive_states == True` (lipophilic base)
+- `TPSA ≤ 75`
+
+### 4.6 Penalize features that often reduce hepatocyte exposure
+Subtract (down to a minimum of 0):
+- **-8** if `TPSA ≥ 140` (very polar)
+- **-8** if `I.representative.charge_class == "zwitterion"` AND `TPSA ≥ 120`
+- **-5** if `D["formal_charge"] <= -1` AND `logP < 2`
+
+### 4.7 Cap and sanity-check
+- Clamp: `P_raw = max(0, min(100, P_raw))`
+- If no alerts hit (Section 3 all absent) **and** `logP < 2.5` **and** `aromatic_rings ≤ 1` **and** `MW < 350`, then clamp upper bound to **35**.
+
+---
+
+## 5) Similarity-based calibration adjustment (strongly recommended)
+Pure rule scoring is brittle; improve calibration by chemical similarity to reference DILI sets.
+
+### 5.1 Maintain two reference lists
+Keep two internal reference SMILES lists (curated offline):
+- `REF_POS`: known human DILI-positive drugs (e.g., DILIrank “Most Concern”)
+- `REF_NEG`: known low-risk drugs (e.g., DILIrank “No Concern”)
+
+### 5.2 Compute similarities
+- `sim_pos = compute_similarity(std, REF_POS, fingerprint="morgan", standardize=True)`
+- `sim_neg = compute_similarity(std, REF_NEG, fingerprint="morgan", standardize=True)`
+Let `t_pos = max(sim_pos.similarities[].similarity)` and `t_neg = max(sim_neg.similarities[].similarity)`.
+
+### 5.3 Adjust P_raw
+- If `t_pos ≥ 0.65` and `t_pos - t_neg ≥ 0.10`: **add +15**
+- Else if `t_pos ≥ 0.50` and `t_pos - t_neg ≥ 0.05`: **add +8**
+- If `t_neg ≥ 0.65` and `t_neg - t_pos ≥ 0.10`: **subtract -15**
+- Else if `t_neg ≥ 0.50` and `t_neg - t_pos ≥ 0.05`: **subtract -8**
+Clamp again to 0–100.
+
+(Why: DILI models generalize better within chemical neighborhoods; alerts are not diagnostic alone (PMID **33461600**).)
+
+---
+
+## 6) Final probability mapping (calibration step)
+Convert `P_raw` into a conservative calibrated probability `P_final` that avoids overconfidence when information is missing.
+
+### 6.1 Uncertainty dampening
+Define an **uncertainty flag** `U = 1` if any are true:
+- `I.is_ambiguous == True` (multiple charge states)
+- `score_structural_alerts` returns many generic alerts (e.g., ≥5 Brenk/NIH) suggesting promiscuous reactivity
+- No strong DILI alerts but high property risk (e.g., logP ≥4 and aromatic_rings ≥3)
+
+If `U == 1`, shrink toward 50:
+- `P_final = round( 50 + 0.7*(P_raw - 50) )`
+Else:
+- `P_final = round(P_raw)`
+
+### 6.2 Output
+Return integer `P_final`.
+
+---
+
+## 7) Quick interpretation bands (for your internal decision; do not print)
+- **0–19**: low structural concern
+- **20–39**: low–moderate (watch exposure)
+- **40–59**: uncertain/moderate
+- **60–79**: high (multiple risk factors/alerts)
+- **80–100**: very high (strong alerts like hydrazines/furans + high lipophilicity/aromaticity)
+
+---
+
+## 8) Notes and caveats (agent should internalize)
+- **Dose/exposure dominates DILI in many cases**; SMILES-only predictions should be conservative (explicitly emphasized in structure-alert mining work; PMID **33461600**).
+- DILI is heterogeneous (hepatocellular vs cholestatic vs mixed). If cholestasis is suspected structurally (lipophilic base + low TPSA), increase caution due to BSEP-related mechanisms (PMID **28092392**).
+- Structural alerts are **not sufficient**: many occur in approved drugs; use them as risk *enrichers* not deterministic rules (PMIDs **25717346**, **33461600**).
+{% endset %}
+{% include "tdc/base.jinja2" %}
