@@ -59,5 +59,6 @@ def get_function_by_name(name):
         "match_substructure": match_substructure,
         "analyze_ring_systems": analyze_ring_systems,
         "classify_ionization": classify_ionization,
+        "score_structural_alerts": score_structural_alerts,
     }
     return tool_map.get(name)
