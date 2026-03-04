@@ -1,0 +1,192 @@
+{% set objective = "Please predict the probability of the given molecule being a CYP3A4 substrate." -%}
+{% set prompt_playbook -%}
+# Playbook: Predicting CYP3A4 Substrate Likelihood from a SMILES string
+
+## Goal / constraint
+- Output **one integer** probability **0–100**:
+  - **0** = very unlikely CYP3A4 substrate
+  - **100** = very likely CYP3A4 substrate
+- Do **not** output any other text.
+
+## Background signals to approximate from 2D SMILES
+CYP3A4:
+- Has a **large, flexible, predominantly lipophilic binding cavity** and can accept very large ligands (incl. macrolides) (PMID: **15653318**, **12924588**).
+- Productive binding often uses **one key polar “anchor” H-bond** (frequently to **Ser119**) plus extensive hydrophobic/π contacts (PMID: **15277015**, **28031486**).
+- Pharmacophore/QSAR models for substrates commonly include **H-bond acceptors/donors + hydrophobic features**, with a characteristic separation between a polar anchor and metabolic site (~5.5–7.8 Å) (PMID: **11922953**, **12924588**, **15277015**).
+- Ionization matters for isoform preference; **strongly basic** molecules often shift toward CYP2D6-like behavior, while higher **acidity** can shift toward CYP2C9 (PMID: **17608404**)—use this as a *relative* penalty/bonus for CYP3A4.
+
+Because you only have **SMILES + 2D descriptors**, treat the task as a **probability-of-being-a-typical drug-like CYP3A4 substrate** based on: size, lipophilicity, flexibility, aromatic/hydrophobic surface, presence/placement-proxy of polar anchors (HBA/HBD), and charge state.
+
+---
+
+## Step 0 — Standardize input
+1. `remove_salts(smiles)`
+   - Desalt a SMILES by removing salts/counterions and keeping ONLY the largest organic fragment.
+
+---
+
+## Step 1 — Compute core descriptors (cheap, high value)
+Run:
+Use the individual descriptor tools:
+   - `get_molecular_weight(smiles)`
+   - `get_tpsa(smiles)`
+   - `get_mol_logp(smiles)`
+   - `get_hbd(smiles)`
+   - `get_hba(smiles)`
+   - `get_num_rotatable_bonds(smiles)`
+   - `get_num_amide_bonds(smiles)`
+   - `get_formal_charge(smiles)`
+   - `get_ring_count(smiles)`
+   - `get_qed(smiles)`
+   - `get_formal_charge(smiles)`
+- `classify_ionization(smiles, ph=7.4)` (to estimate typical net charge states)
+- `analyze_ring_systems(smiles)`
+- Optional: `describe_high_level_fg_fragments(smiles)` for easy identification of amines, heterocycles, amides, ethers, etc.
+
+Record these variables:
+- **MW** (average_mw)
+- **cLogP** (Wildman-Crippen)
+- **TPSA**
+- **RotB** (rotatable bonds)
+- **HBA/HBD**
+- **AromaticRings**, **TotalRings**, **has_pah_like** (>=3 fused aromatics)
+- **fraction_csp3** (shape proxy)
+- **net charge distribution** at pH 7.4 (ionization tool)
+
+---
+
+## Step 2 — Substructure screens (interpretability + specific penalties)
+Use `match_substructure` with a small panel aimed at charge/extremes and heme-binding “inhibitor-like” motifs.
+
+Suggested SMARTS panel (edit/extend as needed):
+```json
+{
+  "quaternary_ammonium": "[N+](C)(C)(C)C",
+  "sulfonate": "S(=O)(=O)[O-]",
+  "phosphonate": "P(=O)([O-])[O-]",
+  "carboxylate": "C(=O)[O-]",
+  "guanidinium_like": "NC(=N)N",
+  "imidazole": "c1ncc[nH]1",
+  "triazole": "c1nncn1",
+  "pyridine_N": "n1ccccc1",
+  "epoxide": "C1OC1"
+}
+```
+Interpretation notes:
+- **Permanent charges** (e.g., quaternary ammonium) and **poly-anions** often imply poor access to CYP3A4 and lower substrate likelihood.
+- **Azoles/pyridines** can increase binding via heme coordination (common for strong inhibitors) (PMID: **11465421**). Treat as a **binding enhancer but metabolism-uncertain** (do not automatically push to 100).
+
+---
+
+## Step 3 — Primary scoring rubric (map descriptors → probability)
+Use a points-based score **S** then map to a 0–100 probability.
+
+### 3A. Initialize
+- Start `S = 50` (uninformed prior).
+
+### 3B. Size / lipophilicity / flexibility (CYP3A4 tends to like larger, lipophilic, flexible ligands)
+Evidence: lipophilic forces dominate; large active site; multiple orientations possible (PMID: **12924588**, **15653318**).
+
+Add/subtract:
+- **MW**
+  - MW < 200: `S -= 15`
+  - 200–350: `S += 0`
+  - 350–650: `S += 10`
+  - >650: `S += 5` (still plausible for CYP3A4, but often permeability-limited)
+- **cLogP**
+  - <1: `S -= 15`
+  - 1–2: `S -= 5`
+  - 2–5: `S += 10`
+  - 5–7: `S += 5`
+  - >7: `S -= 10` (solubility/permeability and “stuck in membranes” risk)
+- **RotB**
+  - 0–2: `S -= 5`
+  - 3–8: `S += 5`
+  - >8: `S += 0` (flexibility helps binding; too flexible can hurt effective binding)
+- **AromaticRings**
+  - 0: `S -= 10` (often too aliphatic unless lipophilic and with a polar anchor)
+  - 1–3: `S += 5`
+  - ≥4: `S += 0` (still plausible; watch PAH-like fused systems)
+
+### 3C. Polar anchor / pharmacophore proxies
+Evidence: many substrates share at least one **H-bond acceptor** that can anchor (Ser119) and a hydrophobic region (PMID: **15277015**, **28031486**); pharmacophore models for substrates include **2 acceptors + 1 donor + hydrophobe** (PMID: **11922953**, **12924588**).
+
+Add/subtract:
+- **HBA**
+  - 0: `S -= 25` (no polar anchor)
+  - 1–6: `S += 10`
+  - 7–10: `S += 5`
+  - >10: `S -= 10` (often too polar)
+- **HBD**
+  - 0–2: `S += 5`
+  - 3–4: `S += 0`
+  - >4: `S -= 10`
+- **TPSA**
+  - <20: `S -= 5` (insufficient polar anchoring)
+  - 20–90: `S += 10`
+  - 90–140: `S += 0`
+  - >140: `S -= 20` (high polarity typically lowers CYP access)
+- **extract_pharmacophore_features** (counts):
+  - If (Acceptors ≥2 AND Donors ≥1 AND Hydrophobes present): `S += 5`
+  - If (Acceptors ≥1 AND Hydrophobes present): `S += 2`
+
+### 3D. Ionization / charge-state adjustments (pH 7.4)
+Evidence: acidity/basicity descriptors are important for isoform specificity; very basic compounds often behave more CYP2D6-like; high acidity more CYP2C9-like (PMID: **17608404**).
+
+Using `classify_ionization` output:
+- If representative net_charge == 0: `S += 5`
+- If representative net_charge == +1: `S += 3`
+- If representative net_charge <= −1: `S -= 8`
+- If any states with |charge| ≥ 2 or quaternary ammonium present: `S -= 20`
+- If zwitterion dominant: `S -= 8` (often permeability-limited; still possible)
+
+### 3E. Structural red flags (penalties)
+- **Permanent anions / multiple strong acids** (e.g., sulfonate/phosphonate): `S -= 25`
+- **PAH-like (>=3 fused aromatics)**: `S -= 10` (often poor solubility; can be substrates but less “typical drug-like”)
+- **Too many heteroatoms** (heteroatoms > 12): `S -= 10`
+
+### 3F. Heme-coordination motif (ambiguous: can raise affinity but may indicate inhibition)
+Evidence: sterically accessible N-heterocycles can add binding energy via heme ligation (PMID: **11465421**). Substrates like midazolam still can H-bond/position productively (PMID: **28031486**).
+
+- If imidazole/triazole/pyridine N present **and** cLogP ≥ 2:
+  - `S += 3`
+- If multiple azoles/pyridines and very lipophilic (cLogP > 4):
+  - `S += 0` (do not overinflate—risk of being inhibitor)
+
+---
+
+## Step 4 — Optional similarity “sanity check” (if you maintain a reference library)
+If you have a curated list of **known CYP3A4 substrates** and **known non-substrates** as SMILES:
+- `compute_similarity(query, reference_smiles=[…], fingerprint="morgan", standardize=True)`
+
+Heuristic adjustment:
+- If max similarity to a known substrate ≥ 0.55: `S += 10`
+- If max similarity to a known non-substrate ≥ 0.55: `S -= 10`
+- If both high: no change (ambiguous chemical space).
+
+(Keep the reference library internally validated; do not guess SMILES.)
+
+---
+
+## Step 5 — Convert score to calibrated probability (integer 0–100)
+1. Clamp: `S = min(100, max(0, S))`
+2. Output: `round(S)` as the final integer probability.
+
+If you want a slightly more conservative calibration (avoid extremes), apply a squash:
+- `P = round( 100 * (1 / (1 + exp(-(S-50)/12))) ) )`
+  - Use `evaluate_arithmetic` only for parts you can express; if you can’t compute exp, skip the squash and use clamped S.
+
+---
+
+## Quick interpretation guide (to help choose final integer)
+- **80–100**: MW 300–700, cLogP 2–6, TPSA 20–90, RotB 3–8, aromatic/hydrophobic features present, at least 1–2 HB acceptors, neutral/+1 at pH 7.4.
+- **40–79**: mixed signals; either slightly too polar or too small, but still has anchor + hydrophobe(s).
+- **0–39**: very polar (TPSA >140), permanently charged, poly-anionic, very hydrophilic (cLogP <1), or lacks heteroatoms (no anchor).
+
+---
+
+## Notes on what this playbook *is not*
+- It does not distinguish **substrate vs inhibitor** perfectly; some motifs (e.g., azoles) can increase binding but reduce turnover.
+- It does not compute 3D distances (e.g., 5.5–7.8 Å polar-anchor-to-SoM spacing reported in pharmacophore work) (PMID: **11922953**, **15277015**). Use 2D proxies: presence of both hydrophobe and HBA/HBD and “drug-like” balance.
+{% endset %}
+{% include "tdc/base.jinja2" %}
