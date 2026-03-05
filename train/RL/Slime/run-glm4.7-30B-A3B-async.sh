@@ -65,24 +65,24 @@ ROLLOUT_ARGS=(
 )
 
 EVAL_ARGS=(
-   --eval-interval 5
+   --eval-interval 100
    --eval-prompt-data \
-      AMES_test DataPrepare/Slime_RL_data/by_task/test/AMES.jsonl \
-      BBB_Martins_test DataPrepare/Slime_RL_data/by_task/test/BBB_Martins.jsonl \
-      Bioavailability_Ma_test DataPrepare/Slime_RL_data/by_task/test/Bioavailability_Ma.jsonl \
-      CYP2C9_Substrate_CarbonMangels_test DataPrepare/Slime_RL_data/by_task/test/CYP2C9_Substrate_CarbonMangels.jsonl \
-      CYP2D6_Substrate_CarbonMangels_test DataPrepare/Slime_RL_data/by_task/test/CYP2D6_Substrate_CarbonMangels.jsonl \
-      CYP3A4_Substrate_CarbonMangels_test DataPrepare/Slime_RL_data/by_task/test/CYP3A4_Substrate_CarbonMangels.jsonl \
-      Carcinogens_Lagunin_test DataPrepare/Slime_RL_data/by_task/test/Carcinogens_Lagunin.jsonl \
-      ClinTox_test DataPrepare/Slime_RL_data/by_task/test/ClinTox.jsonl \
-      DILI_test DataPrepare/Slime_RL_data/by_task/test/DILI.jsonl \
-      HIA_Hou_test DataPrepare/Slime_RL_data/by_task/test/HIA_Hou.jsonl \
-      PAMPA_NCATS_test DataPrepare/Slime_RL_data/by_task/test/PAMPA_NCATS.jsonl \
-      Pgp_Broccatelli_test DataPrepare/Slime_RL_data/by_task/test/Pgp_Broccatelli.jsonl \
-      SARSCoV2_3CLPro_Diamond_test DataPrepare/Slime_RL_data/by_task/test/SARSCoV2_3CLPro_Diamond.jsonl \
-      SARSCoV2_Vitro_Touret_test DataPrepare/Slime_RL_data/by_task/test/SARSCoV2_Vitro_Touret.jsonl \
-      Skin_Reaction_test DataPrepare/Slime_RL_data/by_task/test/Skin_Reaction.jsonl \
-      hERG_test DataPrepare/Slime_RL_data/by_task/test/hERG.jsonl
+      AMES_test DataPrepare/Slime_RL_data/by_task/valid/AMES.jsonl \
+      BBB_Martins_test DataPrepare/Slime_RL_data/by_task/valid/BBB_Martins.jsonl \
+      Bioavailability_Ma_test DataPrepare/Slime_RL_data/by_task/valid/Bioavailability_Ma.jsonl \
+      CYP2C9_Substrate_CarbonMangels_test DataPrepare/Slime_RL_data/by_task/valid/CYP2C9_Substrate_CarbonMangels.jsonl \
+      CYP2D6_Substrate_CarbonMangels_test DataPrepare/Slime_RL_data/by_task/valid/CYP2D6_Substrate_CarbonMangels.jsonl \
+      CYP3A4_Substrate_CarbonMangels_test DataPrepare/Slime_RL_data/by_task/valid/CYP3A4_Substrate_CarbonMangels.jsonl \
+      Carcinogens_Lagunin_test DataPrepare/Slime_RL_data/by_task/valid/Carcinogens_Lagunin.jsonl \
+      ClinTox_test DataPrepare/Slime_RL_data/by_task/valid/ClinTox.jsonl \
+      DILI_test DataPrepare/Slime_RL_data/by_task/valid/DILI.jsonl \
+      HIA_Hou_test DataPrepare/Slime_RL_data/by_task/valid/HIA_Hou.jsonl \
+      PAMPA_NCATS_test DataPrepare/Slime_RL_data/by_task/valid/PAMPA_NCATS.jsonl \
+      Pgp_Broccatelli_test DataPrepare/Slime_RL_data/by_task/valid/Pgp_Broccatelli.jsonl \
+      SARSCoV2_3CLPro_Diamond_test DataPrepare/Slime_RL_data/by_task/valid/SARSCoV2_3CLPro_Diamond.jsonl \
+      SARSCoV2_Vitro_Touret_test DataPrepare/Slime_RL_data/by_task/valid/SARSCoV2_Vitro_Touret.jsonl \
+      Skin_Reaction_test DataPrepare/Slime_RL_data/by_task/valid/Skin_Reaction.jsonl \
+      hERG_test DataPrepare/Slime_RL_data/by_task/valid/hERG.jsonl
    --n-samples-per-eval-prompt 1
    --eval-max-response-len 22000
    --eval-temperature 1

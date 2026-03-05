@@ -355,9 +355,9 @@ Prepared data is stored in `Slime_RL_data/by_task/`
 
 You need to prepare data for `train`, `test`, and `valid` splits separately by running:
 ```bash
-python prepare_slime_RL_data.py --split train
-python prepare_slime_RL_data.py --split test
-python prepare_slime_RL_data.py --split valid
+python DataPrepare/prepare_slime_RL_data.py --split train
+python DataPrepare/prepare_slime_RL_data.py --split test
+python DataPrepare/prepare_slime_RL_data.py --split valid
 ```
 # 5. Run the training script
 ```bash
