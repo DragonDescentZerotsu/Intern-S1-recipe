@@ -7,3 +7,4 @@ nest_asyncio
 wandb
 dimorphite_dl
 simpleeval
+pydantic_ai

@@ -24,6 +24,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from tools import BASIC_TOOLS, get_function_by_name
+from utils.TDC_answer_parser import extract_answer, parse_answer
 
 # Verify these imports exist in your project structure
 try:
@@ -62,7 +63,7 @@ def get_args():
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'Other', 'all'],
                         help='Task groups to run')
     parser.add_argument('--n-samples', type=int, default=1, help='Number of samples per query')  # sample only once for F1 score
-    parser.add_argument('--api-base', type=str, default="http://localhost:8000/v1", help='API Base URL')  # TODO: port number | local model: http://localhost:8000/v1 | openrouter: https://openrouter.ai/api/v1 ｜ deepseek: https://api.deepseek.com/v1
+    parser.add_argument('--api-base', type=str, default="http://localhost:8001/v1", help='API Base URL')  # TODO: port number | local model: http://localhost:8000/v1 | openrouter: https://openrouter.ai/api/v1 ｜ deepseek: https://api.deepseek.com/v1
     parser.add_argument('--api-key', type=str, default="EMPTY", help='API Key')  # TODO: API Key | local model: "EMPTY" | openrouter: os.environ["OPENROUTER_API_KEY_Haydn"], os.environ["OPENROUTER_API_KEY_Mark"] | deepseek: os.environ["DEEPSEEK_API_KEY"]
     parser.add_argument('--model', type=str, default="", help='Model name (optional, will query server if empty)')  # TODO: model name | local model: "" | openrouter: deepseek/deepseek-v3.2; openai/gpt-5.2; openai/gpt-5-mini | deepseek: deepseek-chat
     parser.add_argument('--num-processes', type=int, default=1, help='Number of parallel workers')  # 16 for intern-s1-mini, 8 for GLM-4.7-Flash
@@ -253,31 +254,31 @@ def run_turn_base(client, messages, model_name, thinking=False, tools=None, use_
             #     extra_body=dict(spaces_between_special_tokens=False, enable_thinking=True)
             # )
             # TODO: local GLM-4.7-Flash
-            # response = client.chat.completions.create(
-            #     # name='repaired_QED',  # langfuse
-            #     model=model_name,
-            #     messages=messages,
-            #     tools=tools,
-            #     max_tokens=10240, # Reduced from 20000 to be safe/faster, usually enough. Important to keep this small other wise retry and slow down the speed.
-            #     temperature=0.8,
-            #     top_p=0.8,
-            #     stream=False,
-            #     extra_body={
-            #         "spaces_between_special_tokens": False,
-            #         "chat_template_kwargs": {
-            #             "enable_thinking": True,
-            #             "clear_thinking": False
-            #         }
-            #     }
-            # )
-            # TODO: local gpt-oss
             response = client.chat.completions.create(
                 # name='repaired_QED',  # langfuse
                 model=model_name,
                 messages=messages,
                 tools=tools,
                 max_tokens=10240, # Reduced from 20000 to be safe/faster, usually enough. Important to keep this small other wise retry and slow down the speed.
+                temperature=0.8,
+                top_p=0.8,
+                stream=False,
+                extra_body={
+                    "spaces_between_special_tokens": False,
+                    "chat_template_kwargs": {
+                        "enable_thinking": True,
+                        "clear_thinking": False
+                    }
+                }
             )
+            # TODO: local gpt-oss
+            # response = client.chat.completions.create(
+            #     # name='repaired_QED',  # langfuse
+            #     model=model_name,
+            #     messages=messages,
+            #     tools=tools,
+            #     max_tokens=10240, # Reduced from 20000 to be safe/faster, usually enough. Important to keep this small other wise retry and slow down the speed.
+            # )
             # TODO: local DeepSeek V3.2
             # response = client.chat.completions.create(
             #     model=model_name,
@@ -479,7 +480,7 @@ def worker_process_sample(args):
 
     messages = [
         {'role': 'system', 'content': playbook_text},
-        {'role': 'user', 'content': text}
+        {'role': 'user', 'content': user_text}
         ]
 
     for attempt in range(max_retry):
@@ -494,7 +495,6 @@ def worker_process_sample(args):
             if response_text:
                 # parsing logic
                 # Ensure extract_answer and parse_answer are available
-                from utils.TDC_answer_parser import extract_answer, parse_answer
                 
                 ans_txt, fmt_ok = extract_answer(response_text)
                 prediction = parse_answer(ans_txt, fmt_ok, think_is_on=thinking, score_based=score_based) # Assuming thinking affects parsing logic?

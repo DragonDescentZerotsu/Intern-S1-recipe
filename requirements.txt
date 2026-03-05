@@ -7,3 +7,4 @@ rdkit
 accfg
 dimorphite_dl
 simpleeval
+pydantic_ai
