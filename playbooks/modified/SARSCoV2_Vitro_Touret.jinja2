@@ -1,0 +1,282 @@
+{% set objective = "Please predict the probability of the given molecule having activity against SARSCoV2." -%}
+{% set prompt_playbook -%}
+# Playbook: Predicting anti–SARS‑CoV‑2 activity from a molecule’s SMILES (output: **integer probability 0–100**)
+
+## 0) What “activity” means (and what the model is really predicting)
+You are estimating: **P(molecule shows measurable anti–SARS‑CoV‑2 activity in at least one credible assay)**.
+
+Because many reported “hits” are artifacts or non-specific host effects, the playbook explicitly **boosts probabilities for well-precedented antiviral chemotypes** (e.g., Mpro and RdRp inhibitor motifs) and **penalizes PAINS/aggregation/thiol-reactive/lysosomotropic patterns** (PMIDs **34745850**, **32814759**, **28244723**).
+
+**Hard constraint:** your *final output must be only an integer 0–100*.
+
+---
+
+## 1) Standardize input
+1. If SMILES invalid/empty → output **0**.
+2. `s=remove_salts(smiles)`
+   - Desalt a SMILES by removing salts/counterions and keeping ONLY the largest organic fragment.
+
+---
+
+## 2) Compute core properties (drug-likeness + permeability proxies)
+Run:
+- Use the individual descriptor tools:
+   - `get_molecular_weight(smiles)`
+   - `get_tpsa(smiles)`
+   - `get_mol_logp(smiles)`
+   - `get_hbd(smiles)`
+   - `get_hba(smiles)`
+   - `get_num_rotatable_bonds(smiles)`
+   - `get_num_amide_bonds(smiles)`
+   - `get_formal_charge(smiles)`
+   - `get_ring_count(smiles)`
+   - `get_qed(smiles)`
+- `classify_ionization(s, ph=7.4)`
+- Optional: `analyze_ring_systems(s)`
+
+Use these **property heuristics**:
+
+### 2.1 “Typical small-molecule antiviral” zone (general)
+Assign a **PropertyFit score** (+0 to +20):
+- MW 250–600: +6 (else +0; if >800 → strong penalty later)
+- cLogP 1.0–4.0: +6 (if >5.0 → penalty later)
+- TPSA 40–120: +4 (too low may imply nonspecific membranes; too high hurts permeability)
+- Rotatable bonds ≤10: +2
+- QED ≥0.35: +2
+
+### 2.2 Nucleoside/RdRp exception
+If the molecule is **nucleoside-like** (see §4.2), allow:
+- Higher TPSA (often >120)
+- Lower cLogP (often <1)
+- Multiple OH groups
+
+(These patterns are consistent with RdRp nucleoside analog antivirals and their prodrugs; PMID **36561747**.)
+
+---
+
+## 3) Screen for assay-interference / “false hit” liabilities
+### 3.1 PAINS / Brenk / NIH / ZINC alerts
+Run:
+- `score_structural_alerts(s, alert_library="all")`
+Penalty guidance:
+- If **PAINS count ≥1**: apply **–15** (or –25 if multiple/strong alerts).
+- If **many alerts across libraries** (e.g., PAINS + Brenk + NIH): apply **–25 to –40**.
+
+Rationale: high false-positive rate in screening without careful controls (PMID **28244723**; also **25254460**).
+
+### 3.2 Thiol-reactive / redox / promiscuous covalent flags
+Apply extra penalties if the structure contains motifs often associated with nonspecific cysteine reactivity or redox cycling unless supported by strong “on-target” chemotype evidence (e.g., a known Mpro inhibitor-like scaffold):
+- Selenium-containing organics (e.g., ebselen-like) → **–20** default; these can lose activity with reducing agents and behave promiscuously (PMID **34745850**).
+- Quinones/catechols/polyphenols (common in flavonoids) → **–10 to –25** depending on extent; can be covalent/redox/PAINS-like (PMIDs **36169610**, **25254460**, **34745850**).
+
+### 3.3 Colloidal aggregation risk (structure-based proxy)
+You can’t directly test detergent-sensitivity, but you can penalize classic aggregator-like profiles:
+- cLogP > 4.5 **and** aromatic_rings ≥ 3 **and** TPSA < 60 → **–15**
+- has_pah_like (≥3 fused aromatic rings) → **–10**
+
+Aggregation frequently causes false enzymatic inhibition and can be detergent-sensitive (PMIDs **34745850**, **28244723**).
+
+---
+
+## 4) Look for **credible SARS‑CoV‑2 antiviral chemotypes** in the SMILES
+Use:
+- `describe_high_level_fg_fragments(smiles)`
+- `match_substructure(s, patterns=...)`
+- `extract_pharmacophore_features(s)`
+
+
+### 4.1 Mpro (3CLpro) inhibitor patterns (highest-confidence small-molecule axis)
+Mpro is a prime antiviral target; multiple clinically relevant or advanced inhibitors exist.
+
+**Key motif families to recognize in SMILES** (PMIDs **36169610**, **37244162**, **38399271**, **38967233**, **36757959**, **36338434**):
+
+#### (A) Covalent/reversible-covalent “warheads” near a binding scaffold
+Add **WarheadBoost** only if the molecule also looks like a real binder (not a tiny fragment) and is not overloaded with PAINS alerts.
+
+Warheads frequently used against Mpro Cys145 include:
+- **Nitrile** (nirmatrelvir-like reversible covalent): `C#N` in a peptide-mimic context (PMIDs **36169610**, **38399271**, **38967233**)
+- **Terminal alkyne** as a covalent warhead in nirmatrelvir-derived scaffolds (PMID **36757959**)
+- **Aldehyde**, **α-ketoamide / ketone electrophiles**, **Michael acceptors** (PMIDs **36169610**, **38399271**, **36338434**)
+- **α-haloacetamide** (often chloroacetamide) (PMID **36169610**)
+- **Activated esters** capable of acylating Cys145 (PMID **36169610**)
+
+**WarheadBoost (0–30):**
+- Nitrile present + peptidomimetic features (≥2 amide bonds, MW>350) → +18
+- Terminal alkyne present + peptidomimetic features → +10 (more uncertain than nitrile; PMID **36757959**)
+- α-ketoamide / activated ketone (e.g., benzothiazolyl ketone-like) + peptidomimetic features → +14 (PMID **36338434**)
+- Michael acceptor / vinyl sulfone / acrylamide in plausible binding scaffold → +8 (but see PAINS/reactivity penalties; PMID **36169610**)
+- α-haloacetamide in plausible scaffold → +10 (PMID **36169610**)
+
+#### (B) “Substrate-mimic” protease inhibitor shape cues
+These raise confidence that a warhead is used *productively*:
+- Multiple amide bonds (often 1–4)
+- A **Gln-mimic at P1** is common: a **γ-lactam / 2-pyrrolidone-like ring** (PMIDs **38399271**, **38967233**)
+- A bulky hydrophobe (often bicyclic/proline-like) consistent with occupying S2 (PMIDs **38399271**, **38967233**)
+- Fluorinated acyl caps (e.g., CF3 acyl groups) are seen as potency/metabolic-stability levers in Pfizer series (PMID **38967233**)
+
+**ProteaseScaffoldBoost (0–20):**
+- num_amide_bonds ≥2 → +6 (≥3 → +10)
+- lactam present (2-pyrrolidone-like) → +6
+- at least one CF3 or multiple F (without heavy PAINS flags) → +2 to +4
+- ring system complexity but not PAH-like → +2
+
+#### (C) Noncovalent Mpro inhibitor scaffolds
+Noncovalent inhibitors exist (e.g., ensitrelvir; PMID **37244162**), but are harder to detect from first principles.
+**Rule:** rely primarily on **similarity to known noncovalent Mpro inhibitor reference scaffolds** (see §5).
+
+
+### 4.2 RdRp nucleoside(-prodrug) patterns
+Oral/IV nucleoside analogs and prodrugs are a major antiviral class (PMID **36561747**).
+
+**NucleosideLike flag** if most of the following hold:
+- MW 200–550
+- TPSA typically high (often >90)
+- Multiple oxygens (e.g., oxygen ≥4) and multiple OH/ether patterns
+- A 5-membered sugar-like ring is common (but not required)
+
+**RdRpBoost (0–25):**
+- NucleosideLike core → +12
+- Plus **prodrug esterification** (multiple ester groups) → +6 (oral prodrug strategy; PMID **36561747**)
+- Plus heteroaromatic “base-like” fused heterocycles (multiple ring nitrogens) → +4
+
+Apply extra caution:
+- If severe PAINS/alert load or extreme lipophilicity (cLogP>5) → reduce RdRpBoost by 50%.
+
+
+### 4.3 Entry inhibitors via TMPRSS2 (host protease) motifs
+TMPRSS2 inhibitors can block SARS‑CoV‑2 entry in airway cells; key chemotypes include guanidinium/amidinium S1 binders and covalent acylating esters (PMIDs **35382133**, **34635581**, **34703545**).
+
+**TMPRSS2Boost (0–20):**
+- Presence of **guanidinium/amidinium** (strong basic, cationic) attached to an aromatic ring (benzamidine/guanidinobenzoyl-like) → +10
+- Presence of an **ester** in the same molecule (potential acyl-enzyme inhibitors like camostat/nafamostat) → +4
+- Overall profile resembles a charged protease inhibitor (positive states at pH 7.4) → +2
+
+**Penalty for “unlikely to be broadly antiviral”:**
+- If strongly cationic (net charge +2 or more at pH 7.4) and very polar (TPSA>140) without clear protease-inhibitor pattern → –10 (cell penetration limits).
+
+
+---
+
+## 5) Similarity-to-known-actives (most important single signal)
+Use `compute_similarity` (Morgan + at least one other fingerprint) against **curated reference sets** you maintain locally.
+
+Maintain **separate reference panels**:
+1) **Mpro actives** (include covalent and noncovalent exemplars; e.g., nirmatrelvir-class, ensitrelvir-class; PMIDs **38967233**, **37244162**, **36169610**)
+2) **RdRp nucleoside analogs/prodrugs** (PMID **36561747**)
+3) **TMPRSS2 inhibitors** (camostat/nafamostat-like; PMIDs **35382133**, **34635581**)
+
+**SimilarityBoost (0–50):**
+- Best Tanimoto ≥0.80 to a high-confidence active → +50
+- 0.70–0.79 → +35
+- 0.60–0.69 → +20
+- 0.50–0.59 → +10
+- <0.50 → +0
+
+If similarity is high **but alerts/aggregation/thiol-reactivity penalties are also high**, cap SimilarityBoost at +25 unless the reference itself shares that liability.
+
+Optional: if similarity is borderline, run `find_mcs` against nearest references; if **query_coverage ≥0.6** and **ref_coverage ≥0.6**, add +5.
+
+---
+
+## 6) Explicit penalties for “nonspecific antiviral” profiles
+### 6.1 Lysosomotropic / cationic amphiphilic drug-like profile
+A cluster of reported in vitro SARS‑CoV‑2 inhibitors are **lipophilic weak bases** that accumulate in lysosomes/endosomes and show non-specific antiviral phenotypes; these often fail clinically (PMID **32814759**).
+
+Apply **LysoPenalty (–0 to –30)** when:
+- `ionization.has_positive_states == True` AND
+- cLogP ≥ 3.0 AND
+- TPSA ≤ 60–70 AND
+- (often) aromatic_rings ≥ 2
+
+Penalty scale:
+- Meets all criteria strongly → –25 to –30
+- Meets 3/4 criteria → –15
+
+### 6.2 Reducing-agent sensitivity risk (structure proxy)
+Some frequent hitters (e.g., ebselen/disulfiram-like) lose apparent protease inhibition under reducing conditions and inhibit multiple cysteine proteases promiscuously (PMID **34745850**).
+
+Proxy penalties:
+- Contains selenium ("Se") or disulfide ("S-S") → –20
+- Multiple quinone/catechol motifs → –10 to –25
+
+---
+
+## 7) Putting it together: a calibrated scoring-to-probability recipe
+### 7.1 Start from a low base rate
+Most arbitrary molecules are inactive.
+- `P = 2` (base probability 2/100)
+
+### 7.2 Add evidence-based boosts
+Compute:
+- `P += PropertyFit` (0–20)
+- `P += SimilarityBoost` (0–50)
+- `P += max(MproBoost, RdRpBoost, TMPRSS2Boost)`
+  - Where `MproBoost = WarheadBoost + ProteaseScaffoldBoost` (0–50)
+
+### 7.3 Subtract artifact/nonspecific penalties
+- `P -= AlertPenalty` (0–40)
+- `P -= AggregationPenalty` (0–25)
+- `P -= LysoPenalty` (0–30)
+- `P -= Thiol/RedoxPenalty` (0–30)
+
+### 7.4 Clamp and round
+- `P = round(clamp(P, 0, 100))`
+- Output **only that integer**.
+
+---
+
+## 8) Minimal SMARTS pattern library (starter set)
+Use these with `match_substructure` to drive boosts/penalties (extend as needed):
+
+```python
+patterns = {
+  # Covalent/latent electrophiles (context matters)
+  "nitrile": "C#N",
+  "terminal_alkyne": "[CH]#C",
+  "alkyne_any": "C#C",
+  "aldehyde": "[CH](=O)",
+  "alpha_ketoamide": "C(=O)C(=O)N",
+  "michael_acceptor_enone": "C=CC(=O)",
+  "acrylamide": "C=CC(=O)N",
+  "vinyl_sulfone": "S(=O)(=O)C=CC",
+  "chloroacetamide": "ClCC(=O)N",
+  "epoxide": "C1OC1",
+
+  # Protease-inhibitor shape cues
+  "lactam_2_pyrrolidone": "O=C1NCCC1",
+  "amide": "C(=O)N",
+  "trifluoromethyl": "C(F)(F)F",
+
+  # TMPRSS2-like S1 binders
+  "amidine": "C(=N)N",
+  "guanidine": "NC(=N)N",
+  "benzamidine_like": "c1ccccc1C(=N)N",
+
+  # PAINS-ish / redox / thiol-reactive flags
+  "catechol": "c1ccc(O)c(O)c1",
+  "quinone": "O=c1ccc(=O)cc1",
+  "disulfide": "SS",
+  "selenium": "[Se]",
+}
+```
+
+---
+
+## 9) Interpretation guide (for your own calibration)
+- **0–5**: very unlikely (random chemistry; many alerts; poor property fit)
+- **6–20**: unlikely (some plausible features, but weak evidence)
+- **21–50**: plausible (drug-like; some target-like motifs; moderate similarity)
+- **51–80**: likely (high similarity to known actives **or** strong, clean Mpro/RdRp/TMPRSS2 signatures)
+- **81–100**: very likely (near-analog of a validated antiviral chemotype with good properties and low artifact risk)
+
+---
+
+## Evidence anchors (why these rules exist)
+- Mpro covalent warheads, peptidomimetic motifs, γ-lactam/Gln-mimic patterns, nitrile/alkyne/haloacetamide/activated ester classes: **36169610**, **38399271**, **38967233**, **36757959**, **36338434**, **37244162**.
+- RdRp nucleoside analog and prodrug design constraints: **36561747**.
+- TMPRSS2 entry inhibitors and cationic S1 binders (camostat/nafamostat/kbt series; assay dependence): **35382133**, **34635581**, **34703545**.
+- Lysosomotropic “hits” and nonspecific in vitro antiviral clusters: **32814759**.
+- SARS‑CoV‑2 screening artifacts: reducing-agent sensitivity (ebselen/disulfiram), aggregation and detergent effects: **34745850**.
+- General PAINS/aggregation prevalence and controls: **28244723**, **25254460**.
+{% endset %}
+{% include "tdc/base.jinja2" %}
