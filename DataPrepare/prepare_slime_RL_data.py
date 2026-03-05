@@ -72,7 +72,7 @@ def main():
     
     split = args.split
     src_dir = os.path.join(os.path.dirname(__file__),
-                           f"TDC_{split}_prompts_label_sm_wo_herg-c_ToxCast_butkiewicz")
+                           f"TDC_{split}_prompts_label_scaffold")
     dst_dir = os.path.join(os.path.dirname(__file__),
                            "Slime_RL_data", "by_task", split)
 
