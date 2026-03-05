@@ -63,7 +63,7 @@ def get_args():
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'Other', 'all'],
                         help='Task groups to run')
     parser.add_argument('--n-samples', type=int, default=1, help='Number of samples per query')  # sample only once for F1 score
-    parser.add_argument('--api-base', type=str, default="http://localhost:8000/v1", help='API Base URL')  # TODO: port number | local model: http://localhost:8000/v1 | openrouter: https://openrouter.ai/api/v1 ｜ deepseek: https://api.deepseek.com/v1
+    parser.add_argument('--api-base', type=str, default="http://localhost:8002/v1", help='API Base URL')  # TODO: port number | local model: http://localhost:8000/v1 | openrouter: https://openrouter.ai/api/v1 ｜ deepseek: https://api.deepseek.com/v1
     parser.add_argument('--api-key', type=str, default="EMPTY", help='API Key')  # TODO: API Key | local model: "EMPTY" | openrouter: os.environ["OPENROUTER_API_KEY_Haydn"], os.environ["OPENROUTER_API_KEY_Mark"] | deepseek: os.environ["DEEPSEEK_API_KEY"]
     parser.add_argument('--model', type=str, default="", help='Model name (optional, will query server if empty)')  # TODO: model name | local model: "" | openrouter: deepseek/deepseek-v3.2; openai/gpt-5.2; openai/gpt-5-mini | deepseek: deepseek-chat
     parser.add_argument('--num-processes', type=int, default=8, help='Number of parallel workers')  # 16 for intern-s1-mini, 8 for GLM-4.7-Flash
@@ -71,7 +71,7 @@ def get_args():
     parser.add_argument('--thinking', action='store_true', default=True, help='Enable thinking parameter for DeepSeek models')  # TODO: 注意这里 thinking 到底是开了还是没开
     parser.add_argument('--enable-tools', action='store_true', default=True, help='Enable tool calling')  # TODO: 注意是否使用了 tool ， debug 可能关了
     parser.add_argument('--log-file', action='store_true', default=True, help='Save logs to file')  # TODO: 注意这里 log-file 到底是开了还是没开
-    parser.add_argument('--log-file-name', type=str, default="playbook_gpt-oss-120b_{t_stamp}_1.log", help='logs file name')   # TODO: log file name
+    parser.add_argument('--log-file-name', type=str, default="playbook_gpt-oss-120b_{t_stamp}_3.log", help='logs file name')   # TODO: log file name
     parser.add_argument('--langfuse', action='store_true', default=False, help='Save traces to langfuse')  # TODO: 注意这里 langfuse trace 到底是开了还是没开
     parser.add_argument('--max-retry', type=int, default=4, help='Max retries for answer parsing failure')
     parser.add_argument('--use-playbook', action='store_true', default=True, help='Inject playbook into the prompt')
@@ -518,12 +518,12 @@ def load_tasks_map(data_dir):
     mapping = {  # TODO: Detailed Task selection
         'Tox': [
             # 'hERG_Karim.jsonl',  # 2690  not in subtasks
-            'Carcinogens_Lagunin.jsonl',  # 56
-            'Skin_Reaction.jsonl',  # 82
+            # 'Carcinogens_Lagunin.jsonl',  # 56
+            # 'Skin_Reaction.jsonl',  # 82
             # 'hERG.jsonl',  # 132  TODO: don't have Playbook
-            'DILI.jsonl',  # 96
-            'ClinTox.jsonl',  # 297
-            'AMES.jsonl',  # 1457
+            # 'DILI.jsonl',  # 96
+            # 'ClinTox.jsonl',  # 297
+            # 'AMES.jsonl',  # 1457
             # 'Tox21.jsonl',  # 15584  not in subtasks
             # -----------------------------------------
             # 'herg_central_hERG_inhib.jsonl',  # 61379    leave out
@@ -532,7 +532,7 @@ def load_tasks_map(data_dir):
         'ADME': [
             # 'PAMPA_NCATS.jsonl',  # 408
             # 'HIA_Hou.jsonl',  # 117
-            'BBB_Martins.jsonl',  # 406
+            # 'BBB_Martins.jsonl',  # 406
             # 'Pgp_Broccatelli.jsonl',  # 245
             # 'Bioavailability_Ma.jsonl',  # 128
             # 'CYP2C9_Substrate_CarbonMangels.jsonl',  # 135
@@ -546,8 +546,8 @@ def load_tasks_map(data_dir):
         ],
         'HTS': [
             # 'HIV.jsonl',  # 8225  not in subtasks
-            # 'SARSCoV2_3CLPro_Diamond.jsonl',  # 176
-            # 'SARSCoV2_Vitro_Touret.jsonl',  # 298
+            'SARSCoV2_3CLPro_Diamond.jsonl',  # 176
+            'SARSCoV2_Vitro_Touret.jsonl',  # 298
             # -----------------------------------------
             # 'butkiewicz.jsonl'  # 401997    leave out
         ],
