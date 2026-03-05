@@ -87,3 +87,14 @@ __pycache__/
 /.env
 /.vscode
 /.idea
+
+# 暂时去掉一些playbook
+/playbooks/modified/CYP1A2_Veith.jinja2
+/playbooks/modified/CYP2C19_Veith.jinja2
+/playbooks/modified/CYP2C9_Veith.jinja2
+/playbooks/modified/CYP2D6_Veith.jinja2
+/playbooks/modified/CYP3A4_Veith.jinja2
+/playbooks/modified/HIV.jinja2
+/playbooks/modified/PAMPA_NCATS.jinja2
+/playbooks/modified/SARSCoV2_Vitro_Touret.jinja2
+/playbooks/modified/hERG_Karim.jinja2
