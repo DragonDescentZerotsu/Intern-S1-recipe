@@ -1,5 +1,5 @@
 from rdkit import Chem, DataStructs, RDConfig, RDLogger
-from rdkit.Chem import Descriptors, rdMolDescriptors, Lipinski, Crippen, GraphDescriptors, Fragments, QED, rdFingerprintGenerator as rfg, MACCSkeys
+from rdkit.Chem import Descriptors, rdMolDescriptors, Lipinski, Crippen, GraphDescriptors, Fragments, QED, rdFingerprintGenerator as rfg, MACCSkeys, ChemicalFeatures
 from rdkit.Chem.FilterCatalog import FilterCatalog, FilterCatalogParams
 from typing import Dict, Any, List, cast
 from dimorphite_dl import protonate_smiles
@@ -8,6 +8,7 @@ from enum import StrEnum
 from pydantic import BaseModel, Field
 from pydantic_ai import ModelRetry
 from collections.abc import Callable
+import os
 
 
 # -------------------------
@@ -608,7 +609,58 @@ compute_similarity_openai = {
             }
         }
     }
+_FEATURE_FACTORY = None
+def _get_feature_factory() -> "ChemicalFeatures.MolChemicalFeatureFactory":
+    global _FEATURE_FACTORY
+    if _FEATURE_FACTORY is None:
+        fdef = os.path.join(RDConfig.RDDataDir, "BaseFeatures.fdef")
+        _FEATURE_FACTORY = ChemicalFeatures.BuildFeatureFactory(fdef)  # ty:ignore[unresolved-attribute]
+    return _FEATURE_FACTORY
 
+def extract_pharmacophore_features(smiles: str, standardize: bool = False) -> str:
+    """
+    Extract pharmacophore-like features using RDKit's BaseFeatures definitions.
+
+    Args:
+        smiles (str): Query SMILES.
+        standardize (bool): Standardize SMILES first (remove salts, canonical tautomer).
+
+    Returns:
+        str: A formatted string describing the extracted pharmacophore features.
+             Includes feature counts and a detailed list of features with family, type, and atom_ids.
+    """
+    # mol = _validate_smiles(smiles, standardize=standardize)
+    mol = Chem.MolFromSmiles(smiles)
+    factory = _get_feature_factory()
+    features = factory.GetFeaturesForMol(mol)
+
+    counts = Counter()
+    items = []
+    for feat in features:
+        family = feat.GetFamily()
+        counts[family] += 1
+        items.append({
+            "family": family,
+            "type": feat.GetType(),
+            "atom_ids": list(feat.GetAtomIds()),
+        })
+
+    output = "Pharmacophore Feature Extraction Results:\n"
+    output += "- feature_counts:\n"
+    if counts:
+        for k, v in counts.items():
+            output += f"  - {k}: {v}\n"
+    else:
+        output += "  (None)\n"
+        
+    output += "- features:\n"
+    if items:
+        for item in items:
+            output += f"  - family: {item['family']}, type: {item['type']}, atom_ids: {item['atom_ids']}\n"
+    else:
+        output += "  (None)\n"
+
+    return output.strip()
 
 RDKIT_BASIC_OPENAI_TOOLS = [
     _tool("get_molecular_weight", "Return the average molecular weight (Daltons)."),
@@ -630,6 +682,7 @@ RDKIT_BASIC_OPENAI_TOOLS = [
     classify_ionization_openai,
     compute_similarity_openai,
     score_structural_alerts_openai,
+    _tool("extract_pharmacophore_features", "Extract pharmacophore features using RDKit's BaseFeatures definitions."),
 ]
 
 # ============================================================
@@ -778,6 +831,22 @@ def get_num_unspecified_atom_stereo_centers(smiles: str) -> str:
     v = int(rdMolDescriptors.CalcNumUnspecifiedAtomStereoCenters(_mol_from_smiles(smiles)))
     return f"Unspecified atom stereocenter count: {v}"
 
+def get_esol(smiles: str) -> str:
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return None
+
+    logP = Crippen.MolLogP(mol)
+    MW = Descriptors.MolWt(mol)
+    RB = Lipinski.NumRotatableBonds(mol)
+
+    heavy_atoms = mol.GetNumHeavyAtoms()
+    aromatic_atoms = sum(1 for a in mol.GetAtoms() if a.GetIsAromatic())
+    AP = aromatic_atoms / heavy_atoms if heavy_atoms > 0 else 0
+
+    logS = 0.16 - 0.63 * logP - 0.0062 * MW + 0.066 * RB - 0.74 * AP
+    return f"ESOL logS: {logS:.4f}"
+
 # ============================================================
 # 2) Task-specific packs (add on top of BASIC)
 #    (No fragments; relaxed but still interpretable.)
@@ -865,6 +934,7 @@ RDKIT_SYSTEMIC_TOX_OPENAI_TOOLS: List[Dict[str, Any]] = [
     _tool("get_kappa3", "Return Kappa3 shape index."),
     _tool("get_num_atom_stereo_centers", "Return atom stereocenter count."),
     _tool("get_num_unspecified_atom_stereo_centers", "Return unspecified stereocenter count."),
+    _tool("get_esol", "Return estimated ESOL logS (solubility proxy)."),
 ]
 
 # ---- Skin sensitization / Skin Reaction (permeability + reactivity proxies) ----
@@ -1028,5 +1098,5 @@ def calc_all_rdkit_descriptors(smiles: str):
 if __name__ == "__main__":
     smiles = "CCOC(=O)C(=NOC(C)(C)C(=O)OC(C)(C)C)c1csc(NC(c2ccccc2)(c2ccccc2)c2ccccc2)n1"
     # results, errors = calc_all_rdkit_descriptors(smiles)
-    print(score_structural_alerts(smiles, "brenk"))
+    print(get_esol(smiles))
     # print(errors)

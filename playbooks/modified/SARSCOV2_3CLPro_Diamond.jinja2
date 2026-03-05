@@ -1,0 +1,184 @@
+{% set objective = "Please predict the probability of the given molecule having activity against the SARSCoV2 3CL Protease." -%}
+{% set prompt_playbook -%}
+# Playbook: Predicting SARS‑CoV‑2 3CL Protease (Mpro) Activity
+
+This playbook guides the agent in assigning a **calibrated probability (0–100)** that a molecule shows biochemical activity against **SARS‑CoV‑2 3CL protease (Mpro)**. The logic is heuristic, based on structure-derived priors (covalent warheads, peptidomimetic backbones, and specific recognition motifs) rather than a trained QSAR model.
+
+---
+
+## 1. Agent Workflow
+
+Execute these tools in the specified order to gather the necessary data.
+
+### Step 1: Normalize Input
+
+Standardize the SMILES to ensure consistent pattern matching. We neutralize the molecule to handle warhead recognition correctly, but we will assess ionization separately in Step 2.
+
+1. `std_smiles=remove_salts(smiles)`
+   - Desalt a SMILES by removing salts/counterions and keeping ONLY the largest organic fragment.
+
+### Step 2: Compute Properties & Features
+
+Gather physical properties, ring data, and ionization states using the standardized SMILES.
+
+Use the individual descriptor tools:
+   - `get_molecular_weight(smiles)`
+   - `get_tpsa(smiles)`
+   - `get_mol_logp(smiles)`
+   - `get_hbd(smiles)`
+   - `get_hba(smiles)`
+   - `get_num_rotatable_bonds(smiles)`
+   - `get_num_amide_bonds(smiles)`
+   - `get_formal_charge(smiles)`
+   - `get_ring_count(smiles)`
+   - `get_qed(smiles)`
+
+**Tool:** `analyze_ring_systems`
+
+* `smiles`: `std_smiles`
+* **Output Variable:** `rings`
+
+**Tool:** `classify_ionization`
+
+* `smiles`: `std_smiles`
+* `ph`: `7.4`
+* **Output Variable:** `ion`
+
+### Step 3: Targeted Substructure Screen
+
+Screen for specific Mpro warheads and recognition motifs using the fixed pattern library.
+
+**Tool:** `match_substructure`
+
+* `smiles`: `std_smiles`
+* `patterns`:
+```python
+{
+  # Covalent warheads
+  "nitrile": "C#N",
+  "aldehyde": "[CH](=O)",
+  "alpha_ketoamide": "C(=O)C(=O)N",
+  "ketoamide_or_ketone": "C(=O)C(=O)",
+  "acrylamide_michael": "C=CC(=O)N",
+  "enone_michael": "C=CC(=O)",
+  "vinyl_sulfone": "C=CS(=O)(=O)",
+  "chloroacetamide": "ClCC(=O)N",
+
+  # Common S1 (Gln surrogate) motif
+  "gamma_lactam_2_pyrrolidinone": "O=C1NCCC1",
+
+  # H-bonding heteroaromatics (noncovalent binders)
+  "triazole": "n1nnnc1",
+  "imidazole": "n1cc[nH]c1",
+  "indazole": "n1nc2ccccc2[nH]1",
+
+  # Structural alerts
+  "epoxide": "C1OC1",
+  "aziridine": "C1NC1",
+  "nitroso": "N=O",
+  "aryl_nitro": "[$(N(=O)~[O]),$([N+](=O)[O-])]c"
+}
+```
+
+
+* **Output Variable:** `matches`
+
+---
+
+## 2. Decision Model: Scoring Logic
+
+Calculate the `score` starting at **2** (Base Rate). Add points based on the logic below.
+
+### A. Covalent Warhead Evidence
+
+*Check `matches` results. If `matches["key"]["present"]` is True, add points.*
+
+* **Nitrile** (`matches["nitrile"]`): **+28**
+* **Aldehyde** (`matches["aldehyde"]`): **+35**
+* **Alpha-Ketoamide** (`matches["alpha_ketoamide"]`): **+25**
+* **Michael Acceptors** (`matches["acrylamide_michael"]` OR `matches["enone_michael"]`): **+18**
+* **Chloroacetamide** (`matches["chloroacetamide"]`): **+22**
+* **Vinyl Sulfone** (`matches["vinyl_sulfone"]`): **+18**
+
+**Synergy Bonus:**
+
+* If (Any Warhead above is present) AND (`matches["gamma_lactam_2_pyrrolidinone"]["present"]` is True): **+15**
+
+### B. S1 (Glutamine-Mimic) Evidence
+
+* If `matches["gamma_lactam_2_pyrrolidinone"]["present"]`: **+18**
+* Else if (Triazole OR Imidazole OR Indazole present): **+8**
+
+### C. Backbone Evidence (Peptidomimetic)
+
+*Check `desc["num_amide_bonds"]`.*
+
+* If `num_amide_bonds >= 2`: **+10**
+* If `num_amide_bonds >= 3`: Additional **+5**
+* If `num_amide_bonds == 0` AND (No heteroaromatic match): **-10**
+
+### D. S2 Hydrophobe Plausibility
+
+*Check `desc` and `rings`.*
+
+* If `desc["logp"]` is between **1.5 and 4.0**: **+6**
+* If `rings["largest_system_size"] >= 2` AND `rings["has_pah_like"]` is `False`: **+3**
+* If `rings["has_pah_like"]` is `True`: **-10**
+
+### E. Drug-likeness & Permeability
+
+*Check `desc` and `ion`.*
+
+* **MW:** If `desc["masses"]["average_mw"]` in `[250, 650]`: **+4**; Else: **-6**
+* **TPSA:** If `desc["surface_shape_props"]["tpsa"]` in `[50, 140]`: **+4**; Else if `desc["surface_shape_props"]["tpsa"] > 170`: **-10**
+* **H-Bonds:** If `desc["hydrogen_bonding"]["hba"]` in `[4, 11]` AND `desc["hydrogen_bonding"]["hbd"]` in `[0, 3]`: **+3**; Else: **-4**
+* **Charge:** If `ion["representative"]["net_charge"]` is 0, +1, or -1: **+2**; Else (if abs >= 2): **-12**
+* **QED:** If `desc["qed"] >= 0.35`: **+2**; Else: **-3**
+* **Solubility:** If `desc["esol"]["solubility_class"] == "poorly soluble"`: **-6**
+
+### F. Structural Alert Penalties
+
+* If `matches["epoxide"]` OR `matches["aziridine"]`: **-12**
+* If `matches["nitroso"]`: **-10**
+* If `matches["aryl_nitro"]`: **-6**
+
+---
+
+## 3. Probability Calculation
+
+### Step 1: Clamp Score
+
+Limit the raw score to a usable range.
+`final_score = max(-30, min(score, 80))`
+
+### Step 2: Convert to Probability (P)
+
+Use `evaluate_arithmetic` to calculate the logistic mapping:
+`expression = "100 / (1 + exp(-((score / 12) - 0.5)))"`
+
+*If `exp` is unavailable in the arithmetic tool, use this mapping table:*
+
+* **≤ -10:** 0–5%
+* **-9 to 0:** 5–15%
+* **1 to 10:** 15–35%
+* **11 to 25:** 35–65%
+* **26 to 45:** 65–85%
+* **46 to 60:** 85–95%
+* **> 60:** 95–99%
+
+### Step 3: Calibration Overrides (Sanity Checks)
+
+Apply these rules to the final percentage `P`.
+
+1. **High-Confidence Boost:**
+* **Condition:** (Aldehyde OR Nitrile OR Ketoamide) AND (Gamma-lactam) AND (Amide Bonds >= 2) AND (LogP 1.0–4.0).
+* **Action:** `P = max(P, 85)`
+
+
+2. **Implausibility Penalty:**
+* **Condition:** (`desc["masses"]["average_mw"] < 180`) AND (No Warhead) AND (`desc["ring_counts"]["total_rings"] == 0`).
+* **Action:** `P = min(P, 10)`
+* **Condition:** `abs(ion["representative"]["net_charge"]) >= 2` AND `desc["surface_shape_props"]["tpsa"] > 180`.
+* **Action:** `P = min(P, 15)`
+{% endset %}
+{% include "tdc/base.jinja2" %}

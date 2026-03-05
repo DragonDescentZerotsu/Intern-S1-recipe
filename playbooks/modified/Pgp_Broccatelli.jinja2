@@ -1,0 +1,183 @@
+{% set objective = "Please predict the probability of the given molecule being a P-glycoprotein (Pgp) inhibitor." -%}
+{% set prompt_playbook -%}
+# Playbook: Predicting P‑glycoprotein (P‑gp/ABCB1) inhibition from a SMILES string
+
+## 0) Scope & label you are predicting
+- **Target output:** `prob_inhibitor` = integer **0–100** = probability the molecule **inhibits P‑gp** in a typical *in vitro* inhibition assay context (e.g., calcein‑AM / Rh123 accumulation, transport inhibition, ATPase modulation).
+- **Important ambiguity:** Many P‑gp inhibitors are also **substrates** (competitive inhibitors). Your job is inhibition likelihood, not “non‑substrate.”
+
+Literature anchors for what “inhibitors tend to look like”:
+- Inhibitors are often **hydrophobic, aromatic, and contain a basic/tertiary nitrogen**, with H‑bonding functionality (PMID: **23617855**, **1976291**, **22595422**).
+- Simple high-performing QSARs identify **molecular volume/size, hydrophobicity, and aromaticity** as primary drivers (PMID: **24322389**, **1976291**).
+- Functional-group enrichment: inhibitors enriched in **tertiary amines** and **alkylaryl ethers**, while non‑inhibitors enriched in **carboxylic acids, phenols, primary amines** (PMID: **22595422**).
+
+---
+
+## 1) Preprocess
+1. `remove_salts(smiles)`
+   - Desalt a SMILES by removing salts/counterions and keeping ONLY the largest organic fragment.
+2. **Ionization at pH 7.4**
+   - `ion = classify_ionization(std, ph=7.4)`
+   - Use `ion.representative.smiles` for charge-aware checks.
+
+---
+
+## 2) Compute primary descriptors (cheap, high signal)
+Use the individual descriptor tools:
+   - `get_molecular_weight(smiles)`
+   - `get_tpsa(smiles)`
+   - `get_mol_logp(smiles)`
+   - `get_hbd(smiles)`
+   - `get_hba(smiles)`
+   - `get_num_rotatable_bonds(smiles)`
+   - `get_num_amide_bonds(smiles)`
+   - `get_formal_charge(smiles)`
+   - `get_ring_count(smiles)`
+Key signals repeatedly implicated across inhibitor datasets / QSAR:
+- **Size / volume proxy** (PMID: **24322389**, **1976291**)
+  - Use `average_mw`, `heavy_atoms`, `molar_refractivity`.
+- **Hydrophobicity** (PMID: **23617855**, **24322389**, **1976291**)
+  - Use `logp`.
+- **Aromaticity** (PMID: **24322389**, **23617855**, **22595422**)
+  - Use `aromatic_rings` and ring system analysis (below).
+- **H‑bonding** (PMID: **23617855**, **22119877**)
+  - Use `hba`, `hbd`, and functional groups.
+- **Flexibility / shape**
+  - `num_rotatable_bonds`, `fraction_csp3`.
+
+Suggested “typical inhibitor-like” ranges (soft heuristics; do not hard-filter):
+- **MW:** uncommon to see strong inhibition when **MW < ~250** (reviewed heuristics; PMID: **22827485**). Many potent third‑gen inhibitors are much larger (e.g., MW ~530–690; PMID: **33729781**).
+- **logP:** inhibitors often have **moderate–high logP**; classic modulators often around **~3–6**, with some evidence of an optimum near ~4 (PMID: **1976291**, **23617855**, **33729781**).
+- **Aromatic rings:** ≥1 (often ≥2) aromatic rings common (PMID: **23617855**, **22595422**, **1976291**).
+- **Charge/basicity:** presence of a **protonatable basic N** (often tertiary) is common (PMID: **23617855**, **22595422**, **1976291**).
+
+---
+
+## 3) Extract structural motifs directly from SMILES
+### 3.1 Functional groups
+- `fg_tree = get_functional_groups(std)`
+Look for:
+- **Tertiary amines / cationic centers** (frequent in inhibitors; PMID: **22595422**, **23617855**)
+- **Aryl ethers / methoxy-rich aromatics** (enriched among inhibitors; PMID: **22595422**)
+- **Multiple H‑bond acceptors** (common pharmacophore element; PMID: **23617855**, **22119877**)
+- **Carboxylic acids / strongly anionic motifs** (often less represented among inhibitors in some datasets; PMID: **22595422**)—treat as decreasing likelihood unless other strong inhibitor signals present.
+
+### 3.2 Ring system “texture”
+- `rings = analyze_ring_systems(std)`
+Heuristics:
+- **At least one sizable aromatic system** and/or multiple ring systems increases likelihood (hydrophobic/aromatic binding cavity; PMID: **23617855**, **24322389**).
+- **PAH-like fused aromatics** can increase hydrophobic/aromatic interactions; treat as increasing likelihood if not extremely polar.
+
+### 3.3 SMARTS screens (build an internal motif panel)
+Use `match_substructure` with a small panel focused on *inhibitor-enriched* vs *inhibitor-disfavored* motifs (directionality supported by PMID **22595422** + general inhibitor reviews PMID **23617855**, **1976291**).
+
+Example panel (extend as needed):
+- **Basic nitrogens**
+  - tertiary_amine: `[NX3;!$(NC=O);!$(NS(=O)=O)](C)(C)C` (approx; refine)
+  - piperazine: `N1CCNCC1`
+  - quaternary_ammonium: `[N+](C)(C)(C)C` (often *not* favorable for passive entry; treat as negative unless known motif)
+- **Aryl ether / methoxy**
+  - aryl_ether: `c-O-[#6]`
+  - methoxy_on_aromatic: `cOC`
+- **Acidic motifs (often negative)**
+  - carboxylic_acid: `C(=O)[O;H,-]`
+  - sulfonic_acid: `S(=O)(=O)[O;H,-]`
+- **Aromatic ring count proxy**
+  - aromatic_ring_any: `a1aaaaa1` (use a better aromatic ring counting strategy; RDKit ring counts help)
+
+---
+
+## 4) Similarity-to-known-inhibitors check (high precision add-on)
+If you maintain a reference library of SMILES for known inhibitors (e.g., **verapamil, cyclosporin A, tariquidar, elacridar, zosuquidar, laniquidar, encequidar**; see inhibitor lists and property anchors in PMID **33729781**, **17051593**, **31571170**):
+1. `sim = compute_similarity(std, reference_smiles, fingerprint="morgan")`
+2. Heuristic:
+   - If **Tanimoto ≥ 0.45–0.55** to a known inhibitor scaffold, add a substantial probability boost.
+   - If **≥ 0.65**, treat as “very likely” unless strong counterevidence (e.g., permanent anion, very low logP).
+
+---
+
+## 5) Turn features into a calibrated probability (0–100)
+### 5.1 Start with a conservative base rate
+- Start at **P = 25** (default “unknown drug-like molecule” prior).
+  - Rationale: many drug-like compounds interact with P‑gp, but inhibition is not universal; also some published models show nontrivial false-positive rates (PMID: **22595422**).
+
+### 5.2 Add/subtract points (rule-based scoring)
+Compute the following booleans/thresholds from descriptors + ionization + motifs.
+
+**A) Size / volume** (PMID: **24322389**, **1976291**)
+- If `MW < 250`: **−25**
+- If `250 ≤ MW < 350`: **+0**
+- If `350 ≤ MW < 500`: **+10**
+- If `MW ≥ 500`: **+15** (potent inhibitors commonly large; PMID: **33729781**)
+
+**B) Hydrophobicity (logP)** (PMID: **23617855**, **1976291**, **33729781**)
+- If `logP < 1.5`: **−20**
+- If `1.5 ≤ logP < 3.0`: **+0**
+- If `3.0 ≤ logP < 4.5`: **+12**
+- If `4.5 ≤ logP ≤ 6.5`: **+10** (high, but avoid over-rewarding extreme logP)
+- If `logP > 6.5`: **−5** (extreme hydrophobes may be assay artifacts / insoluble; keep mild penalty)
+
+**C) Aromaticity / rings** (PMID: **24322389**, **23617855**, **22595422**)
+- If `aromatic_rings == 0`: **−15**
+- If `aromatic_rings == 1`: **+5**
+- If `aromatic_rings ≥ 2`: **+12**
+- If `rings.has_pah_like == true`: **+5** (optional)
+
+**D) Ionization / basic N** (PMID: **22595422**, **23617855**, **1976291**)
+- If `ion.has_positive_states == true`: **+12**
+- If tertiary amine / heterocyclic amine motif present: **+8** (stackable with above but cap total for “basicity” at +18)
+- If `ion.has_negative_states == true` and **no positive states**: **−15**
+- If strong acid (carboxylate/sulfonate likely at pH7.4): **−10** extra
+
+**E) H-bonding pattern** (PMID: **23617855**, pharmacophore summaries in PMID: **22119877**)
+- If `hba ≥ 2`: **+5**
+- If `hbd ≥ 1`: **+3**
+- If `tpsa > 160`: **−10** (very polar; may still inhibit but less likely to access membrane-embedded site)
+- If `40 ≤ tpsa ≤ 120`: **+5** (common space for many ligands; third‑gen examples include ~49–111; PMID: **33729781**)
+
+**F) Aryl ether / methoxy richness** (PMID: **22595422**; methoxy-rich scaffolds in inhibitor SAR PMID: **27331911**)
+- If aryl ether / multiple methoxy groups present: **+5**
+
+**G) Flexibility / shape**
+- If `num_rotatable_bonds ≥ 8`: **+3** (many inhibitors are flexible; e.g., some 3rd‑gen have ~8–11; PMID: **33729781**)
+- If `num_rotatable_bonds > 14`: **−5** (too floppy; mild)
+
+**H) Similarity override (if available)**
+- If max similarity ≥ 0.65: **set P = max(P, 85)**
+- Else if ≥ 0.55: **+20**
+- Else if ≥ 0.45: **+10**
+
+### 5.3 Clamp and (optional) calibrate
+- Clamp: `P = min(100, max(0, P))`
+- If you track historical performance, apply a post-hoc calibration table (isotonic/binning). If not, keep the clamped score.
+
+---
+
+## 6) Interpretation bands (for your own internal consistency)
+- **0–20:** very unlikely (small, polar, non-aromatic, anionic)
+- **21–40:** unlikely/unknown (mixed signals)
+- **41–60:** plausible inhibitor (some key motifs: aromatic + logP moderate + HBA)
+- **61–80:** likely inhibitor (aromatic + hydrophobic + basic N and/or similarity)
+- **81–100:** very likely inhibitor (strongly inhibitor-like physchem + motif combo; or high similarity to known inhibitors)
+
+---
+
+## 7) Failure modes & guardrails
+- **Assay dependence:** ATPase activation/inhibition does not perfectly map to transport inhibition; some ligands stimulate ATPase yet inhibit transport at higher doses (review caveats; PMID: **20419430**).
+- **Substrate vs inhibitor blur:** Many inhibitors are also substrates; don’t treat “substrate-like” as “non-inhibitor.”
+- **Solubility artifacts:** Extremely lipophilic molecules can appear active due to nonspecific membrane effects; apply mild penalty at very high logP.
+- **Ionic extremes:** Permanently charged species (quaternary ammonium, sulfonates) may have reduced membrane partitioning; treat as negative unless similarity strongly suggests a known P‑gp ligand.
+
+---
+
+## 8) Minimal tool recipe (what to run every time)
+1. `std = remove_salts(...)`
+2. `ion = classify_ionization(std, ph=7.4)`
+3. `desc = compute_descriptors(std, descriptors=[...])`
+4. `rings = analyze_ring_systems(std)`
+5. `fg = get_functional_groups(std)`
+6. `motifs = match_substructure(std, patterns=YOUR_PANEL)`
+7. (Optional) `sim = compute_similarity(std, reference_smiles=KNOWN_INHIBITORS)`
+8. Apply scoring rubric → output integer 0–100 only.
+{% endset %}
+{% include "tdc/base.jinja2" %}
