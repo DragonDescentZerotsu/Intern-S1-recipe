@@ -62,7 +62,7 @@ def rdkit_embed_minimize(smiles: str, n_confs: int = 50, seed: int = 0):
 
     params = AllChem.ETKDGv3()
     params.randomSeed = int(seed)
-    params.numThreads = 0
+    params.numThreads = 2  # Restrict to 2 threads to lower CPU usage
     params.pruneRmsThresh = 0.25  # 去重：避免大量重复构象
     conf_ids = list(AllChem.EmbedMultipleConfs(mol, numConfs=int(n_confs), params=params))
     if not conf_ids:
