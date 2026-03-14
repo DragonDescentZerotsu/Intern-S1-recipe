@@ -176,11 +176,14 @@ def run_eval(adapter, sampling_client, ecfg):
     for tn, r in results.items(): flat[f"eval/{tn}/f1"] = r["f1"]
     for g, m in group_means.items(): flat[f"eval/{g}/mean_f1"] = m
 
+    eval_metadata = getattr(ecfg, "eval_metadata", None) or {}
+    flat.update(eval_metadata)
+
     if ecfg.log_dir:
         os.makedirs(ecfg.log_dir, exist_ok=True)
         with open(os.path.join(ecfg.log_dir, "eval_results.json"), "w") as f:
             json.dump({"macro_f1": macro_f1, "per_task": {t: r["f1"] for t,r in results.items()},
-                        "per_group": group_means}, f, indent=2)
+                        "per_group": group_means, "metadata": eval_metadata}, f, indent=2)
     return flat
 
 

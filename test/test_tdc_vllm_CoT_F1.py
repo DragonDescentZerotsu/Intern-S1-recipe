@@ -24,7 +24,7 @@ from transformers import AutoTokenizer
 
 from utils.TDC_answer_parser import extract_answer, parse_answer
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'  # TODO: device GPU #
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # TODO: device GPU #
 
 
 # Setup logging
@@ -47,7 +47,7 @@ def get_args():
                         default="",
                         help='Path to LoRA adapter')
     parser.add_argument('--data-dir', type=Path,
-                        default=Path(__file__).parent.parent / "DataPrepare/TDC_test_prompts_label_scaffold",
+                        default=Path(__file__).parent.parent / "DataPrepare/TDC_prepended/KNN/valid",
                         help='Directory containing preprocessed test data')
     parser.add_argument('--task-groups', nargs='+',
                         default=['ADME', 'Tox', 'HTS'],
@@ -65,7 +65,7 @@ def get_args():
 
     parser.add_argument('--strip-smiles-tags', action='store_false', help='Remove <SMILES> and </SMILES> from prompts before inference')
     parser.add_argument('--log-file', action='store_false', help='Enable logging to file')
-    parser.add_argument('--log-file-name', type=str, default="no_Tools_gpt-oss-20b_{model_name}_{t_stamp}_test_4.log", help='Log file name pattern')  # TODO: log file name 
+    parser.add_argument('--log-file-name', type=str, default="KNN_prepend_{model_name}_{t_stamp}_BBBs.log", help='Log file name pattern')  # TODO: log file name 
 
     args = parser.parse_args()
     return args
@@ -81,7 +81,7 @@ def load_tasks_map(data_dir):
             # 'Carcinogens_Lagunin.jsonl',  # 56
             # 'Skin_Reaction.jsonl',  # 82
             # 'hERG.jsonl',  # 132
-            # 'DILI.jsonl',  # 96
+            'DILI.jsonl',  # 96
             # 'ClinTox.jsonl',  # 297
             # 'AMES.jsonl',  # 1457
             # 'Tox21.jsonl',  # 15584
@@ -93,7 +93,7 @@ def load_tasks_map(data_dir):
             # 'PAMPA_NCATS.jsonl',  # 408
             # 'HIA_Hou.jsonl',  # 117
             # 'BBB_Martins.jsonl',  # 406
-            # 'Pgp_Broccatelli.jsonl',  # 245
+            'Pgp_Broccatelli.jsonl',  # 245
             # 'Bioavailability_Ma.jsonl',  # 128
             # 'CYP2C9_Substrate_CarbonMangels.jsonl',  # 135
             # 'CYP2D6_Substrate_CarbonMangels.jsonl',  # 135
@@ -105,22 +105,26 @@ def load_tasks_map(data_dir):
             # 'CYP3A4_Veith.jsonl',  # 2467
         ],
         'HTS': [
-            'HIV.jsonl',  # 8225
-            'SARSCoV2_3CLPro_Diamond.jsonl',  # 176
-            'SARSCoV2_Vitro_Touret.jsonl',  # 298
+            # 'HIV.jsonl',  # 8225
+            # 'SARSCoV2_3CLPro_Diamond.jsonl',  # 176
+            # 'SARSCoV2_Vitro_Touret.jsonl',  # 298
             # -----------------------------------------
             # 'butkiewicz.jsonl'  # 401997
         ],
-        'Develop': ['SAbDab_Chen.jsonl'],  # 482
-        'PPI': ['HuRI.jsonl'],  # 20282
+        'Develop': [
+            # 'SAbDab_Chen.jsonl'   # 482
+            ],
+        'PPI': [
+            # 'HuRI.jsonl'  # 20282
+            ], 
         'TrialOutcome': [
-            'phase1.jsonl',
-            'phase2.jsonl',
-            'phase3.jsonl'
+            # 'phase1.jsonl',
+            # 'phase2.jsonl',
+            # 'phase3.jsonl'
         ],
         'PeptideMHC': [
-            'MHC1_IEDB-IMGT_Nielsen.jsonl',  # 37197
-            'MHC2_IEDB_Jensen.jsonl'  # 26856
+            # 'MHC1_IEDB-IMGT_Nielsen.jsonl',  # 37197
+            # 'MHC2_IEDB_Jensen.jsonl'  # 26856
         ]
     }
 

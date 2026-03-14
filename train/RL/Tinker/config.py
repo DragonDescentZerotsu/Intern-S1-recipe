@@ -72,12 +72,12 @@ EXCLUDED_TASKS = (
 
 save_every_dict = {
     "BBB_Martins": 44,
-    "DILI": 10,
+    "DILI": 5,
 }
 
 eval_every_dict = {
     "BBB_Martins": 11,
-    "DILI": 5,
+    "DILI": 1,
 }
 
 @dataclass
@@ -85,37 +85,45 @@ class TrainConfig:
     model_name: str = "openai/gpt-oss-20b"
     lora_rank: int = 32
     learning_rate: float = 1e-5
+    lr_schedule: str = "cosine_decay"  # "none" or "cosine_decay"
+    min_learning_rate_ratio: float = 0.1  # final lr = learning_rate * ratio for cosine decay
     batch_size: int = 32
     group_size: int = 8
+    target_effective_groups: Optional[int] = None  # defaults to current batch size
+    max_group_rollout_rounds: int = 4  # max rollout rounds per sample to recover a non-zero-adv group
     max_tokens: int = 16384
     max_turns: int = 40
     reward_format_bonus: float = 0
     reward_use_tools: float = 0.01
-    reward_length_penalty: bool = True
-    save_every: int = save_every_dict['BBB_Martins']
-    eval_every: int = eval_every_dict['BBB_Martins']
+    reward_length_penalty: bool = False
+    checkpoint_strategy: str = "best_eval"  # "best_eval" or "interval"
+    save_final_state: bool = False
+    save_every: int = save_every_dict['DILI']
+    eval_every: int = eval_every_dict['DILI']
     eval_max_samples: int = 1000
     eval_temperature: float = 1
     eval_n_samples: int = 1
     eval_max_retries: int = 4
-    use_tools: bool = True
-    filter_easy_samples: bool = True  # whether to filter out easy samples
+    use_tools: bool = False
+    filter_easy_samples: bool = True  # whether to downsample zero-adv easy samples in later epochs
+    easy_sample_retry_prob: float = 0.3  # chance to retry a previously easy sample in the next epoch
     wandb_project: str = "tdc-tinker-grpo"
     wandb_run_id: Optional[str] = None #"hbnj1kto"
-    wandb_name: Optional[str] = "GRPO BBB 3 epochs filter easy samples & tool reward 0.01"
-    data_dir: Path = PROJECT_ROOT / "DataPrepare/TDC_train_prompts_label_scaffold"
-    log_path: str = PROJECT_ROOT / "logs/tinker/BBB/3-epochs-grpo-filter-easy-samples-tool-reward-0.01"
-    task: Optional[str] = 'BBB_Martins' # None
+    wandb_name: Optional[str] = "GRPO DILI 9 epochs keep easy samples & KNN_3 prepend"
+    data_dir: Path = PROJECT_ROOT / "DataPrepare/TDC_prepended/KNN_3/train"
+    log_path: str = PROJECT_ROOT / "logs/tinker/DILI/9-epochs-grpo-keep-easy-samples-knn-prepend"
+    task: Optional[str] = 'DILI' # None
     exclude_tasks: tuple = EXCLUDED_TASKS
     resume_from: Optional[str] = None # "tinker://be372b79-3da0-589d-b696-ebb65c3a86ec:train:0/weights/step_000470"
     resume_step: int = 470
     data_seed: int = 1
-    rollout_save_dir: Optional[str] = PROJECT_ROOT / "train/RL/Tinker/rollouts/BBB/3-epochs-grpo-filter-easy-samples-tool-reward-0.01"
-    epochs: int = 3
+    rollout_save_dir: Optional[str] = PROJECT_ROOT / "train/RL/Tinker/rollouts/DILI/9-epochs-grpo-keep-easy-samples-knn-prepend"
+    epochs: int = 9
+    playbook_dir: Optional[str] = None #PROJECT_ROOT / "playbooks/discover_deepresearch"  # None
 
 @dataclass
 class EvalConfig:
-    test_data_dir: Path = PROJECT_ROOT / "DataPrepare" / "TDC_valid_prompts_label_scaffold"
+    test_data_dir: Path = PROJECT_ROOT / "DataPrepare/TDC_prepended/KNN_3/valid"
     eval_tasks: Optional[list[str]] = None
     skip_tasks: tuple = EXCLUDED_TASKS
     max_tokens: int = 16384
@@ -123,11 +131,12 @@ class EvalConfig:
     temperature: float = 0.6
     top_p: float = 0.95
     n_samples: int = 1
-    use_tools: bool = True
+    use_tools: bool = False
     max_samples_per_task: Optional[int] = None
     log_dir: Optional[str] = None
     verbose: bool = True
     eval_max_retries: int = 4
+    playbook_dir: Optional[str] = None # PROJECT_ROOT / "playbooks/discover_deepresearch"  # None
 
 cfg = TrainConfig()
 

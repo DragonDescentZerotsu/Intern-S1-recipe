@@ -1,0 +1,36 @@
+# Clinical Toxicity Assessment
+
+## This guide helps guide a probability P (0-100) assessment for the task.
+P(fail clinical trials due to toxicity). Safety/toxicity accounts for ~20-30% of clinical-stage failures. Start most drug-like structures at ~20-30 and adjust.
+
+## Scoring (Base P = 25)
+
+### A) hERG/QT risk
+- Basic at pH 7.4 AND logD7.4 >1.4: +15
+- Basic AND logD7.4 ≤1.4: +5
+- Neutral AND logD7.4 >3.3: +10
+- Aromatic rings ≥3: +5
+- TPSA ≤60: +5
+
+### B) DILI/reactive metabolite
+- Each high-value RM alert (aniline, nitroaromatic, phenol/catechol, thiophene, furan, quinone): +6 each (cap +24)
+- logP ≥3: +8; logP ≥4.5: +12 (replaces +8)
+
+### C) Direct electrophile/genotox
+- Epoxide or aziridine: +25
+- Acyl halide / sulfonyl chloride / isocyanate: +25
+- Activated alkyl halide or strong Michael acceptor: +15
+
+### D) Phospholipidosis/CAD
+- Most basic pKa ≥7.5 AND logP ≥3 AND ≥1 aromatic ring: +10
+- ≥2 basic sites: +5
+
+### E) Complexity/exposure modifiers
+- ESOL poorly soluble: +5
+- MW ≥550: +5
+- Zwitterionic or strongly acidic + logP <2: -5
+
+### Key principle
+Convergent evidence (alert + enabling properties) is much stronger than either alone. Don't treat any single alert as deterministic.
+
+Clamp to [0, 100].

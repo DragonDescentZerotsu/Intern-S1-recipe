@@ -678,11 +678,11 @@ RDKIT_BASIC_OPENAI_TOOLS = [
     _tool("get_formal_charge", "Return net formal charge (sum of atom formal charges as encoded in the SMILES)."),
     _tool("get_qed", "Return QED (Quantitative Estimate of Drug-likeness) as implemented in RDKit."),
     _tool("get_num_heteroatoms", "Return heteroatom count (non C/H)."),
-    _tool("analyze_ring_systems", "Analyze fused ring systems (clusters of rings sharing bonds) and report their topology, aromaticity, and heteroatom content. Distinguishes fused polycyclic systems from isolated rings. Useful for AMES mutagenicity (detecting PAH-like systems), hERG (extended flat aromatic surfaces), and general structural classification of ring complexity."),
-    classify_ionization_openai,
-    compute_similarity_openai,
-    score_structural_alerts_openai,
-    _tool("extract_pharmacophore_features", "Extract pharmacophore features using RDKit's BaseFeatures definitions."),
+    # _tool("analyze_ring_systems", "Analyze fused ring systems (clusters of rings sharing bonds) and report their topology, aromaticity, and heteroatom content. Distinguishes fused polycyclic systems from isolated rings. Useful for AMES mutagenicity (detecting PAH-like systems), hERG (extended flat aromatic surfaces), and general structural classification of ring complexity."),
+    # classify_ionization_openai,
+    # compute_similarity_openai,
+    # score_structural_alerts_openai,
+    # _tool("extract_pharmacophore_features", "Extract pharmacophore features using RDKit's BaseFeatures definitions."),
 ]
 
 # ============================================================

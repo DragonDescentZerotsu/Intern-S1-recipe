@@ -1,0 +1,537 @@
+PLAYBOOK_ID: BBBP_PASSIVE_RULEBOOK_V1
+PLAYBOOK_VERSION: 1
+
+TASK:
+  name: predict_bbb_permeability
+  target: passive_bbb_permeability_with_efflux_penalty
+  output_type: integer_probability_0_100
+  positive_class: BBB_permeant
+  negative_class: BBB_nonpermeant
+
+SEMANTICS:
+  definition: >
+    Predict the probability that a molecule is BBB-permeant mainly by passive diffusion,
+    while applying penalties for likely efflux-limited or strongly charge-disfavored chemotypes.
+
+COMPILER_CONTRACT:
+  feature_mode: precomputed_features_only
+  rule_feature_type: binary
+  model_type: sparse_logistic_regression
+  postprocess:
+    - apply_hard_caps
+    - clamp_to_0_100
+    - round_to_integer
+  trace_fields:
+    - active_rules
+    - active_hard_caps
+    - raw_features
+    - learned_contributions
+
+ALLOWED_GRAMMAR:
+  condition_syntax:
+    - "FEATURE OP VALUE"
+    - "FEATURE BETWEEN [LOW, HIGH)"
+    - "COND AND COND"
+    - "COND OR COND"
+  allowed_ops: ["<", "<=", ">", ">=", "==", "!=", "BETWEEN"]
+  allowed_boolean_features:
+    - is_permanent_charge
+    - is_anion_like
+    - is_cation_like
+    - is_zwitterion_like
+    - is_ambiguous_ionization
+    - has_quaternary_ammonium
+    - has_sulfonate
+    - has_carboxylic_acid
+    - has_tetrazole
+    - has_phosphonate
+    - has_tertiary_amine
+    - has_piperidine_like
+    - has_piperazine_like
+    - has_guanidine
+    - has_urea
+    - has_sulfonamide
+    - has_amide
+    - has_nitro
+    - has_poly_ether
+    - has_heteroatoms
+
+FEATURE_SCHEMA:
+  numeric:
+    - MW
+    - TPSA
+    - logP
+    - logD74
+    - HBD
+    - HBA
+    - RB
+    - formal_charge
+    - fraction_neutral
+    - num_basic_sites
+    - fused_aromatic_ring_count
+    - amide_bond_count
+  categorical:
+    - charge_class
+  boolean:
+    - is_permanent_charge
+    - is_anion_like
+    - is_cation_like
+    - is_zwitterion_like
+    - is_ambiguous_ionization
+    - has_quaternary_ammonium
+    - has_sulfonate
+    - has_carboxylic_acid
+    - has_tetrazole
+    - has_phosphonate
+    - has_tertiary_amine
+    - has_piperidine_like
+    - has_piperazine_like
+    - has_guanidine
+    - has_urea
+    - has_sulfonamide
+    - has_amide
+    - has_nitro
+    - has_poly_ether
+    - has_heteroatoms
+
+RULES:
+
+  # -------------------------
+  # A. Polarity / PSA rules
+  # -------------------------
+  - id: R_PSA_LT_40
+    group: polarity
+    when: "TPSA < 40"
+    direction: positive
+    prior_weight: 1.00
+    learned_weight: null
+    rationale: "Very low polarity strongly favors passive BBB permeation."
+    evidence: ["PMID:19473718"]
+
+  - id: R_PSA_40_60
+    group: polarity
+    when: "TPSA BETWEEN [40, 60)"
+    direction: weak_positive
+    prior_weight: 0.50
+    learned_weight: null
+    rationale: "Intermediate PSA can still support BBB permeation depending on lipophilicity."
+    evidence: ["PMID:19473718"]
+
+  - id: R_PSA_GT_60
+    group: polarity
+    when: "TPSA > 60"
+    direction: negative
+    prior_weight: 0.80
+    learned_weight: null
+    rationale: "Higher PSA generally reduces BBB penetration."
+    evidence: ["PMID:19473718"]
+
+  - id: R_PSA_GT_90
+    group: polarity
+    when: "TPSA > 90"
+    direction: strong_negative
+    prior_weight: 1.20
+    learned_weight: null
+    rationale: "PSA above typical CNS-friendly range is unfavorable."
+    evidence: ["PMID:19473718", "PMID:21790149"]
+
+  - id: R_PSA_GT_120
+    group: polarity
+    when: "TPSA > 120"
+    direction: very_strong_negative
+    prior_weight: 1.80
+    learned_weight: null
+    rationale: "Very high polarity is rarely compatible with passive BBB diffusion."
+    evidence: ["PMID:21790149"]
+
+  # -------------------------
+  # B. Lipophilicity rules
+  # -------------------------
+  - id: R_LOGP_1P5_2P7
+    group: lipophilicity
+    when: "logP BETWEEN [1.5, 2.7)"
+    direction: positive
+    prior_weight: 0.90
+    learned_weight: null
+    rationale: "Moderate lipophilicity supports BBB permeation."
+    evidence: ["PMID:19473718"]
+
+  - id: R_LOGP_2_4
+    group: lipophilicity
+    when: "logP BETWEEN [2.0, 4.0)"
+    direction: positive
+    prior_weight: 1.00
+    learned_weight: null
+    rationale: "Common CNS-friendly cLogP region."
+    evidence: ["PMID:21790149"]
+
+  - id: R_LOGD74_2_4
+    group: lipophilicity
+    when: "logD74 BETWEEN [2.0, 4.0)"
+    direction: positive
+    prior_weight: 1.00
+    learned_weight: null
+    rationale: "Effective lipophilicity at pH 7.4 is often more informative than raw logP."
+    evidence: ["PMID:21790149"]
+
+  - id: R_LOGP_GT_5
+    group: lipophilicity
+    when: "logP > 5"
+    direction: negative
+    prior_weight: 1.00
+    learned_weight: null
+    rationale: "Excess lipophilicity can hurt solubility, binding, and transporter behavior."
+    evidence: ["PMID:21790149"]
+
+  # -------------------------
+  # C. Ionization / charge rules
+  # -------------------------
+  - id: R_FNEUTRAL_GE_0P30
+    group: ionization
+    when: "fraction_neutral >= 0.30"
+    direction: positive
+    prior_weight: 1.20
+    learned_weight: null
+    rationale: "A substantial neutral fraction at pH 7.4 favors passive diffusion."
+    evidence: []
+
+  - id: R_FNEUTRAL_0P10_0P30
+    group: ionization
+    when: "fraction_neutral BETWEEN [0.10, 0.30)"
+    direction: weak_positive
+    prior_weight: 0.70
+    learned_weight: null
+    rationale: "Moderate neutral fraction is somewhat favorable."
+    evidence: []
+
+  - id: R_FNEUTRAL_0P03_0P10
+    group: ionization
+    when: "fraction_neutral BETWEEN [0.03, 0.10)"
+    direction: weak_negative
+    prior_weight: 0.40
+    learned_weight: null
+    rationale: "Mostly ionized compounds are less likely to cross passively."
+    evidence: []
+
+  - id: R_FNEUTRAL_LT_0P01
+    group: ionization
+    when: "fraction_neutral < 0.01"
+    direction: strong_negative
+    prior_weight: 1.40
+    learned_weight: null
+    rationale: "Almost fully ionized at physiological pH is strongly unfavorable."
+    evidence: []
+
+  - id: R_AMBIGUOUS_IONIZATION
+    group: ionization
+    when: "is_ambiguous_ionization == true"
+    direction: negative
+    prior_weight: 0.30
+    learned_weight: null
+    rationale: "Ambiguous charge-state assignment increases uncertainty and often weakens confidence."
+    evidence: []
+
+  - id: R_ANION_LIKE
+    group: ionization
+    when: "is_anion_like == true"
+    direction: strong_negative
+    prior_weight: 1.50
+    learned_weight: null
+    rationale: "Anionic molecules are often disfavored for passive BBB permeation."
+    evidence: ["PMID:27377191", "PMID:10837716"]
+
+  - id: R_ZWITTERION_LIKE
+    group: ionization
+    when: "is_zwitterion_like == true"
+    direction: negative
+    prior_weight: 1.10
+    learned_weight: null
+    rationale: "Zwitterionic species are often too polar for strong passive BBB diffusion."
+    evidence: []
+
+  - id: R_CATION_LIKE
+    group: ionization
+    when: "is_cation_like == true"
+    direction: weak_negative
+    prior_weight: 0.40
+    learned_weight: null
+    rationale: "Cationic species may still cross in some cases, but charge usually reduces passive permeability."
+    evidence: []
+
+  # -------------------------
+  # D. H-bonding rules
+  # -------------------------
+  - id: R_HBD_LE_1
+    group: hydrogen_bonding
+    when: "HBD <= 1"
+    direction: positive
+    prior_weight: 0.80
+    learned_weight: null
+    rationale: "Low donor count is favorable for CNS penetration."
+    evidence: ["PMID:22778837"]
+
+  - id: R_HBD_GE_3
+    group: hydrogen_bonding
+    when: "HBD >= 3"
+    direction: negative
+    prior_weight: 1.00
+    learned_weight: null
+    rationale: "High hydrogen bond donor count raises desolvation cost."
+    evidence: ["PMID:22778837"]
+
+  - id: R_HBA_GE_8
+    group: hydrogen_bonding
+    when: "HBA >= 8"
+    direction: negative
+    prior_weight: 0.80
+    learned_weight: null
+    rationale: "High acceptor count often accompanies polarity and efflux risk."
+    evidence: []
+
+  # -------------------------
+  # E. Size / flexibility rules
+  # -------------------------
+  - id: R_MW_LE_360
+    group: size
+    when: "MW <= 360"
+    direction: positive
+    prior_weight: 0.80
+    learned_weight: null
+    rationale: "Lower MW is more compatible with CNS drug-like space."
+    evidence: ["PMID:22778837"]
+
+  - id: R_MW_GT_500
+    group: size
+    when: "MW > 500"
+    direction: strong_negative
+    prior_weight: 1.20
+    learned_weight: null
+    rationale: "Large molecules are generally poor passive BBB penetrants."
+    evidence: ["PMID:22778837"]
+
+  - id: R_RB_LE_5
+    group: flexibility
+    when: "RB <= 5"
+    direction: positive
+    prior_weight: 0.60
+    learned_weight: null
+    rationale: "Lower flexibility often helps permeation."
+    evidence: []
+
+  - id: R_RB_GE_10
+    group: flexibility
+    when: "RB >= 10"
+    direction: negative
+    prior_weight: 0.80
+    learned_weight: null
+    rationale: "High flexibility often hurts passive permeability."
+    evidence: []
+
+  # -------------------------
+  # F. Interaction rules
+  # -------------------------
+  - id: R_PSA_40_60_AND_LOGP_GT_2
+    group: interactions
+    when: "TPSA BETWEEN [40, 60) AND logP > 2"
+    direction: positive
+    prior_weight: 0.60
+    learned_weight: null
+    rationale: "Intermediate PSA can be rescued by adequate lipophilicity."
+    evidence: ["PMID:19473718"]
+
+  - id: R_PSA_40_60_AND_LOGP_LT_2
+    group: interactions
+    when: "TPSA BETWEEN [40, 60) AND logP < 2"
+    direction: negative
+    prior_weight: 0.60
+    learned_weight: null
+    rationale: "Intermediate PSA with insufficient lipophilicity is less favorable."
+    evidence: ["PMID:19473718"]
+
+  - id: R_TPSA_GE_90_AND_LOGP_GE_3
+    group: interactions
+    when: "TPSA >= 90 AND logP >= 3"
+    direction: negative
+    prior_weight: 0.90
+    learned_weight: null
+    rationale: "Greasy-but-polar molecules may look permeable yet often remain problematic."
+    evidence: []
+
+  # -------------------------
+  # G. Structural liability rules
+  # -------------------------
+  - id: R_CARBOXYLIC_ACID
+    group: structural_liability
+    when: "has_carboxylic_acid == true"
+    direction: negative
+    prior_weight: 0.90
+    learned_weight: null
+    rationale: "Carboxylic acids are often anionic at pH 7.4 and disfavored."
+    evidence: []
+
+  - id: R_TETRAZOLE
+    group: structural_liability
+    when: "has_tetrazole == true"
+    direction: negative
+    prior_weight: 0.80
+    learned_weight: null
+    rationale: "Tetrazoles are often acid-like and can reduce passive BBB entry."
+    evidence: []
+
+  - id: R_PHOSPHONATE
+    group: structural_liability
+    when: "has_phosphonate == true"
+    direction: strong_negative
+    prior_weight: 1.40
+    learned_weight: null
+    rationale: "Strongly polar/ionized phosphorus acids are usually BBB-unfriendly."
+    evidence: []
+
+  - id: R_GUANIDINE
+    group: structural_liability
+    when: "has_guanidine == true"
+    direction: strong_negative
+    prior_weight: 1.30
+    learned_weight: null
+    rationale: "Guanidines are strongly basic and often highly charged."
+    evidence: []
+
+  - id: R_UREA
+    group: structural_liability
+    when: "has_urea == true"
+    direction: negative
+    prior_weight: 0.70
+    learned_weight: null
+    rationale: "Urea motifs often increase polarity/H-bonding."
+    evidence: []
+
+  - id: R_SULFONAMIDE
+    group: structural_liability
+    when: "has_sulfonamide == true"
+    direction: negative
+    prior_weight: 0.80
+    learned_weight: null
+    rationale: "Sulfonamides often increase polarity and reduce passive BBB permeation."
+    evidence: []
+
+  - id: R_MULTIPLE_AMIDES
+    group: structural_liability
+    when: "amide_bond_count >= 2"
+    direction: negative
+    prior_weight: 0.80
+    learned_weight: null
+    rationale: "Multiple amides usually push molecules out of CNS-like property space."
+    evidence: []
+
+  - id: R_POLY_ETHER
+    group: structural_liability
+    when: "has_poly_ether == true"
+    direction: negative
+    prior_weight: 0.70
+    learned_weight: null
+    rationale: "Poly-ether-like motifs often increase polarity and reduce passive penetration."
+    evidence: []
+
+  # -------------------------
+  # H. Efflux-risk heuristic rules
+  # -------------------------
+  - id: R_MULTI_BASIC_SITES
+    group: efflux_risk
+    when: "num_basic_sites >= 2"
+    direction: negative
+    prior_weight: 0.90
+    learned_weight: null
+    rationale: "Polybasic amphiphilic molecules are often efflux-prone."
+    evidence: ["PMID:12535572", "PMID:12535575"]
+
+  - id: R_FUSED_ARO_HETERO
+    group: efflux_risk
+    when: "fused_aromatic_ring_count >= 3 AND has_heteroatoms == true"
+    direction: negative
+    prior_weight: 0.70
+    learned_weight: null
+    rationale: "Large fused aromatic heteroatom-rich systems may be sticky and transporter-sensitive."
+    evidence: []
+
+  # -------------------------
+  # I. Hard caps / show-stoppers
+  # -------------------------
+  - id: CAP_PERMANENT_CHARGE
+    type: hard_cap
+    when: "is_permanent_charge == true"
+    max_probability: 5
+    rationale: "Permanent charge is strongly incompatible with passive BBB diffusion."
+    evidence: []
+
+  - id: CAP_TPSA_GT_120_AND_NONZERO_CHARGE
+    type: hard_cap
+    when: "TPSA > 120 AND formal_charge != 0"
+    max_probability: 10
+    rationale: "Very high polarity plus nonzero charge is near show-stopper territory."
+    evidence: []
+
+  - id: CAP_MW_GT_650
+    type: hard_cap
+    when: "MW > 650"
+    max_probability: 10
+    rationale: "Outside typical small-molecule passive BBB regime."
+    evidence: []
+
+EXECUTION:
+  step_1: compute_all_declared_features
+  step_2: evaluate_all_RULES_as_binary_features
+  step_3: build_feature_vector_in_rule_order
+  step_4: score_with_model
+  step_5: probability = round(100 * sigmoid(intercept + sum(rule_i * learned_weight_i)))
+  step_6: apply_all_active_hard_caps
+  step_7: clamp_probability_to_[0,100]
+  step_8: emit_trace
+
+MODEL_BINDING:
+  intercept: null
+  default_if_untrained:
+    use_prior_weights: true
+    prior_score_formula: "sum(active_rule * signed_prior_weight)"
+    prior_probability_formula: "round(100 * sigmoid(prior_score))"
+
+TRACE:
+  show:
+    - probability
+    - intercept
+    - active_positive_rules
+    - active_negative_rules
+    - active_hard_caps
+    - per_rule_contribution
+    - feature_snapshot
+  sort_by: absolute_contribution_desc
+
+EDIT_INTERFACE:
+  allowed_actions:
+    - add_rule
+    - delete_rule
+    - disable_rule
+    - change_condition
+    - change_prior_weight
+    - change_direction
+    - split_rule
+    - merge_rules
+    - add_hard_cap
+    - remove_hard_cap
+  forbidden_actions:
+    - changing_TASK_semantics_without_version_bump
+    - introducing_new_features_not_in_FEATURE_SCHEMA_without_schema_update
+    - freeform_prose_edits_inside_RULES
+
+FAILURE_ANALYSIS_CONTRACT:
+  on_false_positive:
+    preferred_actions:
+      - strengthen_negative_rule
+      - tighten_positive_threshold
+      - add_efflux_rule
+      - add_hard_cap
+  on_false_negative:
+    preferred_actions:
+      - relax_negative_rule
+      - add_rescue_interaction_rule
+      - weaken_efflux_penalty
+      - split_overbroad_rule

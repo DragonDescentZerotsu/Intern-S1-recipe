@@ -1,0 +1,39 @@
+# Oral Bioavailability Assessment
+
+## This guide helps guide a probability P (0-100) assessment for the task.
+Probability the molecule is orally bioavailable (viable property space for absorption). Most reliable for Ro5-ish small molecules. Less reliable for macrocycles, peptides, active-transporter substrates.
+
+## Scoring (Base = 40)
+
+### A) Rule-of-5 block
+- 0 Lipinski violations: +20
+- 1 violation: +10
+- 2 violations: -10
+- 3-4 violations: -25
+- MW >600: additional -10
+
+### B) TPSA block
+- ≤60: +20; 60-90: +10; 90-120: +0; 120-140: -10; >140: -25
+
+### C) Flexibility (rotatable bonds)
+- ≤6: +10; 7-10: +0; 11-15: -10; >15: -20
+
+### D) Ionization/charge at pH 7.4
+- Neutral: +5; +1 (amine): +5; -1 (acid): +0; |charge| ≥2: -20; ambiguous: -5
+- Quaternary ammonium or sulfonate/phosphate present: -30
+
+### E) Solubility (ESOL logS)
+- >-3: +5; -3 to -4: +0; <-4: -10; <-6: -20
+
+### F) Aromaticity/fused aromatics
+- PAH-like: -10; aromatic_rings ≥4 + fraction_csp3 <0.2: -5
+
+### G) Structural alerts
+- Alert count ≥3: -5; ≥6: -10
+
+## Exception handling
+- Macrocycles: reduce penalty severity by ~50%, avoid extremes
+- Transporter substrates can violate Ro5: if violations present but resembles known transporter substrates, output 20-40 not near 0
+- If macrocycle/bRo5/ambiguous: compress toward 50: P = 50 + 0.7*(P-50)
+
+Clamp to [0, 100].

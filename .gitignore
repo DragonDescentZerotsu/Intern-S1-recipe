@@ -54,6 +54,12 @@
 !/DataPrepare/Slime_RL_data/**/*.md
 !/DataPrepare/Slime_RL_data/**/*.gitkeep
 
+/DataPrepare/TDC_mol_fingerprints/**
+!/DataPrepare/TDC_mol_fingerprints/**/
+!/DataPrepare/TDC_mol_fingerprints/**/*.py
+!/DataPrepare/TDC_mol_fingerprints/**/*.md
+!/DataPrepare/TDC_mol_fingerprints/**/*.gitkeep
+
 /train/RL/Tinker/rollouts/**
 /train/RL/Tinker/Josh_notebooks/**
 
@@ -65,6 +71,7 @@ data/
 
 # excluding running logs
 /logs/*
+/knn_prompts_generate.log
 
 # excluding Homework
 /CIS_5300_HW

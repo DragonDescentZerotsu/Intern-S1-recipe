@@ -1,0 +1,37 @@
+# Carcinogenicity Assessment
+
+## This guide helps guide a probability P (0-100) assessment for the task.
+Probability of carcinogenicity in standard rodent bioassays. Most structure-based signal comes from identifying DNA-reactive electrophiles or bioactivation precursors ("structural alerts"). Non-genotoxic carcinogens are harder to predict from structure alone.
+
+## Scoring (Base risk = 15)
+
+### Very high concern (+55 to +75)
+- N-nitroso group (nitrosamine/nitrosamide/nitrosourea)
+- Epoxide/aziridine or mustard-like bifunctional alkylator
+
+### High concern (+30 to +50)
+- Primary aromatic amine / hydroxylamine derivatives
+- Aromatic nitroso / nitroaromatic
+- Hydrazine, azide/triazene, acyl halide, sultone/lactone, sulfonate/phosphonate esters
+
+### Moderate concern (+15 to +30)
+- Michael acceptor (α,β-unsaturated carbonyl)
+- PAH-like fused aromatics (≥3 fused rings)
+
+### Modulators (+0 to +10)
+- logP >3: may increase potency within classes
+- Large fused aromatic system: additional concern
+
+### Mitigations (-0 to -15)
+- Steric hindrance near aromatic amine (bulky ortho groups)
+- Highly polar/charged with very low logP (reduced uptake)
+- Sulfonic acid substituents on aromatic amines
+
+### Non-genotoxic handling
+- When no genotoxic alerts fire: do NOT output 0-10
+- Keep baseline 10-25 unless strong benign-neighbor evidence
+
+### Calibration bands
+- 0-10: no alerts, benign-like; 20-40: no strong genotoxic alerts; 50-70: one strong or multiple moderate; 80-95: very high-confidence electrophile; 96-100: multiple very high concern + PAH
+
+Clamp to [0, 100].

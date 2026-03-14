@@ -49,6 +49,10 @@ def _round4(value: float) -> float:
     return round(value, 4)
 
 
+def _round_site_pka_map(site_map: Dict[int, float]) -> Dict[int, float]:
+    return {atom_map_num: _round4(pka) for atom_map_num, pka in site_map.items()}
+
+
 # -------------------------
 # OpenAI "tools" schema helpers
 # -------------------------
@@ -128,27 +132,36 @@ def predict_pka(smiles: str) -> str:
 
     atom_smi = Chem.MolToSmiles(prediction.mol)
     base_sites = prediction.base_sites_1
+    # atom_smi = Chem.MolToSmiles(prediction.mol) # Not needed for output
+    base_sites = prediction.base_sites_1
     acid_sites = prediction.acid_sites_1
 
-    most_basic_pka = max(base_sites.values()) if base_sites else None
-    most_acidic_pka = min(acid_sites.values()) if acid_sites else None
+    # most_basic_pka = max(base_sites.values()) if base_sites else None # Calculated in output
+    # most_acidic_pka = min(acid_sites.values()) if acid_sites else None # Calculated in output
 
-    lines = []
-    lines.append(f"Mapped SMILES: {atom_smi}")
-    lines.append(f"Number of basic sites: {len(base_sites)}")
-    lines.append(f"Number of acidic sites: {len(acid_sites)}")
+    if not base_sites and not acid_sites:
+        return "No basic or acidic sites predicted."
+        
+    output = f"Number of basic sites: {len(base_sites)}\n"
+    output += f"Number of acidic sites: {len(acid_sites)}\n"
+    output += f"Predicted-site atom-mapped SMILES: {atom_smi}\n"
+    
+    rounded_base_sites = _round_site_pka_map(base_sites)
+    rounded_acid_sites = _round_site_pka_map(acid_sites)
+
     if base_sites:
-        lines.append(f"Base-site pKa values (atom_map_number: pKa): {base_sites}")
-        lines.append(f"Most basic pKa: {most_basic_pka:.4f}")
+        output += f"Base-site pKa values (atom_map_number: pKa): {rounded_base_sites}\n"
+        output += f"Most basic pKa: {max(base_sites.values()):.4f}\n"
     else:
-        lines.append("No base sites predicted.")
+        output += "No base sites predicted.\n"
+        
     if acid_sites:
-        lines.append(f"Acid-site pKa values (atom_map_number: pKa): {acid_sites}")
-        lines.append(f"Most acidic pKa: {most_acidic_pka:.4f}")
+        output += f"Acid-site pKa values (atom_map_number: pKa): {rounded_acid_sites}\n"
+        output += f"Most acidic pKa: {min(acid_sites.values()):.4f}"
     else:
-        lines.append("No acid sites predicted.")
+        output += "No acid sites predicted."
 
-    return "\n".join(lines)
+    return output
 
 
 def estimate_logd(smiles: str, ph: float = 7.4) -> str:
@@ -187,7 +200,7 @@ def estimate_logd(smiles: str, ph: float = 7.4) -> str:
     acid_sites = prediction.acid_sites_1
     most_basic_pka = max(base_sites.values()) if base_sites else None
     most_acidic_pka = min(acid_sites.values()) if acid_sites else None
-    atom_smi = Chem.MolToSmiles(prediction.mol)
+    # atom_smi = Chem.MolToSmiles(prediction.mol) # Not needed for output
 
     warnings: list[str] = []
     if len(base_sites) > 1:
@@ -220,27 +233,20 @@ def estimate_logd(smiles: str, ph: float = 7.4) -> str:
 
     logd = logp + math.log10(f_neutral)
 
-    lines = []
-    lines.append(f"Estimated logD at pH {_round4(ph)}: {_round4(logd):.4f}")
-    lines.append(f"logP (Wildman-Crippen): {logp:.4f}")
-    lines.append(f"Fraction neutral at pH {_round4(ph)}: {_round4(f_neutral):.4f}")
-    lines.append(f"Number of basic sites: {len(base_sites)}")
-    lines.append(f"Number of acidic sites: {len(acid_sites)}")
-    if most_basic_pka is not None:
-        lines.append(f"Most basic pKa: {most_basic_pka:.4f}")
-    if most_acidic_pka is not None:
-        lines.append(f"Most acidic pKa: {most_acidic_pka:.4f}")
-    lines.append(f"Mapped SMILES: {atom_smi}")
-    if warnings:
-        lines.append(f"Warnings: {'; '.join(warnings)}")
+    output = f"Estimated logD at pH {_round4(ph)}: {_round4(logd):.4f}\n"
+    output += f"logP (Wildman-Crippen): {logp:.4f}\n"
+    output += f"Fraction neutral at pH {_round4(ph)}: {_round4(f_neutral):.4f}\n"
 
-    return "\n".join(lines)
+    if warnings:
+        output += f"Warnings: {'; '.join(warnings)}"
+
+    return output
 
 
 # ============================================================
 # OpenAI tool definitions
 # ============================================================
-PKA_TOOL = _tool(
+PKA_TOOL = _tool_smiles_only(
         "predict_pka",
         "Predict pKa values for ionizable sites in a molecule. "
         "Returns base-site and acid-site pKa values (1-indexed atom map numbers), "

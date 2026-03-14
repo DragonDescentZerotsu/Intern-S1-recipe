@@ -1,0 +1,46 @@
+# BBB Permeability Assessment
+
+## This guide helps guide a probability P (0-100) assessment for the task.
+Probability of passive BBB permeation. Key factors: TPSA (first-order filter), lipophilicity (optimal range), ionization (neutral species favored), H-bonding, size/flexibility, and efflux risk.
+
+## CNS-MPO-like scoring (6 components, each 0-1, sum S_passive in [0,6])
+
+### 1) Lipophilicity (logP target ~2-4)
+- logP 2-4: 1.0; logP 1-2 or 4-5: 0.7; logP <1 or >5: 0.3; logP >6: 0.0
+
+### 2) TPSA (best ~40-90)
+- TPSA 40-90: 1.0; TPSA 20-40 or 90-120: 0.6; TPSA <20 or >120: 0.2
+
+### 3) MW (best ≤360)
+- MW ≤360: 1.0; MW 360-500: 0.6; MW >500: 0.2
+
+### 4) HBD (best 0-1)
+- HBD 0-1: 1.0; HBD 2: 0.7; HBD 3: 0.4; HBD ≥4: 0.0
+
+### 5) Ionization (fraction_neutral from logD estimate)
+- f_neutral ≥0.30: 1.0; 0.10-0.30: 0.7; 0.03-0.10: 0.4; 0.01-0.03: 0.2; <0.01: 0.0
+- If ionization is ambiguous: subtract 0.2
+
+### 6) Flexibility (rotatable bonds)
+- RB ≤5: 1.0; RB 6-9: 0.6; RB ≥10: 0.2
+
+## Hard show-stoppers (override)
+- Permanent charge (quaternary ammonium, sulfonate): cap P at 5
+- TPSA >120 AND net_charge ≠ 0: cap P at 10
+- MW >650: cap P at 10
+
+## Convert to probability
+P0 = 100 * sigmoid(1.2 * (S_passive - 3.5))
+- Scores ~3.5 → ~50%; scores ≥5 → high
+
+## PSA bin adjustment
+- TPSA <40: P = P0 + 15
+- TPSA >60: P = P0 - 15
+- TPSA 40-60: if logP >2: P = P0 + 5; if logP <2: P = P0 - 10
+
+## Efflux-risk penalty E (0 to 30)
+- HBA ≥8: +10
+- ≥2 basic sites: +8
+- TPSA ≥90 AND logP ≥3: +6
+- ≥3 fused aromatic rings with heteroatoms: +6
+Then P = P - E. Clamp [0, 100].

@@ -32,6 +32,131 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
+
+def _sample_key(sample):
+    return id(sample)
+
+
+def _group_reward_stats(rollouts):
+    rews = [r["reward"] for r in rollouts]
+    mu = sum(rews) / len(rews)
+    std = float(np.std(rews))
+    return rews, mu, std
+
+
+def _is_easy_zero_adv(mu, std):
+    return std < 1e-8 and mu > 0.5
+
+
+def get_scheduled_lr(progress: float) -> float:
+    progress = min(max(progress, 0.0), 1.0)
+    if cfg.lr_schedule == "none":
+        return cfg.learning_rate
+    if cfg.lr_schedule == "cosine_decay":
+        min_lr = cfg.learning_rate * cfg.min_learning_rate_ratio
+        cosine = 0.5 * (1.0 + math.cos(math.pi * progress))
+        return min_lr + (cfg.learning_rate - min_lr) * cosine
+    raise ValueError(f"Unsupported lr_schedule: {cfg.lr_schedule}")
+
+
+def maybe_save_best_checkpoint(tc, bi, eval_metrics, best_eval):
+    macro_f1 = float(eval_metrics.get("eval/macro_f1", 0.0))
+    if macro_f1 <= best_eval["f1"]:
+        return best_eval, None
+
+    f1_tag = f"{macro_f1:.4f}".replace(".", "p")
+    ckpt_name = f"best_eval_f1_{f1_tag}_step_{bi:06d}"
+    state_path = tc.save_state(name=ckpt_name).result().path
+    deploy_path = tc.save_weights_for_sampler(name=ckpt_name).result().path
+    updated = {
+        "f1": macro_f1,
+        "step": bi,
+        "name": ckpt_name,
+        "state_path": state_path,
+        "deploy_path": deploy_path,
+    }
+    return updated, updated
+
+
+def collect_effective_groups(adapter, samp_client, batch, sparams, sample_pool, next_sample_idx):
+    """
+    Retry zero-advantage groups until we reach the target effective group count
+    or exhaust the per-sample rollout budget, refilling from later samples when
+    a prompt still cannot produce a useful group.
+    """
+    target_groups = cfg.target_effective_groups or len(batch)
+    max_rounds = max(cfg.max_group_rollout_rounds, 1)
+
+    pending = list(batch)
+    attempts = {_sample_key(sample): 0 for sample in batch}
+    effective_pairs = []
+    exhausted_pairs = []
+    total_attempted_groups = 0
+    total_rollout_rounds = 0
+    refill_groups = 0
+    easy_zero_adv_groups = 0
+    hard_zero_adv_groups = 0
+
+    while len(effective_pairs) < target_groups:
+        if not pending:
+            need = target_groups - len(effective_pairs)
+            refill = sample_pool[next_sample_idx : next_sample_idx + need]
+            next_sample_idx += len(refill)
+            refill_groups += len(refill)
+            for sample in refill:
+                attempts[_sample_key(sample)] = 0
+            pending = list(refill)
+            if not pending:
+                break
+
+        total_rollout_rounds += 1
+        total_attempted_groups += len(pending)
+        paired = asyncio.run(run_batch_rollouts(adapter, samp_client, pending, sparams))
+        paired_by_key = {_sample_key(sample): (sample, rollouts) for sample, rollouts in paired}
+
+        next_pending = []
+        for sample in pending:
+            key = _sample_key(sample)
+            attempts[key] += 1
+            pair = paired_by_key.get(key)
+
+            if pair is None:
+                if attempts[key] < max_rounds:
+                    next_pending.append(sample)
+                else:
+                    exhausted_pairs.append((sample, []))
+                continue
+
+            _, rollouts = pair
+            _, mu, std = _group_reward_stats(rollouts)
+            if _is_easy_zero_adv(mu, std):
+                easy_zero_adv_groups += 1
+                exhausted_pairs.append((sample, rollouts))
+            elif std < 1e-8 and attempts[key] < max_rounds:
+                hard_zero_adv_groups += 1
+                next_pending.append(sample)
+            elif std < 1e-8:
+                hard_zero_adv_groups += 1
+                exhausted_pairs.append((sample, rollouts))
+            else:
+                effective_pairs.append((sample, rollouts))
+
+        pending = next_pending
+
+    paired = effective_pairs + exhausted_pairs
+    retry_groups = sum(max(v - 1, 0) for v in attempts.values())
+    return paired, next_sample_idx, {
+        "target_groups": target_groups,
+        "effective_groups": len(effective_pairs),
+        "exhausted_groups": len(exhausted_pairs),
+        "refill_groups": refill_groups,
+        "easy_zero_adv_groups": easy_zero_adv_groups,
+        "hard_zero_adv_groups": hard_zero_adv_groups,
+        "retry_groups": retry_groups,
+        "rollout_rounds": total_rollout_rounds,
+        "attempted_groups": total_attempted_groups,
+    }
+
 def main():
     """
     Main Training Loop for GRPO (Grounded Reward Policy Optimization) with Tinker.
@@ -55,14 +180,18 @@ def main():
 
     # 加载和打乱 TDC 训练数据集 (Load and shuffle the TDC training dataset)
     random.seed(cfg.data_seed)
-    all_samples = load_train_data(cfg.data_dir, cfg.exclude_tasks, getattr(cfg, "task", None))
+    all_samples = load_train_data(cfg.data_dir, cfg.exclude_tasks, getattr(cfg, "task", None), getattr(cfg, "playbook_dir", None))
     random.shuffle(all_samples)
     easy_samples_prompts = set()
     
-    # 计算总共需要跑多少个 batch (Calculate the total number of batches to run)
-    n_batches_per_epoch = math.ceil(len(all_samples) / cfg.batch_size)
-    n_batches = n_batches_per_epoch * cfg.epochs
-    logger.info(f"Batches: {n_batches}, Samples: {len(all_samples)}")
+    # 训练轮数按“将当前样本池完整走完一次”来定义
+    # (Define an epoch as traversing the current sample pool once.)
+    initial_sample_count = len(all_samples)
+    nominal_n_batches = math.ceil(initial_sample_count / max(cfg.batch_size, 1)) * cfg.epochs
+    logger.info(
+        f"Samples: {initial_sample_count} | Target epochs: {cfg.epochs} "
+        f"(nominal steps≈{nominal_n_batches})"
+    )
 
     # 实例化 Tinker 的核心服务客户端并创建一个专用于梯度更新的 LoRA 训练服务端
     # (Instantiate Tinker's core ServiceClient and create a LoRA training client dedicated to gradient updates)
@@ -79,8 +208,6 @@ def main():
 
     # 定义模型采样配置参数以及 Adam 优化器参数 (Define model sampling configs and Adam optimizer parameters)
     sparams = tinker.types.SamplingParams(max_tokens=cfg.max_tokens, stop=STOP_TOKEN_IDS, temperature=1.0)
-    adam = types.AdamParams(learning_rate=cfg.learning_rate, beta1=0.9, beta2=0.95, eps=1e-8)
-
     # 初始化 W&B 实验看板面板记录 (Initialize W&B experimental dashboard logging)
     run_name = cfg.wandb_name or f"{cfg.model_name.split('/')[-1]}_lr{cfg.learning_rate}_bs{cfg.batch_size}_g{cfg.group_size}"
     wandb.init(
@@ -91,36 +218,68 @@ def main():
         config={
             k: getattr(cfg, k) for k in [
                 "model_name","lora_rank","learning_rate","batch_size","group_size",
+                "lr_schedule","min_learning_rate_ratio",
+                "target_effective_groups","max_group_rollout_rounds",
+                "checkpoint_strategy","save_final_state",
                 "max_tokens","max_turns","reward_format_bonus","reward_use_tools","eval_every","eval_max_samples",
-                "data_seed","resume_from","resume_step",
+                "data_seed","resume_from","resume_step","filter_easy_samples","easy_sample_retry_prob",
             ]
-          } | {"n_samples": len(all_samples), "n_batches": n_batches,
-              "n_batches_per_epoch": n_batches_per_epoch, "epochs": cfg.epochs,
+          } | {"n_samples": len(all_samples),
+              "nominal_n_batches": nominal_n_batches, "initial_sample_count": initial_sample_count, "epochs": cfg.epochs,
               "adapter": type(adapter).__name__, "hf_name": hf_name},
     )
 
     mf = open(os.path.join(cfg.log_path, "metrics.jsonl"), "a")
+    best_eval = {"f1": float("-inf"), "step": None, "state_path": None, "deploy_path": None}
 
     # 进入主要批次式前向训练主循环 (Enter main batched forward training loop)
-    bi_iterator = iter(range(start_batch, n_batches))
-    for bi in bi_iterator:
-        t_batch_start = time.time()
-        epoch = bi // n_batches_per_epoch
-        bi_in_epoch = bi % n_batches_per_epoch
+    bi = start_batch
+    epoch_round = min(start_batch // max(math.ceil(initial_sample_count / max(cfg.batch_size, 1)), 1), cfg.epochs)
+    epoch_cursor = 0
+    total_seen_samples = start_batch * cfg.batch_size
 
-        # 在新的一轮 Epoch 重新打乱数据排列 (Shuffle data again at the beginning of a new Epoch)
-        if bi_in_epoch == 0 and bi > 0:
-          random.seed(cfg.data_seed + epoch)
+    while epoch_round < cfg.epochs:
+        t_batch_start = time.time()
+        epoch = epoch_round
+
+        # 在当前样本池耗尽后进入下一轮重新采样/过滤
+        # (Once the current sample pool is exhausted, start a new reshuffled round.)
+        if epoch_cursor >= len(all_samples):
+          epoch_round += 1
+          if epoch_round >= cfg.epochs:
+              break
+          random.seed(cfg.data_seed + epoch_round)
           if getattr(cfg, "filter_easy_samples", False) and easy_samples_prompts:
               old_len = len(all_samples)
-              all_samples = [s for s in all_samples if s.get("text", "") not in easy_samples_prompts]
-              logger.info(f"Epoch {epoch}: Filtered {len(easy_samples_prompts)} easy samples. Retained {len(all_samples)} / {old_len}")
+              retained_easy = 0
+              filtered_easy = 0
+              next_samples = []
+              for s in all_samples:
+                  prompt_text = s.get("text", "")
+                  if prompt_text not in easy_samples_prompts:
+                      next_samples.append(s)
+                      continue
+                  if random.random() < cfg.easy_sample_retry_prob:
+                      next_samples.append(s)
+                      retained_easy += 1
+                  else:
+                      filtered_easy += 1
+              all_samples = next_samples
+              logger.info(
+                  f"Epoch round {epoch_round}: Easy sample retry prob={cfg.easy_sample_retry_prob:.0%}. "
+                  f"Retried {retained_easy}, filtered {filtered_easy}. Retained {len(all_samples)} / {old_len}"
+              )
           random.shuffle(all_samples)
-          logger.info(f"=== EPOCH {epoch} === (reshuffled)")
+          epoch_cursor = 0
+          logger.info(f"=== EPOCH ROUND {epoch_round} === (reshuffled)")
+
+        if not all_samples:
+            logger.warning("No samples available after filtering; stopping training early.")
+            break
 
         # ── CHECKPOINT MODEL (保存模型状态断点) ─────────────────────────────────────────
         t_ckpt_start = time.time()
-        if cfg.save_every > 0 and bi > 0 and bi % cfg.save_every == 0:
+        if cfg.checkpoint_strategy == "interval" and cfg.save_every > 0 and bi > 0 and bi % cfg.save_every == 0:
             p = tc.save_state(name=f"step_{bi:06d}").result().path
             logger.info(f"{'='*60}")
             logger.info(f"CHECKPOINT SAVED: {p}")
@@ -130,17 +289,14 @@ def main():
         t_ckpt = time.time() - t_ckpt_start
 
         # ── SAMPLER SETUP (设定当前周期的采样器权重) ─────────────────────────────────────
-        # 切片截出本批次的样本数据 (Slice the sample data for this batch)
-        batch = all_samples[bi_in_epoch * cfg.batch_size : (bi_in_epoch + 1) * cfg.batch_size]
+        # 通过 epoch 内游标取样；如果需要补有效 group，后续会继续消耗后面的样本
+        # (Take the next batch from an epoch cursor; top-ups consume later samples too.)
+        step_cursor_start = epoch_cursor
+        batch = all_samples[epoch_cursor : epoch_cursor + cfg.batch_size]
+        epoch_cursor += len(batch)
         
         if not batch:
-            target_bi = (epoch + 1) * n_batches_per_epoch - 1
-            logger.info(f"Epoch {epoch} samples exhausted. Fast-forwarding batch indices {bi} -> {target_bi}.")
-            while bi < target_bi:
-                try:
-                    bi = next(bi_iterator)
-                except StopIteration:
-                    break
+            epoch_cursor = len(all_samples)
             continue
 
         t_sampler_start = time.time()
@@ -153,10 +309,18 @@ def main():
 
         # ── ROLLOUTS (并行进行 MCTS 生成采样获取环境交互数据以供强化) ───────────────
         t_rollout_start = time.time()
-        # run_batch_rollouts 会多线程/多协程并发对数据进行对话推理，收集每个样本 cfg.group_size 次的数据
-        # (Concurrently infers dialogue across data, collecting cfg.group_size results for each sample)
-        paired = asyncio.run(run_batch_rollouts(adapter, samp_client, batch, sparams))
+        # 反复为 zero-adv group 重采样，直到凑够目标有效 group 数或达到每个样本的最大重试轮数
+        # (Retry zero-adv groups until we hit the target effective group count or the per-sample retry budget;
+        #  if still short, pull fresh samples from later in the epoch.)
+        paired, epoch_cursor, rollout_stats = collect_effective_groups(
+            adapter, samp_client, batch, sparams, all_samples, epoch_cursor
+        )
         t_rollout = time.time() - t_rollout_start
+        step_seen_samples = max(epoch_cursor - step_cursor_start, 0)
+        total_seen_samples += step_seen_samples
+        consumed_samples = min(epoch_cursor, len(all_samples))
+        data_epoch_progress = consumed_samples / max(len(all_samples), 1)
+        data_progress_total = min((epoch_round + data_epoch_progress) / max(cfg.epochs, 1), 1.0)
 
         # ── ROLLOUT VALIDATION (轨迹数据合法性检查/抽查) ─────────────────────────────────
         if bi < 3 or bi % 10 == 0:
@@ -201,7 +365,7 @@ def main():
         seq_len_counts = []
         tool_call_counts = []
         sample_log = []
-        expected_rollouts = len(batch) * cfg.group_size
+        expected_rollouts = rollout_stats["attempted_groups"] * cfg.group_size
         actual_rollouts = sum(len(g) for _, g in paired)
 
         # 遍历当前批次每一个 Prompt 的不同重采样轨迹组
@@ -246,12 +410,13 @@ def main():
                 skipped += 1
                 if mu > 0.5:
                     skipped_easy += 1
-                    # 如果配置了 Easy Sample Filter，那么将 Easy Sample 的 Prompt 添加到 easy_samples_prompts 集合中
                     if getattr(cfg, "filter_easy_samples", False):
                         easy_samples_prompts.add(sample.get("text", ""))
                 else:
                     skipped_hard += 1
+                    easy_samples_prompts.discard(sample.get("text", ""))
                 continue
+            easy_samples_prompts.discard(sample.get("text", ""))
 
             # 使用奖赏计算 Advantage = (R - μ) / σ 来归一化优势数值
             # (Normalize Advantage using (R - μ) / σ)
@@ -390,6 +555,8 @@ def main():
 
         # ── TRAIN STEP (使用构造好的 Datum 在 Tinker 后台使用策略梯度更新模型网络) ──
         t_train_start = time.time()
+        current_lr = get_scheduled_lr(data_progress_total)
+        adam = types.AdamParams(learning_rate=current_lr, beta1=0.9, beta2=0.95, eps=1e-8)
         if all_datums:
             # 传输数据给到 LoRA 后端计算向后损失传递 (Forward all datums to LoRA backend to compute backward loss propagation)
             fb = tc.forward_backward(all_datums, loss_fn="importance_sampling")
@@ -407,10 +574,22 @@ def main():
         n_pred_a = sum(1 for p, _ in predictions if p == 0)
         n_pred_b = sum(1 for p, _ in predictions if p == 1)
 
+        eta_hours = 0.0
+        if data_progress_total > 0:
+            elapsed_proxy = t_total / max(data_epoch_progress if data_epoch_progress > 0 else 1e-6, 1e-6)
+            remaining_epochs = max(cfg.epochs - (epoch_round + data_epoch_progress), 0.0)
+            eta_hours = elapsed_proxy * remaining_epochs / 3600
+
         metrics = {
             "batch": bi,
             "epoch": epoch,
-            "progress": (bi + 1) / n_batches,
+            "progress": data_progress_total,
+            "data/consumed_samples_epoch": consumed_samples,
+            "data/epoch_progress": data_epoch_progress,
+            "data/consumed_samples_total": total_seen_samples,
+            "data/target_samples_total": initial_sample_count * cfg.epochs,
+            "data/epoch_equivalent": epoch_round + data_epoch_progress,
+            "data/total_progress": data_progress_total,
             # 时间耗时指标 (Timing)
             "time/total_sec": t_total,
             "time/checkpoint_sec": t_ckpt,
@@ -422,7 +601,8 @@ def main():
             "time/train_pct": t_train / max(t_total, 0.01) * 100,
             "time/overhead_pct": (t_ckpt + t_sampler + t_diag) / max(t_total, 0.01) * 100,
             "time/sec_per_rollout": t_rollout / max(actual_rollouts, 1),
-            "time/eta_hours": (n_batches - bi - 1) * t_total / 3600,
+            "time/eta_hours": eta_hours,
+            "train/learning_rate": current_lr,
             # 模型强化奖赏信号分布表现 (Reward)
             "reward/mean": mr,
             "reward/std": float(np.std(batch_rewards)) if batch_rewards else 0,
@@ -441,6 +621,14 @@ def main():
             "train/skipped_hard": skipped_hard,
             "train/zero_adv_rate": skipped / max(len(paired), 1),
             "train/datums_per_prompt": len(all_datums) / max(len(paired) - skipped, 1) if len(paired) > skipped else 0,
+            "train/target_effective_groups": rollout_stats["target_groups"],
+            "train/effective_groups": rollout_stats["effective_groups"],
+            "train/exhausted_groups": rollout_stats["exhausted_groups"],
+            "train/refill_groups": rollout_stats["refill_groups"],
+            "train/easy_zero_adv_groups": rollout_stats["easy_zero_adv_groups"],
+            "train/hard_zero_adv_groups": rollout_stats["hard_zero_adv_groups"],
+            "train/retry_groups": rollout_stats["retry_groups"],
+            "train/rollout_rounds": rollout_stats["rollout_rounds"],
             # 推理和思考量表现统计 (Generation behavior)
             "gen/total_rollouts": actual_rollouts,
             "gen/failed_rollouts": expected_rollouts - actual_rollouts,
@@ -466,9 +654,13 @@ def main():
             )
 
         logger.info(
-            f"Batch {bi}/{n_batches} | "
+            f"Batch {bi} | "
+            f"data_epoch={consumed_samples}/{len(all_samples)} ({data_epoch_progress:.1%}) "
+            f"epoch_total={epoch_round + data_epoch_progress:.2f}/{cfg.epochs} "
+            f"total_progress={data_progress_total:.1%} | "
             f"reward={mr:.3f}±{metrics['reward/std']:.3f} "
             f"datums={len(all_datums)} skip={skipped} (easy={skipped_easy} hard={skipped_hard}) "
+            f"zero-adv[easy={rollout_stats['easy_zero_adv_groups']} hard={rollout_stats['hard_zero_adv_groups']}] "
             f"fmt={metrics['reward/format_rate']:.0%} null={metrics['reward/null_rate']:.0%} "
             f"predB={metrics['reward/pred_balance_B']:.0%} "
             f"tools={metrics['gen/mean_tool_calls']:.1f} "
@@ -492,29 +684,91 @@ def main():
                 temperature=cfg.eval_temperature, log_dir=cfg.log_path, verbose=True,
                 eval_max_retries=cfg.eval_max_retries,
             )
+            ecfg.eval_metadata = {
+                "eval/step": bi,
+                "eval/epoch_nominal": epoch,
+                "eval/data_consumed_samples_epoch": consumed_samples,
+                "eval/data_epoch_progress": data_epoch_progress,
+                "eval/data_epoch_equivalent": epoch_round + data_epoch_progress,
+                "eval/data_total_progress": data_progress_total,
+            }
             em = inline_eval(adapter, tc, sc, step=bi, ecfg=ecfg)
             t_eval = time.time() - t_eval_start
             em["eval/time_sec"] = t_eval
-            logger.info(f"Step {bi} eval: Macro F1 = {em['eval/macro_f1']:.4f} ({t_eval:.0f}s)")
+            saved_best = None
+            if cfg.checkpoint_strategy == "best_eval":
+                best_eval, saved_best = maybe_save_best_checkpoint(tc, bi, em, best_eval)
+                em["eval/best_macro_f1"] = best_eval["f1"]
+                em["eval/best_step"] = -1 if best_eval["step"] is None else best_eval["step"]
+                if saved_best is not None:
+                    logger.info(
+                        f"New best checkpoint | step={bi} f1={saved_best['f1']:.4f} | "
+                        f"state={saved_best['state_path']} deploy={saved_best['deploy_path']}"
+                    )
+                    with open(os.path.join(cfg.log_path, "checkpoints.txt"), "a") as cf:
+                        cf.write(
+                            f"best_step={bi} macro_f1={saved_best['f1']:.6f} "
+                            f"state={saved_best['state_path']} deploy={saved_best['deploy_path']}\n"
+                        )
+            logger.info(
+                f"Step {bi} eval | "
+                f"data_epoch={consumed_samples}/{len(all_samples)} ({data_epoch_progress:.1%}) "
+                f"total_progress={data_progress_total:.1%} | "
+                f"Macro F1 = {em['eval/macro_f1']:.4f} "
+                f"best={best_eval['f1']:.4f}@{best_eval['step'] if best_eval['step'] is not None else '-'} "
+                f"({t_eval:.0f}s)"
+            )
             wandb.log(em, step=bi)
             mf.write(json.dumps(em) + "\n"); mf.flush()
+        bi += 1
 
     # ── FINAL (在批次迭代结束后跑最后一轮保存并彻底评估整个模型) ─────────────────────
-    fp = tc.save_state(name="final").result().path
-    dp = tc.save_weights_for_sampler(name="final_deploy").result().path
-    logger.info(f"Final checkpoint: {fp}\nDeploy weights: {dp}")
-    with open(os.path.join(cfg.log_path, "checkpoints.txt"), "a") as cf:
-        cf.write(f"step=final state={fp}\n")
-        cf.write(f"step=final deploy={dp}\n")
+    if cfg.save_final_state:
+        fp = tc.save_state(name="final").result().path
+        dp = tc.save_weights_for_sampler(name="final_deploy").result().path
+        logger.info(f"Final checkpoint: {fp}\nDeploy weights: {dp}")
+        with open(os.path.join(cfg.log_path, "checkpoints.txt"), "a") as cf:
+            cf.write(f"step=final state={fp}\n")
+            cf.write(f"step=final deploy={dp}\n")
 
     ecfg = EvalConfig(
         n_samples=cfg.eval_n_samples, temperature=cfg.eval_temperature,
         log_dir=os.path.join(cfg.log_path, "eval_final"), verbose=True,
         eval_max_retries=cfg.eval_max_retries,
     )
-    em = inline_eval(adapter, tc, sc, step=n_batches, ecfg=ecfg)
-    logger.info(f"Final Macro F1 = {em['eval/macro_f1']:.4f}")
-    wandb.log(em, step=n_batches)
+    ecfg.eval_metadata = {
+        "eval/step": bi,
+        "eval/epoch_nominal": cfg.epochs,
+        "eval/data_consumed_samples_epoch": min(epoch_cursor, len(all_samples)),
+        "eval/data_epoch_progress": min(epoch_cursor, len(all_samples)) / max(len(all_samples), 1),
+        "eval/data_epoch_equivalent": min(epoch_round + (min(epoch_cursor, len(all_samples)) / max(len(all_samples), 1)), float(cfg.epochs)),
+        "eval/data_consumed_samples_total": total_seen_samples,
+        "eval/data_target_samples_total": initial_sample_count * cfg.epochs,
+        "eval/data_total_progress": min(epoch_round / max(cfg.epochs, 1), 1.0) if epoch_cursor == 0 else min((epoch_round + min(epoch_cursor, len(all_samples)) / max(len(all_samples), 1)) / max(cfg.epochs, 1), 1.0),
+    }
+    em = inline_eval(adapter, tc, sc, step=bi, ecfg=ecfg)
+    if cfg.checkpoint_strategy == "best_eval":
+        best_eval, saved_best = maybe_save_best_checkpoint(tc, bi, em, best_eval)
+        em["eval/best_macro_f1"] = best_eval["f1"]
+        em["eval/best_step"] = -1 if best_eval["step"] is None else best_eval["step"]
+        if saved_best is not None:
+            logger.info(
+                f"New best checkpoint | step={bi} f1={saved_best['f1']:.4f} | "
+                f"state={saved_best['state_path']} deploy={saved_best['deploy_path']}"
+            )
+            with open(os.path.join(cfg.log_path, "checkpoints.txt"), "a") as cf:
+                cf.write(
+                    f"best_step={bi} macro_f1={saved_best['f1']:.6f} "
+                    f"state={saved_best['state_path']} deploy={saved_best['deploy_path']}\n"
+                )
+    logger.info(
+        f"Final eval | "
+        f"data_epoch={min(epoch_cursor, len(all_samples))}/{len(all_samples)} "
+        f"({em['eval/data_epoch_progress']:.1%}) total_progress={em['eval/data_total_progress']:.1%} | "
+        f"Macro F1 = {em['eval/macro_f1']:.4f} "
+        f"best={best_eval['f1']:.4f}@{best_eval['step'] if best_eval['step'] is not None else '-'}"
+    )
+    wandb.log(em, step=bi)
 
     wandb.finish(); mf.close()
     logger.info("Done.")

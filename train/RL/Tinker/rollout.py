@@ -52,7 +52,8 @@ def build_messages(adapter: ModelAdapter, task_name: str, prompt_text: str) -> t
             "Think step by step about the molecular properties and answer the question. "
             "When you have a final answer, state it clearly as: Answer: (A) or Answer: (B)"
         )
-    msgs = [{"role": "system", "content": sp}]
+    # msgs = [{"role": "system", "content": sp}]
+    msgs = []
     msgs.append({"role": "user", "content": prompt_text})
     return msgs, tools
 

@@ -1,0 +1,44 @@
+# SARS-CoV-2 3CL Protease (Mpro) Activity Assessment
+
+## This guide helps guide a probability P (0-100) assessment for the task.
+Probability of biochemical activity against SARS-CoV-2 Mpro. Scoring is heuristic based on covalent warheads, peptidomimetic features, and drug-likeness.
+
+## Scoring (Base = 2)
+
+### A) Covalent warhead evidence
+- Nitrile: +28; Aldehyde: +35; Alpha-ketoamide: +25
+- Michael acceptors (acrylamide/enone): +18; Chloroacetamide: +22; Vinyl sulfone: +18
+- Warhead + gamma-lactam synergy bonus: +15
+
+### B) S1 (Gln-mimic) evidence
+- Gamma-lactam/2-pyrrolidinone: +18
+- Else triazole/imidazole/indazole: +8
+
+### C) Backbone (peptidomimetic)
+- Amide bonds ≥2: +10; ≥3: additional +5
+- Amide bonds=0 AND no heteroaromatic: -10
+
+### D) S2 hydrophobe plausibility
+- logP 1.5-4.0: +6
+- Largest ring system ≥2 AND not PAH: +3
+- PAH-like: -10
+
+### E) Drug-likeness
+- MW 250-650: +4 else -6
+- TPSA 50-140: +4; >170: -10
+- HBA 4-11 AND HBD 0-3: +3 else -4
+- |charge| <2: +2 else -12
+- QED ≥0.35: +2 else -3
+- Poorly soluble: -6
+
+### F) Alert penalties
+- Epoxide/aziridine: -12; Nitroso: -10; Aryl nitro: -6
+
+### Probability mapping
+Use logistic: P = 100 / (1 + exp(-(score/12 - 0.5)))
+Or table: ≤-10→0-5%, -9 to 0→5-15%, 1-10→15-35%, 11-25→35-65%, 26-45→65-85%, 46-60→85-95%, >60→95-99%
+
+### Overrides
+- Warhead + gamma-lactam + amides≥2 + logP 1-4: P = max(P, 85)
+- MW<180 + no warhead + no rings: P = min(P, 10)
+- |charge|≥2 + TPSA>180: P = min(P, 15)

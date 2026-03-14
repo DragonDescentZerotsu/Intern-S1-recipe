@@ -1,0 +1,57 @@
+# hERG Blocker Assessment (IC50 < 10 µM)
+
+## This guide helps guide a probability P (0-100) assessment for the task.
+Probability the molecule blocks hERG (IC50 < 10 µM). Key determinants: lipophilicity increases risk (saturates ~logP 4), basic/cationic center increases risk (cation-π interactions with Y652/F656), higher polarity/TPSA decreases risk, strong acids/anions reduce risk, aromatic/hydrophobic ring content co-occurs with block.
+
+## Scoring — choose baseline bucket (P0)
+
+### 1) Very low (P0=5)
+- logP <1.0 AND no positive states at pH 7.4 AND TPSA ≥60
+
+### 2) Low (P0=15)
+- logP <2.0 AND charge ≤0 AND TPSA ≥40
+
+### 3) Medium (P0=40)
+- logP in [2, 3) OR ionization is ambiguous
+
+### 4) High (P0=70)
+- has_positive_states AND logP ≥3.0 AND TPSA ≤90
+
+### 5) Very high (P0=85)
+- has_positive_states AND logP ≥4.0 AND TPSA ≤75 AND MW in [250, 550]
+
+## Adjustments (apply to P0)
+
+### Ionization
+- charge ≤ -1: -25
+- charge == +1: +10
+- charge ≥ +2: -10 (permeability limitation)
+- is_ambiguous: move 10 points toward 50
+
+### Polarity
+- TPSA ≥120: -20
+- TPSA ≤40: +10
+
+### Size / flexibility
+- MW <250: -15
+- MW 300-500: +5
+- Rotatable bonds ≥8: +5
+
+### Aromatic / hydrophobe topology
+- aromatic_rings ≥3: +5
+- PAH-like (≥3 fused aromatics): +10
+- fraction_csp3 ≥0.6 AND aromatic_rings ≤1: -5
+
+### Mitigating polar motifs
+- amide_bonds ≥2: -5
+- Strong anion motif AND logP <3: -10
+
+### Classic blocker motif boost
+- Tertiary/quaternary amine + aromatic_rings ≥2: +10
+
+## Final calibration guards
+- P ≥95 only if: positive states AND logP≥4 AND TPSA≤60 AND (aromatic≥2 OR PAH-like) AND not anionic
+- P ≤5 only if: no positive states AND logP≤1.5 AND TPSA≥80 AND MW≤350
+- If many conflicting factors (cationic but very high TPSA): keep P near 50
+
+Clamp to [0, 100].

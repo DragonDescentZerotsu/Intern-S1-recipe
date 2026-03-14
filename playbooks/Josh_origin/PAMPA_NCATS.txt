@@ -1,0 +1,42 @@
+# PAMPA Permeability Assessment
+
+## This guide helps guide a probability P (0-100) assessment for the task.
+Probability of high passive membrane permeability (PAMPA). This is a purely passive diffusion assay — no transporters.
+
+## Scoring (Base score = 50)
+
+### Unionized fraction (pKa-derived, largest driver)
+- fraction_neutral ≥0.30: +20; 0.10-0.30: +10; 0.03-0.10: +0; 0.01-0.03: -10; <0.01: -20
+
+### Charge-state penalties
+- |net charge| ≥2: -30
+- Zwitterion: -25
+- Ambiguous: -10
+- LogD warnings (polyprotic/amphoteric): -5
+
+### Delocalized cation exception
+- Quaternary ammonium BUT aromatic_rings ≥2: add back +10
+
+### Lipophilicity (logD7.4)
+- 2.0-4.0: +15; 1.0-2.0: +5; 4.0-5.0: +0; <1.0: -10; >5.0: -10
+
+### Polarity (TPSA)
+- <60: +15; 60-90: +5; 90-120: -10; >120: -25
+
+### H-bonding
+HBD: 0-1 +10; 2 +5; 3 -5; ≥4 -15
+HBA: ≤6 +5; 7-10 +0; >10 -10
+
+### Size/flexibility
+MW: <350 +10; 350-500 +0; 500-700 -10; >700 -25
+RB: ≤5 +5; 6-10 +0; >10 -10
+
+### Macrocycle adjustments
+- If macrocycle: soften MW penalty +10
+- If macrocycle + high amide count > HBD (N-methylation proxy): +10
+
+### Hard stops
+- ≥2 carboxylic acids OR sulfonic/phosphonic acid: -20
+- Guanidinium: -25
+
+Clamp to [0, 100].
