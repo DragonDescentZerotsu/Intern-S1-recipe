@@ -261,7 +261,14 @@ def process_single_task(task_name, split, n_examples=None, num_workers=1, top_k=
     # Load similarities
     morgan_sim_path = base_dir / "Morgan_similarity" / "by_task" / task_name / f"{split}_similarity.pkl"
     feat_morgan_sim_path = base_dir / "Feature_Morgan_similarity" / "by_task" / task_name / f"{split}_similarity.pkl"
-    pseudo_labels_path = base_dir / "KNN_pesudo_labels" / "by_task" / task_name / f"{split}_knn_labels.json"
+    pseudo_labels_path = (
+        base_dir
+        / "KNN_pesudo_labels"
+        / split
+        / "by_task"
+        / task_name
+        / f"{split}_knn_labels.json"
+    )
     
     if not (morgan_sim_path.exists() and feat_morgan_sim_path.exists() and pseudo_labels_path.exists()):
         logger.warning(f"Missing required files for {task_name} {split}. Skipping.")
