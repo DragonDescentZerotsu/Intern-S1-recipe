@@ -1,3 +1,4 @@
+import argparse
 import os
 import json
 import logging
@@ -25,6 +26,15 @@ from tdc.single_pred import ADME, HTS, Tox
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+VALID_SPLITS = ("train", "valid", "test")
+
+
+def load_pickle_if_exists(path):
+    if not path.exists():
+        return None
+    with open(path, "rb") as f:
+        return pickle.load(f)
 
 def compute_single_fingerprint(smiles, use_features=False):
     """
@@ -170,7 +180,7 @@ def analyze_split_labels(split_df, canonical_df):
     }
 
 
-def process_task(task_name, group_name):
+def process_task(task_name, group_name, requested_splits):
     """
     Loads data using TDC, computes fingerprints in parallel, and calculates similarities.
     """
@@ -205,72 +215,104 @@ def process_task(task_name, group_name):
          logger.error(f"Unknown group {group_name} for task {task_name}.")
          return
          
+    requested_splits = tuple(dict.fromkeys(requested_splits))
+    required_splits = set(requested_splits)
+    if any(split_name in requested_splits for split_name in ("valid", "test")):
+        required_splits.add("train")
+
     # Scaffold split (70/10/20 train/valid/test default)
-    # As per user request, just process train and valid.
     split = data.get_split(method='scaffold')
+
+    split_dfs = {}
+    split_smiles_unique = {}
+
+    for split_name in VALID_SPLITS:
+        if split_name not in required_splits:
+            continue
+        split_df = split[split_name].copy()
+        logger.info("Removing salts from %s set SMILES...", split_name)
+        split_df["Drug"] = [remove_salts(sm) for sm in split_df["Drug"]]
+        split_dfs[split_name] = split_df
+        split_smiles_unique[split_name] = split_df["Drug"].unique().tolist()
+        logger.info(
+            "%s - %s SMILES: %s",
+            task_name,
+            split_name.capitalize(),
+            len(split_smiles_unique[split_name]),
+        )
     
-    train_df = split['train'].copy()
-    valid_df = split['valid'].copy()
-    
-    # Remove salts before anything else
-    logger.info("Removing salts from train set SMILES...")
-    train_df['Drug'] = [remove_salts(sm) for sm in train_df['Drug']]
-    
-    logger.info("Removing salts from valid set SMILES...")
-    valid_df['Drug'] = [remove_salts(sm) for sm in valid_df['Drug']]
-    
-    train_smiles_unique = train_df['Drug'].unique().tolist()
-    valid_smiles_unique = valid_df['Drug'].unique().tolist()
-    
-    logger.info(f"{task_name} - Train SMILES: {len(train_smiles_unique)}, Valid SMILES: {len(valid_smiles_unique)}")
-    
-    # 2. Compute FPs
-    # Use generic mp.Pool
+    # 2. Load or compute FPs
     num_cpus = max(1, mp.cpu_count() - 2)
     logger.info(f"Using {num_cpus} CPUs for parallelization...")
     
-    morgan_train = {}
-    morgan_valid = {}
-    feat_morgan_train = {}
-    feat_morgan_valid = {}
-    
-    with mp.Pool(num_cpus) as pool:
-        logger.info(f"Computing Morgan FP for {task_name} train set...")
-        results = list(tqdm(pool.imap(partial(compute_single_fingerprint, use_features=False), train_smiles_unique), total=len(train_smiles_unique)))
-        for sm, fp in results:
-            if fp is not None: morgan_train[sm] = fp
-            
-        logger.info(f"Computing Feature Morgan FP for {task_name} train set...")
-        results = list(tqdm(pool.imap(partial(compute_single_fingerprint, use_features=True), train_smiles_unique), total=len(train_smiles_unique)))
-        for sm, fp in results:
-            if fp is not None: feat_morgan_train[sm] = fp
-            
-        logger.info(f"Computing Morgan FP for {task_name} valid set...")
-        results = list(tqdm(pool.imap(partial(compute_single_fingerprint, use_features=False), valid_smiles_unique), total=len(valid_smiles_unique)))
-        for sm, fp in results:
-            if fp is not None: morgan_valid[sm] = fp
-            
-        logger.info(f"Computing Feature Morgan FP for {task_name} valid set...")
-        results = list(tqdm(pool.imap(partial(compute_single_fingerprint, use_features=True), valid_smiles_unique), total=len(valid_smiles_unique)))
-        for sm, fp in results:
-            if fp is not None: feat_morgan_valid[sm] = fp
+    morgan_fps_by_split = {split_name: {} for split_name in required_splits}
+    feat_morgan_fps_by_split = {split_name: {} for split_name in required_splits}
+    computed_fp_splits = set()
+
+    for split_name in VALID_SPLITS:
+        if split_name not in required_splits:
+            continue
+
+        morgan_path = morgan_dir / f"{split_name}.pkl"
+        feat_morgan_path = feature_morgan_dir / f"{split_name}.pkl"
+        cached_morgan = load_pickle_if_exists(morgan_path)
+        cached_feat_morgan = load_pickle_if_exists(feat_morgan_path)
+
+        if cached_morgan is not None and cached_feat_morgan is not None:
+            logger.info(
+                "%s - Loading cached fingerprints for %s split.",
+                task_name,
+                split_name,
+            )
+            morgan_fps_by_split[split_name] = cached_morgan
+            feat_morgan_fps_by_split[split_name] = cached_feat_morgan
+            continue
+
+        computed_fp_splits.add(split_name)
+
+    if computed_fp_splits:
+        with mp.Pool(num_cpus) as pool:
+            for split_name in VALID_SPLITS:
+                if split_name not in computed_fp_splits:
+                    continue
+                smiles_unique = split_smiles_unique[split_name]
+
+                logger.info(f"Computing Morgan FP for {task_name} {split_name} set...")
+                results = list(
+                    tqdm(
+                        pool.imap(partial(compute_single_fingerprint, use_features=False), smiles_unique),
+                        total=len(smiles_unique),
+                    )
+                )
+                for sm, fp in results:
+                    if fp is not None:
+                        morgan_fps_by_split[split_name][sm] = fp
+
+                logger.info(f"Computing Feature Morgan FP for {task_name} {split_name} set...")
+                results = list(
+                    tqdm(
+                        pool.imap(partial(compute_single_fingerprint, use_features=True), smiles_unique),
+                        total=len(smiles_unique),
+                    )
+                )
+                for sm, fp in results:
+                    if fp is not None:
+                        feat_morgan_fps_by_split[split_name][sm] = fp
             
     # 3. Save FPs
-    with open(morgan_dir / "train.pkl", "wb") as f:
-        pickle.dump(morgan_train, f)
-    with open(morgan_dir / "valid.pkl", "wb") as f:
-        pickle.dump(morgan_valid, f)
-    with open(feature_morgan_dir / "train.pkl", "wb") as f:
-        pickle.dump(feat_morgan_train, f)
-    with open(feature_morgan_dir / "valid.pkl", "wb") as f:
-        pickle.dump(feat_morgan_valid, f)
+    for split_name in computed_fp_splits:
+        with open(morgan_dir / f"{split_name}.pkl", "wb") as f:
+            pickle.dump(morgan_fps_by_split[split_name], f)
+        with open(feature_morgan_dir / f"{split_name}.pkl", "wb") as f:
+            pickle.dump(feat_morgan_fps_by_split[split_name], f)
         
-    logger.info(f"{task_name} - Fingerprints successfully saved.")
+    logger.info(f"{task_name} - Fingerprints are ready.")
 
     safe_labels_by_split = {}
 
     # Save a lookup table that keeps the canonicalized SMILES aligned with labels.
-    for split_name, df in (("train", train_df), ("valid", valid_df)):
+    for split_name in required_splits:
+        df = split_dfs[split_name]
         analysis = analyze_split_labels(split[split_name], df)
         records = analysis["label_map_records"]
         safe_labels_by_split[split_name] = {
@@ -321,81 +363,126 @@ def process_task(task_name, group_name):
             )
     
     # 4. Compute Similarities
-    train_labels_map = safe_labels_by_split["train"]
-    valid_labels_map = safe_labels_by_split["valid"]
+    similarity_targets = [split_name for split_name in requested_splits if split_name in ("train", "valid", "test")]
+    similarity_results = {
+        "morgan": {},
+        "feature_morgan": {},
+    }
     
     # Convert FP dicts to lists for mapping: (smiles, fp, label)
-    morgan_train_list = [(sm, fp, train_labels_map[sm]) for sm, fp in morgan_train.items() if sm in train_labels_map]
-    feat_morgan_train_list = [(sm, fp, train_labels_map[sm]) for sm, fp in feat_morgan_train.items() if sm in train_labels_map]
-    
-    morgan_valid_list = [(sm, fp, valid_labels_map[sm]) for sm, fp in morgan_valid.items() if sm in valid_labels_map]
-    feat_morgan_valid_list = [(sm, fp, valid_labels_map[sm]) for sm, fp in feat_morgan_valid.items() if sm in valid_labels_map]
-    
-    morgan_valid_sims = {}
-    morgan_train_sims = {}
-    feat_morgan_valid_sims = {}
-    feat_morgan_train_sims = {}
+    train_labels_map = safe_labels_by_split["train"]
+    morgan_train_list = [
+        (sm, fp, train_labels_map[sm])
+        for sm, fp in morgan_fps_by_split["train"].items()
+        if sm in train_labels_map
+    ]
+    feat_morgan_train_list = [
+        (sm, fp, train_labels_map[sm])
+        for sm, fp in feat_morgan_fps_by_split["train"].items()
+        if sm in train_labels_map
+    ]
 
     with mp.Pool(num_cpus) as pool:
-        # A. Valid vs. Train (Morgan)
-        logger.info(f"Computing Valid->Train Morgan Similarity for {task_name}...")
-        results = list(tqdm(pool.imap(partial(compute_similarities_for_query, references=morgan_train_list, exclude_self=False), morgan_valid_list), total=len(morgan_valid_list)))
-        for sm, sims in results:
-            morgan_valid_sims[sm] = sims
-            
-        # B. Train vs. Train (Morgan)
-        logger.info(f"Computing Train->Train Morgan Similarity for {task_name}...")
-        results = list(tqdm(pool.imap(partial(compute_similarities_for_query, references=morgan_train_list, exclude_self=True), morgan_train_list), total=len(morgan_train_list)))
-        for sm, sims in results:
-            morgan_train_sims[sm] = sims
+        for split_name in similarity_targets:
+            labels_map = safe_labels_by_split[split_name]
+            morgan_query_list = [
+                (sm, fp, labels_map[sm])
+                for sm, fp in morgan_fps_by_split[split_name].items()
+                if sm in labels_map
+            ]
+            feat_morgan_query_list = [
+                (sm, fp, labels_map[sm])
+                for sm, fp in feat_morgan_fps_by_split[split_name].items()
+                if sm in labels_map
+            ]
+            exclude_self = split_name == "train"
 
-        # C. Valid vs. Train (Feature Morgan)
-        logger.info(f"Computing Valid->Train Feature Morgan Similarity for {task_name}...")
-        results = list(tqdm(pool.imap(partial(compute_similarities_for_query, references=feat_morgan_train_list, exclude_self=False), feat_morgan_valid_list), total=len(feat_morgan_valid_list)))
-        for sm, sims in results:
-            feat_morgan_valid_sims[sm] = sims
-            
-        # D. Train vs. Train (Feature Morgan)
-        logger.info(f"Computing Train->Train Feature Morgan Similarity for {task_name}...")
-        results = list(tqdm(pool.imap(partial(compute_similarities_for_query, references=feat_morgan_train_list, exclude_self=True), feat_morgan_train_list), total=len(feat_morgan_train_list)))
-        for sm, sims in results:
-            feat_morgan_train_sims[sm] = sims
+            logger.info(
+                "Computing %s->Train Morgan Similarity for %s...",
+                split_name.capitalize(),
+                task_name,
+            )
+            results = list(
+                tqdm(
+                    pool.imap(
+                        partial(
+                            compute_similarities_for_query,
+                            references=morgan_train_list,
+                            exclude_self=exclude_self,
+                        ),
+                        morgan_query_list,
+                    ),
+                    total=len(morgan_query_list),
+                )
+            )
+            similarity_results["morgan"][split_name] = {sm: sims for sm, sims in results}
+
+            logger.info(
+                "Computing %s->Train Feature Morgan Similarity for %s...",
+                split_name.capitalize(),
+                task_name,
+            )
+            results = list(
+                tqdm(
+                    pool.imap(
+                        partial(
+                            compute_similarities_for_query,
+                            references=feat_morgan_train_list,
+                            exclude_self=exclude_self,
+                        ),
+                        feat_morgan_query_list,
+                    ),
+                    total=len(feat_morgan_query_list),
+                )
+            )
+            similarity_results["feature_morgan"][split_name] = {sm: sims for sm, sims in results}
             
     # 5. Save Similarities
-    with open(morgan_sim_dir / "valid_similarity.pkl", "wb") as f:
-        pickle.dump(morgan_valid_sims, f)
-    with open(morgan_sim_dir / "train_similarity.pkl", "wb") as f:
-        pickle.dump(morgan_train_sims, f)
-        
-    with open(feature_morgan_sim_dir / "valid_similarity.pkl", "wb") as f:
-        pickle.dump(feat_morgan_valid_sims, f)
-    with open(feature_morgan_sim_dir / "train_similarity.pkl", "wb") as f:
-        pickle.dump(feat_morgan_train_sims, f)
+    for split_name in requested_splits:
+        with open(morgan_sim_dir / f"{split_name}_similarity.pkl", "wb") as f:
+            pickle.dump(similarity_results["morgan"][split_name], f)
+
+        with open(feature_morgan_sim_dir / f"{split_name}_similarity.pkl", "wb") as f:
+            pickle.dump(similarity_results["feature_morgan"][split_name], f)
         
     logger.info(f"========== Finished task: {task_name} ==========\n")
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Compute fingerprints and train-based similarities for selected TDC splits."
+    )
+    parser.add_argument(
+        "--splits",
+        nargs="+",
+        choices=VALID_SPLITS,
+        default=["train", "valid"],
+        help="Which splits to output. valid/test similarities are always computed against train.",
+    )
+    return parser.parse_args()
+
 def main():
+    args = parse_args()
     tasks = [
         ("Carcinogens_Lagunin", "Tox"),
-        # ("BBB_Martins", "ADME"),
-        # ("DILI", "Tox"),
-        # ("Pgp_Broccatelli", "ADME"),
-        # ("PAMPA_NCATS", "ADME"),
-        # ("HIA_Hou", "ADME"),
-        # ("Bioavailability_Ma", "ADME"),
-        # ("hERG", "Tox"),
-        # ("AMES", "Tox"),
-        # ("Skin_Reaction", "Tox"),
-        # ("ClinTox", "Tox"),
-        # ("CYP2C9_Substrate_CarbonMangels", "ADME"),
-        # ("CYP2D6_Substrate_CarbonMangels", "ADME"),
-        # ("CYP3A4_Substrate_CarbonMangels", "ADME"),
-        # ("SARSCoV2_3CLPro_Diamond", "HTS"),
-        # ("SARSCoV2_Vitro_Touret", "HTS"),
+        ("BBB_Martins", "ADME"),
+        ("DILI", "Tox"),
+        ("Pgp_Broccatelli", "ADME"),
+        ("PAMPA_NCATS", "ADME"),
+        ("HIA_Hou", "ADME"),
+        ("Bioavailability_Ma", "ADME"),
+        ("hERG", "Tox"),
+        ("AMES", "Tox"),
+        ("Skin_Reaction", "Tox"),
+        ("ClinTox", "Tox"),
+        ("CYP2C9_Substrate_CarbonMangels", "ADME"),
+        ("CYP2D6_Substrate_CarbonMangels", "ADME"),
+        ("CYP3A4_Substrate_CarbonMangels", "ADME"),
+        ("SARSCoV2_3CLPro_Diamond", "HTS"),
+        ("SARSCoV2_Vitro_Touret", "HTS"),
     ]
     
     for task_name, group_name in tasks:
-        process_task(task_name, group_name)
+        process_task(task_name, group_name, args.splits)
 
 if __name__ == "__main__":
     main()

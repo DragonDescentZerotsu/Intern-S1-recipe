@@ -1,0 +1,1 @@
+{"canonical_smiles": "CN(C)CCOC(c1ccccc1)c1ccccc1", "examples": [{"original_smiles": "CN(C)CCOC(c1ccccc1)c1ccccc1.Cn1c(=O)c2[nH]c(Cl)nc2n(C)c1=O", "label": 1}, {"original_smiles": "CN(C)CCOC(c1ccccc1)c1ccccc1.Cl", "label": 0}], "num_rows": 2, "all_labels": [0, 1], "has_label_conflict": true, "has_raw_label_conflict": false, "has_canonicalization_conflict": true}

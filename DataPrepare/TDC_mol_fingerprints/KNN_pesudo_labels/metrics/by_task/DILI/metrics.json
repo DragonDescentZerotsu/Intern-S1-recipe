@@ -1,0 +1,27 @@
+{
+    "best_k": 9,
+    "validation_selection_macro_f1": 0.7188219052001841,
+    "splits": {
+        "valid": {
+            "num_samples": 47,
+            "accuracy": 0.723404255319149,
+            "macro_f1": 0.7188219052001841,
+            "mean_pred": null,
+            "classification_report": "              precision    recall  f1-score   support\n\n           0     0.5833    0.8235    0.6829        17\n           1     0.8696    0.6667    0.7547        30\n\n    accuracy                         0.7234        47\n   macro avg     0.7264    0.7451    0.7188        47\nweighted avg     0.7660    0.7234    0.7288        47\n"
+        },
+        "train": {
+            "num_samples": 332,
+            "accuracy": 0.7409638554216867,
+            "macro_f1": 0.7375252803824233,
+            "mean_pred": null,
+            "classification_report": "              precision    recall  f1-score   support\n\n           0     0.7320    0.8068    0.7676       176\n           1     0.7536    0.6667    0.7075       156\n\n    accuracy                         0.7410       332\n   macro avg     0.7428    0.7367    0.7375       332\nweighted avg     0.7421    0.7410    0.7393       332\n"
+        },
+        "test": {
+            "num_samples": 96,
+            "accuracy": 0.7395833333333334,
+            "macro_f1": 0.738191338496782,
+            "mean_pred": null,
+            "classification_report": "              precision    recall  f1-score   support\n\n           0     0.6842    0.8478    0.7573        46\n           1     0.8205    0.6400    0.7191        50\n\n    accuracy                         0.7396        96\n   macro avg     0.7524    0.7439    0.7382        96\nweighted avg     0.7552    0.7396    0.7374        96\n"
+        }
+    }
+}

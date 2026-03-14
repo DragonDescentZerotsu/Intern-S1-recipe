@@ -35,7 +35,7 @@ EXCLUDED_TASKS = (
         'Carcinogens_Lagunin',  # 56
         'Skin_Reaction',  # 82
         'hERG',  # 132
-        # 'DILI',  # 96
+        'DILI',  # 96
         'ClinTox',  # 297
         'AMES',  # 1457
         'Tox21',  # 15584
@@ -44,7 +44,7 @@ EXCLUDED_TASKS = (
         'ToxCast',  # 307282    leave out
         'PAMPA_NCATS',  # 408
         'HIA_Hou',  # 117
-        'BBB_Martins',  # 406
+        # 'BBB_Martins',  # 406
         'Pgp_Broccatelli',  # 245
         'Bioavailability_Ma',  # 128
         'CYP2C9_Substrate_CarbonMangels',  # 135
@@ -76,7 +76,7 @@ save_every_dict = {
 }
 
 eval_every_dict = {
-    "BBB_Martins": 11,
+    "BBB_Martins": 2,
     "DILI": 1,
 }
 
@@ -98,8 +98,8 @@ class TrainConfig:
     reward_length_penalty: bool = False
     checkpoint_strategy: str = "best_eval"  # "best_eval" or "interval"
     save_final_state: bool = False
-    save_every: int = save_every_dict['DILI']
-    eval_every: int = eval_every_dict['DILI']
+    save_every: int = save_every_dict['BBB_Martins']
+    eval_every: int = eval_every_dict['BBB_Martins']
     eval_max_samples: int = 1000
     eval_temperature: float = 1
     eval_n_samples: int = 1
@@ -109,16 +109,16 @@ class TrainConfig:
     easy_sample_retry_prob: float = 0.3  # chance to retry a previously easy sample in the next epoch
     wandb_project: str = "tdc-tinker-grpo"
     wandb_run_id: Optional[str] = None #"hbnj1kto"
-    wandb_name: Optional[str] = "GRPO DILI 9 epochs keep easy samples & KNN_3 prepend"
+    wandb_name: Optional[str] = "GRPO BBB 2 epochs keep easy samples & KNN_3 prepend"
     data_dir: Path = PROJECT_ROOT / "DataPrepare/TDC_prepended/KNN_3/train"
-    log_path: str = PROJECT_ROOT / "logs/tinker/DILI/9-epochs-grpo-keep-easy-samples-knn-prepend"
-    task: Optional[str] = 'DILI' # None
+    log_path: str = PROJECT_ROOT / "logs/tinker/BBB/2-epochs-grpo-keep-easy-samples-knn-prepend"
+    task: Optional[str] = 'BBB_Martins' # None
     exclude_tasks: tuple = EXCLUDED_TASKS
     resume_from: Optional[str] = None # "tinker://be372b79-3da0-589d-b696-ebb65c3a86ec:train:0/weights/step_000470"
     resume_step: int = 470
     data_seed: int = 1
-    rollout_save_dir: Optional[str] = PROJECT_ROOT / "train/RL/Tinker/rollouts/DILI/9-epochs-grpo-keep-easy-samples-knn-prepend"
-    epochs: int = 9
+    rollout_save_dir: Optional[str] = PROJECT_ROOT / "train/RL/Tinker/rollouts/BBB/2-epochs-grpo-keep-easy-samples-knn-prepend"
+    epochs: int = 2
     playbook_dir: Optional[str] = None #PROJECT_ROOT / "playbooks/discover_deepresearch"  # None
 
 @dataclass

@@ -1,0 +1,1 @@
+{"canonical_smiles": "COc1ccc(C(=O)/C(Br)=C\\C(=O)O)cc1", "examples": [{"original_smiles": "COc1ccc(C(=O)/C(Br)=C\\C(=O)O)cc1", "label": 1}, {"original_smiles": "COc1ccc(C(=O)/C(Br)=C\\C(=O)O)cc1", "label": 0}], "num_rows": 2, "all_labels": [0, 1], "has_label_conflict": true, "has_raw_label_conflict": true, "has_canonicalization_conflict": false}

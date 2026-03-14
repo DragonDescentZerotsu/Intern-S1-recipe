@@ -59,6 +59,10 @@
 !/DataPrepare/TDC_mol_fingerprints/**/*.py
 !/DataPrepare/TDC_mol_fingerprints/**/*.md
 !/DataPrepare/TDC_mol_fingerprints/**/*.gitkeep
+!/DataPrepare/TDC_mol_fingerprints/KNN_pesudo_labels/
+!/DataPrepare/TDC_mol_fingerprints/KNN_pesudo_labels/**
+!/DataPrepare/TDC_mol_fingerprints/Label_conflicts/
+!/DataPrepare/TDC_mol_fingerprints/Label_conflicts/**
 
 /train/RL/Tinker/rollouts/**
 /train/RL/Tinker/Josh_notebooks/**
