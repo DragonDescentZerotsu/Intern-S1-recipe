@@ -179,6 +179,8 @@ def build_prompt_for_query(
     tools_list,
     true_label,
     top_k,
+    retrieval_mode,
+    include_pseudo_label,
 ):
     def parse_to_dict(sim_data):
         ref_dict = {}
@@ -202,8 +204,10 @@ def build_prompt_for_query(
         final_score = (0.8 * m_score) + (0.2 * f_score)
         weighted_scores.append((final_score, ref_label, ref_smiles))
 
-    label_1_refs = sorted([x for x in weighted_scores if x[1] == 1], key=lambda x: x[0], reverse=True)[:top_k]
-    label_0_refs = sorted([x for x in weighted_scores if x[1] == 0], key=lambda x: x[0], reverse=True)[:top_k]
+    weighted_scores = sorted(weighted_scores, key=lambda x: x[0], reverse=True)
+    label_1_refs = [x for x in weighted_scores if x[1] == 1][:top_k]
+    label_0_refs = [x for x in weighted_scores if x[1] == 0][:top_k]
+    global_top_refs = weighted_scores[: 2 * top_k]
 
     base_instruction = prompt_template.replace("{Drug SMILES}", query_smiles)
     base_instruction = base_instruction.replace(
@@ -219,33 +223,51 @@ def build_prompt_for_query(
     prompt += f"{query_properties}\n\n"
     prompt += "Here are some of the molecules that are similar to the query molecule:\n\n"
 
-    prompt += f"--- Top {top_k} similar molecules with label (B) ---\n"
-    for idx, (score, label, ref_sm) in enumerate(label_1_refs, start=1):
-        ref_props = compute_properties(ref_sm, [t for t in tools_list if t['function']['name'] != 'describe_high_level_fg_fragments'])
-        mcs_result = find_mcs(query_smiles, [ref_sm])
-        fg_diff = format_compare_mols(query_smiles, ref_sm)
+    if retrieval_mode == "per_label":
+        prompt += f"--- Top {top_k} similar molecules with label (B) ---\n"
+        for idx, (score, label, ref_sm) in enumerate(label_1_refs, start=1):
+            ref_props = compute_properties(ref_sm, [t for t in tools_list if t['function']['name'] != 'describe_high_level_fg_fragments'])
+            mcs_result = find_mcs(query_smiles, [ref_sm])
+            fg_diff = format_compare_mols(query_smiles, ref_sm)
 
-        prompt += f"Reference {idx} SMILES: {ref_sm}\n"
-        prompt += f"Computed Weighted Similarity: {score:.4f}\n"
-        prompt += f"Properties:\n{ref_props}\n"
-        prompt += f"{mcs_result}\n"
-        prompt += f"{fg_diff}\n\n"
+            prompt += f"Reference {idx} SMILES: {ref_sm}\n"
+            prompt += f"Computed Weighted Similarity: {score:.4f}\n"
+            prompt += f"Properties:\n{ref_props}\n"
+            prompt += f"{mcs_result}\n"
+            prompt += f"{fg_diff}\n\n"
 
-    prompt += f"--- Top {top_k} similar molecules with label (A) ---\n"
-    for idx, (score, label, ref_sm) in enumerate(label_0_refs, start=1):
-        ref_props = compute_properties(ref_sm, [t for t in tools_list if t['function']['name'] != 'describe_high_level_fg_fragments'])
-        mcs_result = find_mcs(query_smiles, [ref_sm])
-        fg_diff = format_compare_mols(query_smiles, ref_sm)
+        prompt += f"--- Top {top_k} similar molecules with label (A) ---\n"
+        for idx, (score, label, ref_sm) in enumerate(label_0_refs, start=1):
+            ref_props = compute_properties(ref_sm, [t for t in tools_list if t['function']['name'] != 'describe_high_level_fg_fragments'])
+            mcs_result = find_mcs(query_smiles, [ref_sm])
+            fg_diff = format_compare_mols(query_smiles, ref_sm)
 
-        prompt += f"Reference {idx} SMILES: {ref_sm}\n"
-        prompt += f"Computed Weighted Similarity: {score:.4f}\n"
-        prompt += f"Properties:\n{ref_props}\n"
-        prompt += f"{mcs_result}\n"
-        prompt += f"{fg_diff}\n\n"
+            prompt += f"Reference {idx} SMILES: {ref_sm}\n"
+            prompt += f"Computed Weighted Similarity: {score:.4f}\n"
+            prompt += f"Properties:\n{ref_props}\n"
+            prompt += f"{mcs_result}\n"
+            prompt += f"{fg_diff}\n\n"
+    else:
+        prompt += f"--- Top {2 * top_k} most similar molecules overall ---\n"
+        for idx, (score, label, ref_sm) in enumerate(global_top_refs, start=1):
+            ref_props = compute_properties(ref_sm, [t for t in tools_list if t['function']['name'] != 'describe_high_level_fg_fragments'])
+            mcs_result = find_mcs(query_smiles, [ref_sm])
+            fg_diff = format_compare_mols(query_smiles, ref_sm)
+            label_str = "(B)" if label == 1 else "(A)"
 
-    pseudo_label_str = "(B)" if pseudo_label == 1 else "(A)"
-    prompt += f"The pseudo label from naive Morgan fingerprint KNN prediction is {pseudo_label_str}. You should compare the molecules carefully and decide to agree with the pseudo label or not.\n\n"
-    prompt += 'Please think step by step and then put ONLY your final choice ((A) or (B)) after "Answer:"'
+            prompt += f"Reference {idx} SMILES: {ref_sm}\n"
+            prompt += f"Reference Label: {label_str}\n"
+            prompt += f"Computed Weighted Similarity: {score:.4f}\n"
+            prompt += f"Properties:\n{ref_props}\n"
+            prompt += f"{mcs_result}\n"
+            prompt += f"{fg_diff}\n\n"
+
+    if include_pseudo_label:
+        pseudo_label_str = "(B)" if pseudo_label == 1 else "(A)"
+        prompt += f"The pseudo label from naive Morgan fingerprint KNN prediction is {pseudo_label_str}. You should compare the molecules carefully and decide to agree with the pseudo label or not.\n\n"
+        prompt += 'Please think step by step and then put ONLY your final choice ((A) or (B)) after "Answer:"'
+    else:
+        prompt += 'Please think step by step, compare the molecules carefully, and then put ONLY your final choice ((A) or (B)) after "Answer:"'
 
     return index, {
         "text": prompt,
@@ -253,9 +275,23 @@ def build_prompt_for_query(
         "Y": true_label,
     }
 
-def process_single_task(task_name, split, n_examples=None, num_workers=1, top_k=3):
+def process_single_task(
+    task_name,
+    split,
+    n_examples=None,
+    num_workers=1,
+    top_k=3,
+    retrieval_mode="per_label",
+    include_pseudo_label=True,
+):
     base_dir = project_root / "DataPrepare" / "TDC_mol_fingerprints"
-    out_root = project_root / "DataPrepare" / "TDC_prepended" / f"KNN_{top_k}" / split
+    output_dir_name = f"KNN_{top_k}"
+    if retrieval_mode != "per_label":
+        output_dir_name += "_global_top2k"
+    if not include_pseudo_label:
+        output_dir_name += "_no_pseudo_label"
+
+    out_root = project_root / "DataPrepare" / "TDC_prepended" / output_dir_name / split
     out_root.mkdir(parents=True, exist_ok=True)
     
     # Load similarities
@@ -270,7 +306,11 @@ def process_single_task(task_name, split, n_examples=None, num_workers=1, top_k=
         / f"{split}_knn_labels.json"
     )
     
-    if not (morgan_sim_path.exists() and feat_morgan_sim_path.exists() and pseudo_labels_path.exists()):
+    required_paths = [morgan_sim_path, feat_morgan_sim_path]
+    if include_pseudo_label:
+        required_paths.append(pseudo_labels_path)
+
+    if not all(path.exists() for path in required_paths):
         logger.warning(f"Missing required files for {task_name} {split}. Skipping.")
         return
         
@@ -278,8 +318,10 @@ def process_single_task(task_name, split, n_examples=None, num_workers=1, top_k=
         morgan_sims = pickle.load(f)
     with open(feat_morgan_sim_path, "rb") as f:
         feat_morgan_sims = pickle.load(f)
-    with open(pseudo_labels_path, "r") as f:
-        pseudo_labels = json.load(f)
+    pseudo_labels = {}
+    if include_pseudo_label:
+        with open(pseudo_labels_path, "r") as f:
+            pseudo_labels = json.load(f)
 
     true_labels = load_true_labels(task_name, split)
         
@@ -337,6 +379,8 @@ def process_single_task(task_name, split, n_examples=None, num_workers=1, top_k=
                 tools_list,
                 true_label,
                 top_k,
+                retrieval_mode,
+                include_pseudo_label,
             )
         )
 
@@ -396,9 +440,21 @@ def main():
         ],
     )
     parser.add_argument("--splits", nargs="+", default=["train", "valid"])
-    parser.add_argument("--n-examples", type=int, default=None, help="Number of examples to process (default: all)")
+    parser.add_argument("--n-examples", type=int, default=None, help="Number of examples to process (default: all), for quick testing")
     parser.add_argument("--num-workers", type=int, default=min(4, os.cpu_count() or 1), help="Number of worker processes for parallel prompt generation")
     parser.add_argument("--top-k", type=int, default=3, help="Number of most similar molecules to keep for each label")
+    parser.add_argument(
+        "--retrieval-mode",
+        choices=["per_label", "global_top2k"],
+        default="per_label",
+        help="Choose whether to keep top-k molecules per label or the overall top-2*top-k most similar molecules",
+    )
+    parser.add_argument(
+        "--include-pseudo-label",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Include the naive Morgan fingerprint KNN pseudo label in the prompt (use --no-include-pseudo-label to disable)",
+    )
     args = parser.parse_args()
 
     if args.top_k <= 0:
@@ -412,6 +468,8 @@ def main():
                 n_examples=args.n_examples,
                 num_workers=args.num_workers,
                 top_k=args.top_k,
+                retrieval_mode=args.retrieval_mode,
+                include_pseudo_label=args.include_pseudo_label,
             )
 
 if __name__ == "__main__":
