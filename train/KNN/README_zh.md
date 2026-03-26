@@ -17,7 +17,7 @@
    读取这些相似度文件，在 `valid` 上做基线评估。
 3. `train/KNN/extract_best_knn_labels.py`
    在 `valid` 上选最好的 `k`，再导出 `train` 和 `valid` 的伪标签。
-4. `DataPrepare/TDC_prepended/KNN_3/generate_knn_prompts.py`
+4. `DataPrepare/TDC_prepended/generate_knn_prompts.py`
    再继续读取相似度和伪标签，把 KNN 检索结果拼进 prompt 里。
 
 KNN 的最终相似度来自两种指纹相似度的加权：
@@ -97,7 +97,7 @@ python train/KNN/extract_best_knn_labels.py
 python DataPrepare/TDC_mol_fingerprints/compute_fingerprints_and_similarities.py
 python train/KNN/eval_knn.py --tasks Carcinogens_Lagunin -k 3
 python train/KNN/extract_best_knn_labels.py
-python DataPrepare/TDC_prepended/KNN_3/generate_knn_prompts.py --tasks Carcinogens_Lagunin --splits train valid --top-k 3
+python DataPrepare/TDC_prepended/generate_knn_prompts.py --tasks Carcinogens_Lagunin --splits train valid --top-k 3
 ```
 
 如果相似度文件已经准备好了，只想跑 KNN：

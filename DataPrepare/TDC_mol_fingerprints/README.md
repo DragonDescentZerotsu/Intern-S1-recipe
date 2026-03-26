@@ -21,7 +21,7 @@ The full pipeline is:
    evaluates a weighted KNN baseline using the similarity files created here.
 3. `train/KNN/extract_best_knn_labels.py`
    writes pseudo labels back into this directory under `KNN_pesudo_labels/`.
-4. `DataPrepare/TDC_prepended/KNN_3/generate_knn_prompts.py`
+4. `DataPrepare/TDC_prepended/generate_knn_prompts.py`
    consumes the similarity files and pseudo labels to build prompt datasets.
 
 So this folder is the shared storage layer between raw TDC data and downstream KNN / prompt-generation scripts.
@@ -159,7 +159,7 @@ Files:
 - `train_knn_labels.json`
 - `valid_knn_labels.json`
 
-These pseudo labels are then consumed by `DataPrepare/TDC_prepended/KNN_3/generate_knn_prompts.py`.
+These pseudo labels are then consumed by `DataPrepare/TDC_prepended/generate_knn_prompts.py`.
 
 ## Similarity File Format
 
@@ -209,7 +209,7 @@ python train/KNN/extract_best_knn_labels.py
 ### Step 4: Build KNN-augmented prompts
 
 ```bash
-python DataPrepare/TDC_prepended/KNN_3/generate_knn_prompts.py --tasks Carcinogens_Lagunin --splits train valid --top-k 3
+python DataPrepare/TDC_prepended/generate_knn_prompts.py --tasks Carcinogens_Lagunin --splits train valid --top-k 3
 ```
 
 ## Practical Notes

@@ -17,7 +17,7 @@ The dependency chain is:
    reads those similarity pickles and reports baseline KNN metrics on `valid`.
 3. `train/KNN/extract_best_knn_labels.py`
    selects the best `k` on `valid`, then exports `train` and `valid` pseudo labels.
-4. `DataPrepare/TDC_prepended/KNN_3/generate_knn_prompts.py`
+4. `DataPrepare/TDC_prepended/generate_knn_prompts.py`
    reads the pseudo labels and similarity files to build KNN-augmented prompts.
 
 The KNN score is a weighted sum of two similarity sources:
@@ -97,7 +97,7 @@ If you are starting from raw TDC tasks:
 python DataPrepare/TDC_mol_fingerprints/compute_fingerprints_and_similarities.py
 python train/KNN/eval_knn.py --tasks Carcinogens_Lagunin -k 3
 python train/KNN/extract_best_knn_labels.py
-python DataPrepare/TDC_prepended/KNN_3/generate_knn_prompts.py --tasks Carcinogens_Lagunin --splits train valid --top-k 3
+python DataPrepare/TDC_prepended/generate_knn_prompts.py --tasks Carcinogens_Lagunin --splits train valid --top-k 3
 ```
 
 If the similarity files already exist and you only want KNN outputs:
