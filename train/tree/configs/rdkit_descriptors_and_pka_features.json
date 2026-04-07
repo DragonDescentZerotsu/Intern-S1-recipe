@@ -1,0 +1,12 @@
+{
+  "feature_set_name": "rdkit_descriptors_and_pka",
+  "sources": [
+    {
+      "source_type": "csv_smiles_lookup",
+      "name": "rdkit_descriptors_and_pka",
+      "csv_path": "/data1/tianang/Projects/Intern-S1/DataPrepare/mol_features_for_tree/rdkit_descriptors_and_pka/tdc_no_conflict_labels_salt_removed_unique_smiles_rdkit_descriptors_and_pka.csv",
+      "smiles_column": "smiles",
+      "prefix": "rdkit_pka__"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "feature_set_name": "fg_top_level",
+  "sources": [
+    {
+      "source_type": "fg_top_level_csv",
+      "name": "fg_top_level"
+    }
+  ]
+}
+

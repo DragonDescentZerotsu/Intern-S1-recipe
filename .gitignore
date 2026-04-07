@@ -107,3 +107,5 @@ __pycache__/
 /playbooks/modified/CYP3A4_Veith.jinja2
 /playbooks/modified/HIV.jinja2
 /playbooks/modified/hERG_Karim.jinja2
+
+/AGENTS.md

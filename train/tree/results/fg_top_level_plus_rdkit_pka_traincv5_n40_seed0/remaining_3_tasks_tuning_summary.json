@@ -1,0 +1,23 @@
+{
+  "tasks": [
+    "AMES",
+    "BBB_Martins",
+    "PAMPA_NCATS"
+  ],
+  "feature_set_name": "fg_top_level+rdkit_descriptors_and_pka",
+  "feature_config_paths": [
+    "/data1/tianang/Projects/Intern-S1/train/tree/configs/fg_top_level_features.json",
+    "/data1/tianang/Projects/Intern-S1/train/tree/configs/rdkit_descriptors_and_pka_features.json"
+  ],
+  "selection_metric": "macro_f1",
+  "selection_mode": "train_cv_5fold",
+  "n_iter": 40,
+  "search_seed": 0,
+  "eval_seeds": [
+    0
+  ],
+  "summary_csv": "/data1/tianang/Projects/Intern-S1/train/tree/results/fg_top_level_plus_rdkit_pka_traincv5_n40_seed0/remaining_3_tasks_tuning_summary.csv",
+  "num_successful_tasks": 3,
+  "num_failed_tasks": 0,
+  "failures": []
+}

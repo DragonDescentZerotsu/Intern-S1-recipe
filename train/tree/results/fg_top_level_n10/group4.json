@@ -1,0 +1,26 @@
+{
+  "tasks": [
+    "CYP2C9_Substrate_CarbonMangels",
+    "CYP2D6_Substrate_CarbonMangels",
+    "CYP3A4_Substrate_CarbonMangels",
+    "SARSCoV2_3CLPro_Diamond"
+  ],
+  "feature_set_name": "fg_top_level",
+  "feature_config_paths": [
+    "/data1/tianang/Projects/Intern-S1/train/tree/configs/fg_top_level_features.json"
+  ],
+  "selection_metric": "macro_f1",
+  "n_iter": 10,
+  "search_seed": 0,
+  "eval_seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "summary_csv": "/data1/tianang/Projects/Intern-S1/train/tree/results/fg_top_level_n10/group4.csv",
+  "num_successful_tasks": 4,
+  "num_failed_tasks": 0,
+  "failures": []
+}

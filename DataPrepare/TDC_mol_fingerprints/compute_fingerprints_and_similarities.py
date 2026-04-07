@@ -36,6 +36,27 @@ def load_pickle_if_exists(path):
     with open(path, "rb") as f:
         return pickle.load(f)
 
+
+def export_clean_split_records(export_root, task_name, split_name, records):
+    """
+    Export canonicalized, no-conflict SMILES/label pairs as JSONL.
+    """
+    split_dir = export_root / split_name
+    split_dir.mkdir(parents=True, exist_ok=True)
+    out_path = split_dir / f"{task_name}.jsonl"
+    with open(out_path, "w", encoding="utf-8") as f:
+        for record in records:
+            f.write(
+                json.dumps(
+                    {
+                        "drug": record["canonical_smiles"],
+                        "Y": int(record["Y"]),
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n"
+            )
+
 def compute_single_fingerprint(smiles, use_features=False):
     """
     Compute Morgan fingerprint for a single SMILES string.
@@ -180,7 +201,7 @@ def analyze_split_labels(split_df, canonical_df):
     }
 
 
-def process_task(task_name, group_name, requested_splits):
+def process_task(task_name, group_name, requested_splits, export_clean_data=True, export_clean_only=False):
     """
     Loads data using TDC, computes fingerprints in parallel, and calculates similarities.
     """
@@ -188,20 +209,17 @@ def process_task(task_name, group_name, requested_splits):
     
     # Paths setup
     base_dir = Path(__file__).parent
+    project_root = base_dir.parent.parent
     
-    morgan_dir = base_dir / "Morgan" / "by_task" / task_name
-    feature_morgan_dir = base_dir / "Feature_Morgan" / "by_task" / task_name
-    morgan_sim_dir = base_dir / "Morgan_similarity" / "by_task" / task_name
-    feature_morgan_sim_dir = base_dir / "Feature_Morgan_similarity" / "by_task" / task_name
     label_map_dir = base_dir / "Label_maps" / "by_task" / task_name
     conflict_dir = base_dir / "Label_conflicts" / "by_task" / task_name
-    
-    morgan_dir.mkdir(parents=True, exist_ok=True)
-    feature_morgan_dir.mkdir(parents=True, exist_ok=True)
-    morgan_sim_dir.mkdir(parents=True, exist_ok=True)
-    feature_morgan_sim_dir.mkdir(parents=True, exist_ok=True)
+    clean_export_root = project_root / "DataPrepare" / "TDC_no_conflict_labels_salt_removed"
+
     label_map_dir.mkdir(parents=True, exist_ok=True)
     conflict_dir.mkdir(parents=True, exist_ok=True)
+    if export_clean_data or export_clean_only:
+        for split_name in VALID_SPLITS:
+            (clean_export_root / split_name).mkdir(parents=True, exist_ok=True)
     
     # 1. Load Data
     data = None
@@ -241,7 +259,82 @@ def process_task(task_name, group_name, requested_splits):
             len(split_smiles_unique[split_name]),
         )
     
-    # 2. Load or compute FPs
+    safe_labels_by_split = {}
+
+    # 2. Save a lookup table that keeps the canonicalized SMILES aligned with labels.
+    for split_name in required_splits:
+        df = split_dfs[split_name]
+        analysis = analyze_split_labels(split[split_name], df)
+        records = analysis["label_map_records"]
+        safe_labels_by_split[split_name] = {
+            record["canonical_smiles"]: record["Y"] for record in records
+        }
+
+        if export_clean_data or export_clean_only:
+            export_clean_split_records(clean_export_root, task_name, split_name, records)
+
+        out_path = label_map_dir / f"{split_name}_labels.jsonl"
+        with open(out_path, "w", encoding="utf-8") as f:
+            for record in records:
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+        conflict_records = analysis["canonical_conflicts"]
+        conflict_path = conflict_dir / f"{split_name}_excluded_conflicts.jsonl"
+        with open(conflict_path, "w", encoding="utf-8") as f:
+            for record in conflict_records:
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+        raw_conflicts = analysis["raw_conflicts"]
+        if raw_conflicts:
+            logger.warning(
+                f"{task_name} {split_name}: {len(raw_conflicts)} original SMILES already have conflicting labels before canonicalization."
+            )
+            for record in raw_conflicts:
+                logger.warning(
+                    "Raw label conflict for original SMILES %s | labels=%s | num_rows=%s",
+                    record["original_smiles"],
+                    record["labels"],
+                    record["num_rows"],
+                )
+
+        introduced_conflicts = analysis["introduced_conflicts"]
+        if introduced_conflicts:
+            logger.warning(
+                f"{task_name} {split_name}: {len(introduced_conflicts)} canonical SMILES acquire label conflicts only after canonicalization."
+            )
+            for record in introduced_conflicts:
+                logger.warning(
+                    "Canonicalization-introduced conflict for canonical SMILES %s | labels=%s | examples=%s",
+                    record["canonical_smiles"],
+                    record["all_labels"],
+                    record["examples"],
+                )
+
+        total_conflicts = len(conflict_records)
+        if total_conflicts:
+            logger.warning(
+                f"{task_name} {split_name}: excluded {total_conflicts} ambiguous canonical SMILES from label maps and similarity computation."
+            )
+
+    if export_clean_only:
+        logger.info(
+            "%s - Exported cleaned no-conflict JSONL files only; skipping fingerprint and similarity computation.",
+            task_name,
+        )
+        logger.info(f"========== Finished task: {task_name} ==========\n")
+        return
+
+    morgan_dir = base_dir / "Morgan" / "by_task" / task_name
+    feature_morgan_dir = base_dir / "Feature_Morgan" / "by_task" / task_name
+    morgan_sim_dir = base_dir / "Morgan_similarity" / "by_task" / task_name
+    feature_morgan_sim_dir = base_dir / "Feature_Morgan_similarity" / "by_task" / task_name
+
+    morgan_dir.mkdir(parents=True, exist_ok=True)
+    feature_morgan_dir.mkdir(parents=True, exist_ok=True)
+    morgan_sim_dir.mkdir(parents=True, exist_ok=True)
+    feature_morgan_sim_dir.mkdir(parents=True, exist_ok=True)
+
+    # 3. Load or compute FPs
     num_cpus = max(1, mp.cpu_count() - 2)
     logger.info(f"Using {num_cpus} CPUs for parallelization...")
     
@@ -299,7 +392,7 @@ def process_task(task_name, group_name, requested_splits):
                     if fp is not None:
                         feat_morgan_fps_by_split[split_name][sm] = fp
             
-    # 3. Save FPs
+    # 4. Save FPs
     for split_name in computed_fp_splits:
         with open(morgan_dir / f"{split_name}.pkl", "wb") as f:
             pickle.dump(morgan_fps_by_split[split_name], f)
@@ -307,62 +400,8 @@ def process_task(task_name, group_name, requested_splits):
             pickle.dump(feat_morgan_fps_by_split[split_name], f)
         
     logger.info(f"{task_name} - Fingerprints are ready.")
-
-    safe_labels_by_split = {}
-
-    # Save a lookup table that keeps the canonicalized SMILES aligned with labels.
-    for split_name in required_splits:
-        df = split_dfs[split_name]
-        analysis = analyze_split_labels(split[split_name], df)
-        records = analysis["label_map_records"]
-        safe_labels_by_split[split_name] = {
-            record["canonical_smiles"]: record["Y"] for record in records
-        }
-
-        out_path = label_map_dir / f"{split_name}_labels.jsonl"
-        with open(out_path, "w", encoding="utf-8") as f:
-            for record in records:
-                f.write(json.dumps(record, ensure_ascii=False) + "\n")
-
-        conflict_records = analysis["canonical_conflicts"]
-        conflict_path = conflict_dir / f"{split_name}_excluded_conflicts.jsonl"
-        with open(conflict_path, "w", encoding="utf-8") as f:
-            for record in conflict_records:
-                f.write(json.dumps(record, ensure_ascii=False) + "\n")
-
-        raw_conflicts = analysis["raw_conflicts"]
-        if raw_conflicts:
-            logger.warning(
-                f"{task_name} {split_name}: {len(raw_conflicts)} original SMILES already have conflicting labels before canonicalization."
-            )
-            for record in raw_conflicts:
-                logger.warning(
-                    "Raw label conflict for original SMILES %s | labels=%s | num_rows=%s",
-                    record["original_smiles"],
-                    record["labels"],
-                    record["num_rows"],
-                )
-
-        introduced_conflicts = analysis["introduced_conflicts"]
-        if introduced_conflicts:
-            logger.warning(
-                f"{task_name} {split_name}: {len(introduced_conflicts)} canonical SMILES acquire label conflicts only after canonicalization."
-            )
-            for record in introduced_conflicts:
-                logger.warning(
-                    "Canonicalization-introduced conflict for canonical SMILES %s | labels=%s | examples=%s",
-                    record["canonical_smiles"],
-                    record["all_labels"],
-                    record["examples"],
-                )
-
-        total_conflicts = len(conflict_records)
-        if total_conflicts:
-            logger.warning(
-                f"{task_name} {split_name}: excluded {total_conflicts} ambiguous canonical SMILES from label maps and similarity computation."
-            )
     
-    # 4. Compute Similarities
+    # 5. Compute Similarities
     similarity_targets = [split_name for split_name in requested_splits if split_name in ("train", "valid", "test")]
     similarity_results = {
         "morgan": {},
@@ -437,7 +476,7 @@ def process_task(task_name, group_name, requested_splits):
             )
             similarity_results["feature_morgan"][split_name] = {sm: sims for sm, sims in results}
             
-    # 5. Save Similarities
+    # 6. Save Similarities
     for split_name in requested_splits:
         with open(morgan_sim_dir / f"{split_name}_similarity.pkl", "wb") as f:
             pickle.dump(similarity_results["morgan"][split_name], f)
@@ -458,6 +497,18 @@ def parse_args():
         default=["train", "valid"],
         help="Which splits to output. valid/test similarities are always computed against train.",
     )
+    parser.add_argument(
+        "--export-clean-only",
+        action="store_true",
+        help="Only export the salt-removed, no-conflict JSONL files and skip fingerprint/similarity computation.",
+    )
+    parser.add_argument(
+        "--no-export-clean-data",
+        action="store_false",
+        dest="export_clean_data",
+        help="Do not export the salt-removed, no-conflict JSONL files.",
+    )
+    parser.set_defaults(export_clean_data=True)
     return parser.parse_args()
 
 def main():
@@ -482,7 +533,13 @@ def main():
     ]
     
     for task_name, group_name in tasks:
-        process_task(task_name, group_name, args.splits)
+        process_task(
+            task_name,
+            group_name,
+            args.splits,
+            export_clean_data=args.export_clean_data,
+            export_clean_only=args.export_clean_only,
+        )
 
 if __name__ == "__main__":
     main()

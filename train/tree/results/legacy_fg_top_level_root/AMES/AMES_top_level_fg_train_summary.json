@@ -1,0 +1,28 @@
+{
+  "task": "AMES",
+  "feature_backend": "smiles_csv_lookup",
+  "feature_config_path": "train/tree/configs/top_level_fg.json",
+  "feature_config": {
+    "csv_path": "/data1/tianang/Projects/AccFG/FG_feature_extraction/extracted_FG_features/tdc_no_conflict_labels_salt_removed_unique_smiles_top_level_fg_vectors.csv",
+    "smiles_column": "smiles",
+    "missing_policy": "error"
+  },
+  "seed": 0,
+  "rf_params": {
+    "n_estimators": 400,
+    "max_depth": null,
+    "min_samples_split": 20,
+    "min_samples_leaf": 1,
+    "bootstrap": false,
+    "criterion": "gini",
+    "max_features": "log2",
+    "class_weight": "balanced"
+  },
+  "valid_metrics": {
+    "valid_roc_auc": 0.8323527113611502,
+    "valid_macro_f1": 0.7727198430859759
+  },
+  "num_surviving_features": 260,
+  "prediction_path": "train/tree/results/AMES/AMES_top_level_fg_valid_predictions.csv",
+  "bundle_path": "train/tree/results/AMES/AMES_top_level_fg_rf_model.joblib"
+}
