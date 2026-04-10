@@ -75,3 +75,43 @@ def load_tdc_split(
         labels=labels,
     )
 
+
+def get_tdc_split_sample(
+    task: str,
+    split: str,
+    sample_index: int,
+    data_root: str | Path = DEFAULT_DATA_ROOT,
+    smiles_field: str = DEFAULT_SMILES_FIELD,
+    label_field: str = DEFAULT_LABEL_FIELD,
+) -> dict[str, Any]:
+    if sample_index < 0:
+        raise IndexError(f"sample_index must be non-negative, got {sample_index}")
+
+    split_path = get_split_path(task, split, data_root)
+    current_index = -1
+    with split_path.open("r", encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            if not line.strip():
+                continue
+            current_index += 1
+            if current_index != sample_index:
+                continue
+
+            record = json.loads(line)
+            if smiles_field not in record:
+                raise KeyError(f"Missing smiles field {smiles_field!r} at {split_path}:{line_number}")
+            if label_field not in record:
+                raise KeyError(f"Missing label field {label_field!r} at {split_path}:{line_number}")
+            return {
+                "task": task,
+                "split": split,
+                "sample_index": sample_index,
+                "smiles": str(record[smiles_field]),
+                "label": normalize_binary_label(record[label_field]),
+                "record": record,
+            }
+
+    raise IndexError(
+        f"sample_index {sample_index} is out of range for {split_path}. "
+        f"Last available index: {current_index}"
+    )

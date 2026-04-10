@@ -1,0 +1,1635 @@
+{
+  "level_name": "easy_to_NLP_Lv1",
+  "input_csv": "/data1/tianang/Projects/Intern-S1/DataPrepare/mol_features_for_tree/rdkit_descriptors_and_pka/tdc_no_conflict_labels_salt_removed_unique_smiles_rdkit_descriptors_and_pka.csv",
+  "output_csv": "/data1/tianang/Projects/Intern-S1/DataPrepare/mol_features_for_tree/rdkit_descriptors_and_pka_easy_to_NLP_Lv1/tdc_no_conflict_labels_salt_removed_unique_smiles_rdkit_descriptors_and_pka_easy_to_NLP_Lv1.csv",
+  "smiles_column": "smiles",
+  "num_rows": 16517,
+  "feature_column_count": 180,
+  "selected_feature_columns": [
+    "pka__acid_site_pka_max",
+    "pka__acid_site_pka_mean",
+    "pka__acid_site_pka_min",
+    "pka__acid_site_pka_range",
+    "pka__acid_site_pka_rank_1",
+    "pka__acid_site_pka_rank_10",
+    "pka__acid_site_pka_rank_11",
+    "pka__acid_site_pka_rank_12",
+    "pka__acid_site_pka_rank_13",
+    "pka__acid_site_pka_rank_14",
+    "pka__acid_site_pka_rank_15",
+    "pka__acid_site_pka_rank_16",
+    "pka__acid_site_pka_rank_17",
+    "pka__acid_site_pka_rank_18",
+    "pka__acid_site_pka_rank_19",
+    "pka__acid_site_pka_rank_2",
+    "pka__acid_site_pka_rank_20",
+    "pka__acid_site_pka_rank_21",
+    "pka__acid_site_pka_rank_22",
+    "pka__acid_site_pka_rank_23",
+    "pka__acid_site_pka_rank_24",
+    "pka__acid_site_pka_rank_25",
+    "pka__acid_site_pka_rank_3",
+    "pka__acid_site_pka_rank_4",
+    "pka__acid_site_pka_rank_5",
+    "pka__acid_site_pka_rank_6",
+    "pka__acid_site_pka_rank_7",
+    "pka__acid_site_pka_rank_8",
+    "pka__acid_site_pka_rank_9",
+    "pka__acid_site_pka_std",
+    "pka__acid_site_pka_sum",
+    "pka__base_site_pka_max",
+    "pka__base_site_pka_mean",
+    "pka__base_site_pka_min",
+    "pka__base_site_pka_range",
+    "pka__base_site_pka_rank_1",
+    "pka__base_site_pka_rank_10",
+    "pka__base_site_pka_rank_11",
+    "pka__base_site_pka_rank_2",
+    "pka__base_site_pka_rank_3",
+    "pka__base_site_pka_rank_4",
+    "pka__base_site_pka_rank_5",
+    "pka__base_site_pka_rank_6",
+    "pka__base_site_pka_rank_7",
+    "pka__base_site_pka_rank_8",
+    "pka__base_site_pka_rank_9",
+    "pka__base_site_pka_std",
+    "pka__base_site_pka_sum",
+    "pka__fraction_neutral",
+    "pka__has_acidic_site",
+    "pka__has_basic_site",
+    "pka__is_amphoteric",
+    "pka__logd_estimate",
+    "pka__logd_ph",
+    "pka__logp_wildman_crippen",
+    "pka__most_acidic_pka",
+    "pka__most_basic_pka",
+    "pka__num_acidic_sites",
+    "pka__num_basic_sites",
+    "pka__num_ionizable_sites",
+    "pka__warning_amphoteric",
+    "pka__warning_count",
+    "pka__warning_fraction_neutral_clamped",
+    "pka__warning_fraction_neutral_tiny",
+    "pka__warning_multiple_acidic_sites",
+    "pka__warning_multiple_basic_sites",
+    "rdkit__ExactMolWt",
+    "rdkit__FractionCSP3",
+    "rdkit__HeavyAtomCount",
+    "rdkit__HeavyAtomMolWt",
+    "rdkit__LabuteASA",
+    "rdkit__MaxAbsPartialCharge",
+    "rdkit__MaxPartialCharge",
+    "rdkit__MinAbsPartialCharge",
+    "rdkit__MinPartialCharge",
+    "rdkit__MolLogP",
+    "rdkit__MolWt",
+    "rdkit__NHOHCount",
+    "rdkit__NOCount",
+    "rdkit__NumAliphaticCarbocycles",
+    "rdkit__NumAliphaticHeterocycles",
+    "rdkit__NumAliphaticRings",
+    "rdkit__NumAromaticCarbocycles",
+    "rdkit__NumAromaticHeterocycles",
+    "rdkit__NumAromaticRings",
+    "rdkit__NumHAcceptors",
+    "rdkit__NumHDonors",
+    "rdkit__NumHeteroatoms",
+    "rdkit__NumRotatableBonds",
+    "rdkit__NumSaturatedCarbocycles",
+    "rdkit__NumSaturatedHeterocycles",
+    "rdkit__NumSaturatedRings",
+    "rdkit__RingCount",
+    "rdkit__TPSA",
+    "rdkit__fr_Al_COO",
+    "rdkit__fr_Al_OH",
+    "rdkit__fr_Al_OH_noTert",
+    "rdkit__fr_ArN",
+    "rdkit__fr_Ar_COO",
+    "rdkit__fr_Ar_N",
+    "rdkit__fr_Ar_NH",
+    "rdkit__fr_Ar_OH",
+    "rdkit__fr_COO",
+    "rdkit__fr_COO2",
+    "rdkit__fr_C_O",
+    "rdkit__fr_C_O_noCOO",
+    "rdkit__fr_C_S",
+    "rdkit__fr_HOCCN",
+    "rdkit__fr_Imine",
+    "rdkit__fr_NH0",
+    "rdkit__fr_NH1",
+    "rdkit__fr_NH2",
+    "rdkit__fr_N_O",
+    "rdkit__fr_Ndealkylation1",
+    "rdkit__fr_Ndealkylation2",
+    "rdkit__fr_Nhpyrrole",
+    "rdkit__fr_SH",
+    "rdkit__fr_aldehyde",
+    "rdkit__fr_alkyl_carbamate",
+    "rdkit__fr_alkyl_halide",
+    "rdkit__fr_allylic_oxid",
+    "rdkit__fr_amide",
+    "rdkit__fr_amidine",
+    "rdkit__fr_aniline",
+    "rdkit__fr_aryl_methyl",
+    "rdkit__fr_azide",
+    "rdkit__fr_azo",
+    "rdkit__fr_barbitur",
+    "rdkit__fr_benzene",
+    "rdkit__fr_benzodiazepine",
+    "rdkit__fr_bicyclic",
+    "rdkit__fr_diazo",
+    "rdkit__fr_dihydropyridine",
+    "rdkit__fr_epoxide",
+    "rdkit__fr_ester",
+    "rdkit__fr_ether",
+    "rdkit__fr_furan",
+    "rdkit__fr_guanido",
+    "rdkit__fr_halogen",
+    "rdkit__fr_hdrzine",
+    "rdkit__fr_hdrzone",
+    "rdkit__fr_imidazole",
+    "rdkit__fr_imide",
+    "rdkit__fr_isocyan",
+    "rdkit__fr_isothiocyan",
+    "rdkit__fr_ketone",
+    "rdkit__fr_ketone_Topliss",
+    "rdkit__fr_lactam",
+    "rdkit__fr_lactone",
+    "rdkit__fr_methoxy",
+    "rdkit__fr_morpholine",
+    "rdkit__fr_nitrile",
+    "rdkit__fr_nitro",
+    "rdkit__fr_nitro_arom",
+    "rdkit__fr_nitro_arom_nonortho",
+    "rdkit__fr_nitroso",
+    "rdkit__fr_oxazole",
+    "rdkit__fr_oxime",
+    "rdkit__fr_para_hydroxylation",
+    "rdkit__fr_phenol",
+    "rdkit__fr_phenol_noOrthoHbond",
+    "rdkit__fr_phos_acid",
+    "rdkit__fr_phos_ester",
+    "rdkit__fr_piperdine",
+    "rdkit__fr_piperzine",
+    "rdkit__fr_priamide",
+    "rdkit__fr_prisulfonamd",
+    "rdkit__fr_pyridine",
+    "rdkit__fr_quatN",
+    "rdkit__fr_sulfide",
+    "rdkit__fr_sulfonamd",
+    "rdkit__fr_sulfone",
+    "rdkit__fr_term_acetylene",
+    "rdkit__fr_tetrazole",
+    "rdkit__fr_thiazole",
+    "rdkit__fr_thiocyan",
+    "rdkit__fr_thiophene",
+    "rdkit__fr_unbrch_alkane",
+    "rdkit__fr_urea",
+    "rdkit__qed"
+  ],
+  "readiness_counts": {
+    "natural_language_ready": 180
+  },
+  "feature_semantics": {
+    "pka__acid_site_pka_max": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_max",
+      "display_name": "maximum acidic site pKa",
+      "description": "maximum pKa across the acidic ionizable sites",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_max",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_mean": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_mean",
+      "display_name": "mean acidic site pKa",
+      "description": "mean pKa across the acidic ionizable sites",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_mean",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_min": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_min",
+      "display_name": "minimum acidic site pKa",
+      "description": "minimum pKa across the acidic ionizable sites",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_min",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_range": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_range",
+      "display_name": "range acidic site pKa",
+      "description": "range pKa across the acidic ionizable sites",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_range",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_1": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_1",
+      "display_name": "acidic site pKa rank 1",
+      "description": "pKa value of the rank-1 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_1",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_10": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_10",
+      "display_name": "acidic site pKa rank 10",
+      "description": "pKa value of the rank-10 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_10",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_11": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_11",
+      "display_name": "acidic site pKa rank 11",
+      "description": "pKa value of the rank-11 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_11",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_12": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_12",
+      "display_name": "acidic site pKa rank 12",
+      "description": "pKa value of the rank-12 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_12",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_13": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_13",
+      "display_name": "acidic site pKa rank 13",
+      "description": "pKa value of the rank-13 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_13",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_14": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_14",
+      "display_name": "acidic site pKa rank 14",
+      "description": "pKa value of the rank-14 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_14",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_15": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_15",
+      "display_name": "acidic site pKa rank 15",
+      "description": "pKa value of the rank-15 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_15",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_16": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_16",
+      "display_name": "acidic site pKa rank 16",
+      "description": "pKa value of the rank-16 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_16",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_17": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_17",
+      "display_name": "acidic site pKa rank 17",
+      "description": "pKa value of the rank-17 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_17",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_18": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_18",
+      "display_name": "acidic site pKa rank 18",
+      "description": "pKa value of the rank-18 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_18",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_19": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_19",
+      "display_name": "acidic site pKa rank 19",
+      "description": "pKa value of the rank-19 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_19",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_2": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_2",
+      "display_name": "acidic site pKa rank 2",
+      "description": "pKa value of the rank-2 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_2",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_20": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_20",
+      "display_name": "acidic site pKa rank 20",
+      "description": "pKa value of the rank-20 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_20",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_21": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_21",
+      "display_name": "acidic site pKa rank 21",
+      "description": "pKa value of the rank-21 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_21",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_22": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_22",
+      "display_name": "acidic site pKa rank 22",
+      "description": "pKa value of the rank-22 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_22",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_23": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_23",
+      "display_name": "acidic site pKa rank 23",
+      "description": "pKa value of the rank-23 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_23",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_24": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_24",
+      "display_name": "acidic site pKa rank 24",
+      "description": "pKa value of the rank-24 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_24",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_25": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_25",
+      "display_name": "acidic site pKa rank 25",
+      "description": "pKa value of the rank-25 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_25",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_3": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_3",
+      "display_name": "acidic site pKa rank 3",
+      "description": "pKa value of the rank-3 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_3",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_4": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_4",
+      "display_name": "acidic site pKa rank 4",
+      "description": "pKa value of the rank-4 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_4",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_5": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_5",
+      "display_name": "acidic site pKa rank 5",
+      "description": "pKa value of the rank-5 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_5",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_6": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_6",
+      "display_name": "acidic site pKa rank 6",
+      "description": "pKa value of the rank-6 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_6",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_7": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_7",
+      "display_name": "acidic site pKa rank 7",
+      "description": "pKa value of the rank-7 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_7",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_8": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_8",
+      "display_name": "acidic site pKa rank 8",
+      "description": "pKa value of the rank-8 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_8",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_rank_9": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_rank_9",
+      "display_name": "acidic site pKa rank 9",
+      "description": "pKa value of the rank-9 acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_rank_9",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_std": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_std",
+      "display_name": "standard deviation acidic site pKa",
+      "description": "standard deviation pKa across the acidic ionizable sites",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_std",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__acid_site_pka_sum": {
+      "feature_name": "rdkit_pka__pka__acid_site_pka_sum",
+      "display_name": "sum acidic site pKa",
+      "description": "sum pKa across the acidic ionizable sites",
+      "source_family": "pka",
+      "raw_name": "acid_site_pka_sum",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__base_site_pka_max": {
+      "feature_name": "rdkit_pka__pka__base_site_pka_max",
+      "display_name": "maximum basic site pKa",
+      "description": "maximum pKa across the basic ionizable sites",
+      "source_family": "pka",
+      "raw_name": "base_site_pka_max",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__base_site_pka_mean": {
+      "feature_name": "rdkit_pka__pka__base_site_pka_mean",
+      "display_name": "mean basic site pKa",
+      "description": "mean pKa across the basic ionizable sites",
+      "source_family": "pka",
+      "raw_name": "base_site_pka_mean",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__base_site_pka_min": {
+      "feature_name": "rdkit_pka__pka__base_site_pka_min",
+      "display_name": "minimum basic site pKa",
+      "description": "minimum pKa across the basic ionizable sites",
+      "source_family": "pka",
+      "raw_name": "base_site_pka_min",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__base_site_pka_range": {
+      "feature_name": "rdkit_pka__pka__base_site_pka_range",
+      "display_name": "range basic site pKa",
+      "description": "range pKa across the basic ionizable sites",
+      "source_family": "pka",
+      "raw_name": "base_site_pka_range",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__base_site_pka_rank_1": {
+      "feature_name": "rdkit_pka__pka__base_site_pka_rank_1",
+      "display_name": "basic site pKa rank 1",
+      "description": "pKa value of the rank-1 basic ionizable site",
+      "source_family": "pka",
+      "raw_name": "base_site_pka_rank_1",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__base_site_pka_rank_10": {
+      "feature_name": "rdkit_pka__pka__base_site_pka_rank_10",
+      "display_name": "basic site pKa rank 10",
+      "description": "pKa value of the rank-10 basic ionizable site",
+      "source_family": "pka",
+      "raw_name": "base_site_pka_rank_10",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__base_site_pka_rank_11": {
+      "feature_name": "rdkit_pka__pka__base_site_pka_rank_11",
+      "display_name": "basic site pKa rank 11",
+      "description": "pKa value of the rank-11 basic ionizable site",
+      "source_family": "pka",
+      "raw_name": "base_site_pka_rank_11",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__base_site_pka_rank_2": {
+      "feature_name": "rdkit_pka__pka__base_site_pka_rank_2",
+      "display_name": "basic site pKa rank 2",
+      "description": "pKa value of the rank-2 basic ionizable site",
+      "source_family": "pka",
+      "raw_name": "base_site_pka_rank_2",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__base_site_pka_rank_3": {
+      "feature_name": "rdkit_pka__pka__base_site_pka_rank_3",
+      "display_name": "basic site pKa rank 3",
+      "description": "pKa value of the rank-3 basic ionizable site",
+      "source_family": "pka",
+      "raw_name": "base_site_pka_rank_3",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__base_site_pka_rank_4": {
+      "feature_name": "rdkit_pka__pka__base_site_pka_rank_4",
+      "display_name": "basic site pKa rank 4",
+      "description": "pKa value of the rank-4 basic ionizable site",
+      "source_family": "pka",
+      "raw_name": "base_site_pka_rank_4",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__base_site_pka_rank_5": {
+      "feature_name": "rdkit_pka__pka__base_site_pka_rank_5",
+      "display_name": "basic site pKa rank 5",
+      "description": "pKa value of the rank-5 basic ionizable site",
+      "source_family": "pka",
+      "raw_name": "base_site_pka_rank_5",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__base_site_pka_rank_6": {
+      "feature_name": "rdkit_pka__pka__base_site_pka_rank_6",
+      "display_name": "basic site pKa rank 6",
+      "description": "pKa value of the rank-6 basic ionizable site",
+      "source_family": "pka",
+      "raw_name": "base_site_pka_rank_6",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__base_site_pka_rank_7": {
+      "feature_name": "rdkit_pka__pka__base_site_pka_rank_7",
+      "display_name": "basic site pKa rank 7",
+      "description": "pKa value of the rank-7 basic ionizable site",
+      "source_family": "pka",
+      "raw_name": "base_site_pka_rank_7",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__base_site_pka_rank_8": {
+      "feature_name": "rdkit_pka__pka__base_site_pka_rank_8",
+      "display_name": "basic site pKa rank 8",
+      "description": "pKa value of the rank-8 basic ionizable site",
+      "source_family": "pka",
+      "raw_name": "base_site_pka_rank_8",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__base_site_pka_rank_9": {
+      "feature_name": "rdkit_pka__pka__base_site_pka_rank_9",
+      "display_name": "basic site pKa rank 9",
+      "description": "pKa value of the rank-9 basic ionizable site",
+      "source_family": "pka",
+      "raw_name": "base_site_pka_rank_9",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__base_site_pka_std": {
+      "feature_name": "rdkit_pka__pka__base_site_pka_std",
+      "display_name": "standard deviation basic site pKa",
+      "description": "standard deviation pKa across the basic ionizable sites",
+      "source_family": "pka",
+      "raw_name": "base_site_pka_std",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__base_site_pka_sum": {
+      "feature_name": "rdkit_pka__pka__base_site_pka_sum",
+      "display_name": "sum basic site pKa",
+      "description": "sum pKa across the basic ionizable sites",
+      "source_family": "pka",
+      "raw_name": "base_site_pka_sum",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__fraction_neutral": {
+      "feature_name": "rdkit_pka__pka__fraction_neutral",
+      "display_name": "neutral fraction",
+      "description": "estimated fraction of the molecule that is neutral at the configured pH",
+      "source_family": "pka",
+      "raw_name": "fraction_neutral",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__has_acidic_site": {
+      "feature_name": "rdkit_pka__pka__has_acidic_site",
+      "display_name": "has an acidic site",
+      "description": "whether the molecule has at least one acidic ionizable site",
+      "source_family": "pka",
+      "raw_name": "has_acidic_site",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__has_basic_site": {
+      "feature_name": "rdkit_pka__pka__has_basic_site",
+      "display_name": "has a basic site",
+      "description": "whether the molecule has at least one basic ionizable site",
+      "source_family": "pka",
+      "raw_name": "has_basic_site",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__is_amphoteric": {
+      "feature_name": "rdkit_pka__pka__is_amphoteric",
+      "display_name": "is amphoteric",
+      "description": "whether the molecule has both acidic and basic ionizable sites",
+      "source_family": "pka",
+      "raw_name": "is_amphoteric",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__logd_estimate": {
+      "feature_name": "rdkit_pka__pka__logd_estimate",
+      "display_name": "estimated logD",
+      "description": "estimated logD at the configured pH",
+      "source_family": "pka",
+      "raw_name": "logd_estimate",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__logd_ph": {
+      "feature_name": "rdkit_pka__pka__logd_ph",
+      "display_name": "logD pH setting",
+      "description": "pH value used when estimating logD",
+      "source_family": "pka",
+      "raw_name": "logd_ph",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__logp_wildman_crippen": {
+      "feature_name": "rdkit_pka__pka__logp_wildman_crippen",
+      "display_name": "estimated logP",
+      "description": "Wildman-Crippen estimated logP",
+      "source_family": "pka",
+      "raw_name": "logp_wildman_crippen",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__most_acidic_pka": {
+      "feature_name": "rdkit_pka__pka__most_acidic_pka",
+      "display_name": "strongest acidic pKa",
+      "description": "pKa of the strongest acidic site",
+      "source_family": "pka",
+      "raw_name": "most_acidic_pka",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__most_basic_pka": {
+      "feature_name": "rdkit_pka__pka__most_basic_pka",
+      "display_name": "strongest basic pKa",
+      "description": "pKa of the strongest basic site",
+      "source_family": "pka",
+      "raw_name": "most_basic_pka",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__num_acidic_sites": {
+      "feature_name": "rdkit_pka__pka__num_acidic_sites",
+      "display_name": "number of acidic sites",
+      "description": "number of acidic ionizable sites in the molecule",
+      "source_family": "pka",
+      "raw_name": "num_acidic_sites",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__num_basic_sites": {
+      "feature_name": "rdkit_pka__pka__num_basic_sites",
+      "display_name": "number of basic sites",
+      "description": "number of basic ionizable sites in the molecule",
+      "source_family": "pka",
+      "raw_name": "num_basic_sites",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__num_ionizable_sites": {
+      "feature_name": "rdkit_pka__pka__num_ionizable_sites",
+      "display_name": "number of ionizable sites",
+      "description": "total number of acidic and basic ionizable sites",
+      "source_family": "pka",
+      "raw_name": "num_ionizable_sites",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__warning_amphoteric": {
+      "feature_name": "rdkit_pka__pka__warning_amphoteric",
+      "display_name": "amphoteric warning",
+      "description": "whether pKa estimation flagged the molecule as amphoteric",
+      "source_family": "pka",
+      "raw_name": "warning_amphoteric",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__warning_count": {
+      "feature_name": "rdkit_pka__pka__warning_count",
+      "display_name": "pKa warning count",
+      "description": "number of warnings raised during pKa/logD estimation",
+      "source_family": "pka",
+      "raw_name": "warning_count",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__warning_fraction_neutral_clamped": {
+      "feature_name": "rdkit_pka__pka__warning_fraction_neutral_clamped",
+      "display_name": "neutral-fraction clamped warning",
+      "description": "whether the estimated neutral fraction had to be clamped",
+      "source_family": "pka",
+      "raw_name": "warning_fraction_neutral_clamped",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__warning_fraction_neutral_tiny": {
+      "feature_name": "rdkit_pka__pka__warning_fraction_neutral_tiny",
+      "display_name": "very small neutral-fraction warning",
+      "description": "whether the estimated neutral fraction was extremely small",
+      "source_family": "pka",
+      "raw_name": "warning_fraction_neutral_tiny",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__warning_multiple_acidic_sites": {
+      "feature_name": "rdkit_pka__pka__warning_multiple_acidic_sites",
+      "display_name": "multiple acidic-site warning",
+      "description": "whether pKa estimation detected multiple acidic sites",
+      "source_family": "pka",
+      "raw_name": "warning_multiple_acidic_sites",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "pka__warning_multiple_basic_sites": {
+      "feature_name": "rdkit_pka__pka__warning_multiple_basic_sites",
+      "display_name": "multiple basic-site warning",
+      "description": "whether pKa estimation detected multiple basic sites",
+      "source_family": "pka",
+      "raw_name": "warning_multiple_basic_sites",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__ExactMolWt": {
+      "feature_name": "rdkit_pka__rdkit__ExactMolWt",
+      "display_name": "exact molecular weight",
+      "description": "exact isotopic molecular weight",
+      "source_family": "rdkit",
+      "raw_name": "ExactMolWt",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__FractionCSP3": {
+      "feature_name": "rdkit_pka__rdkit__FractionCSP3",
+      "display_name": "fraction of sp3 carbons",
+      "description": "fraction of carbon atoms that are sp3 hybridized",
+      "source_family": "rdkit",
+      "raw_name": "FractionCSP3",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__HeavyAtomCount": {
+      "feature_name": "rdkit_pka__rdkit__HeavyAtomCount",
+      "display_name": "Heavy Atom Count",
+      "description": "RDKit descriptor: Heavy Atom Count",
+      "source_family": "rdkit",
+      "raw_name": "HeavyAtomCount",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__HeavyAtomMolWt": {
+      "feature_name": "rdkit_pka__rdkit__HeavyAtomMolWt",
+      "display_name": "heavy-atom molecular weight",
+      "description": "molecular weight contributed by heavy atoms",
+      "source_family": "rdkit",
+      "raw_name": "HeavyAtomMolWt",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__LabuteASA": {
+      "feature_name": "rdkit_pka__rdkit__LabuteASA",
+      "display_name": "Labute ASA",
+      "description": "RDKit descriptor: Labute ASA",
+      "source_family": "rdkit",
+      "raw_name": "LabuteASA",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__MaxAbsPartialCharge": {
+      "feature_name": "rdkit_pka__rdkit__MaxAbsPartialCharge",
+      "display_name": "maximum absolute partial charge",
+      "description": "largest absolute atomic partial charge",
+      "source_family": "rdkit",
+      "raw_name": "MaxAbsPartialCharge",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__MaxPartialCharge": {
+      "feature_name": "rdkit_pka__rdkit__MaxPartialCharge",
+      "display_name": "maximum partial charge",
+      "description": "most positive atomic partial charge",
+      "source_family": "rdkit",
+      "raw_name": "MaxPartialCharge",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__MinAbsPartialCharge": {
+      "feature_name": "rdkit_pka__rdkit__MinAbsPartialCharge",
+      "display_name": "minimum absolute partial charge",
+      "description": "smallest absolute atomic partial charge",
+      "source_family": "rdkit",
+      "raw_name": "MinAbsPartialCharge",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__MinPartialCharge": {
+      "feature_name": "rdkit_pka__rdkit__MinPartialCharge",
+      "display_name": "minimum partial charge",
+      "description": "most negative atomic partial charge",
+      "source_family": "rdkit",
+      "raw_name": "MinPartialCharge",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__MolLogP": {
+      "feature_name": "rdkit_pka__rdkit__MolLogP",
+      "display_name": "Mol Log P",
+      "description": "RDKit descriptor: Mol Log P",
+      "source_family": "rdkit",
+      "raw_name": "MolLogP",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__MolWt": {
+      "feature_name": "rdkit_pka__rdkit__MolWt",
+      "display_name": "molecular weight",
+      "description": "molecular weight",
+      "source_family": "rdkit",
+      "raw_name": "MolWt",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__NHOHCount": {
+      "feature_name": "rdkit_pka__rdkit__NHOHCount",
+      "display_name": "NHOHCount",
+      "description": "RDKit descriptor: NHOHCount",
+      "source_family": "rdkit",
+      "raw_name": "NHOHCount",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__NOCount": {
+      "feature_name": "rdkit_pka__rdkit__NOCount",
+      "display_name": "NOCount",
+      "description": "RDKit descriptor: NOCount",
+      "source_family": "rdkit",
+      "raw_name": "NOCount",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__NumAliphaticCarbocycles": {
+      "feature_name": "rdkit_pka__rdkit__NumAliphaticCarbocycles",
+      "display_name": "Num Aliphatic Carbocycles",
+      "description": "RDKit descriptor: Num Aliphatic Carbocycles",
+      "source_family": "rdkit",
+      "raw_name": "NumAliphaticCarbocycles",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__NumAliphaticHeterocycles": {
+      "feature_name": "rdkit_pka__rdkit__NumAliphaticHeterocycles",
+      "display_name": "Num Aliphatic Heterocycles",
+      "description": "RDKit descriptor: Num Aliphatic Heterocycles",
+      "source_family": "rdkit",
+      "raw_name": "NumAliphaticHeterocycles",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__NumAliphaticRings": {
+      "feature_name": "rdkit_pka__rdkit__NumAliphaticRings",
+      "display_name": "Num Aliphatic Rings",
+      "description": "RDKit descriptor: Num Aliphatic Rings",
+      "source_family": "rdkit",
+      "raw_name": "NumAliphaticRings",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__NumAromaticCarbocycles": {
+      "feature_name": "rdkit_pka__rdkit__NumAromaticCarbocycles",
+      "display_name": "Num Aromatic Carbocycles",
+      "description": "RDKit descriptor: Num Aromatic Carbocycles",
+      "source_family": "rdkit",
+      "raw_name": "NumAromaticCarbocycles",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__NumAromaticHeterocycles": {
+      "feature_name": "rdkit_pka__rdkit__NumAromaticHeterocycles",
+      "display_name": "Num Aromatic Heterocycles",
+      "description": "RDKit descriptor: Num Aromatic Heterocycles",
+      "source_family": "rdkit",
+      "raw_name": "NumAromaticHeterocycles",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__NumAromaticRings": {
+      "feature_name": "rdkit_pka__rdkit__NumAromaticRings",
+      "display_name": "Num Aromatic Rings",
+      "description": "RDKit descriptor: Num Aromatic Rings",
+      "source_family": "rdkit",
+      "raw_name": "NumAromaticRings",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__NumHAcceptors": {
+      "feature_name": "rdkit_pka__rdkit__NumHAcceptors",
+      "display_name": "hydrogen-bond acceptor count",
+      "description": "number of hydrogen-bond acceptors",
+      "source_family": "rdkit",
+      "raw_name": "NumHAcceptors",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__NumHDonors": {
+      "feature_name": "rdkit_pka__rdkit__NumHDonors",
+      "display_name": "hydrogen-bond donor count",
+      "description": "number of hydrogen-bond donors",
+      "source_family": "rdkit",
+      "raw_name": "NumHDonors",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__NumHeteroatoms": {
+      "feature_name": "rdkit_pka__rdkit__NumHeteroatoms",
+      "display_name": "Num Heteroatoms",
+      "description": "RDKit descriptor: Num Heteroatoms",
+      "source_family": "rdkit",
+      "raw_name": "NumHeteroatoms",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__NumRotatableBonds": {
+      "feature_name": "rdkit_pka__rdkit__NumRotatableBonds",
+      "display_name": "Num Rotatable Bonds",
+      "description": "RDKit descriptor: Num Rotatable Bonds",
+      "source_family": "rdkit",
+      "raw_name": "NumRotatableBonds",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__NumSaturatedCarbocycles": {
+      "feature_name": "rdkit_pka__rdkit__NumSaturatedCarbocycles",
+      "display_name": "Num Saturated Carbocycles",
+      "description": "RDKit descriptor: Num Saturated Carbocycles",
+      "source_family": "rdkit",
+      "raw_name": "NumSaturatedCarbocycles",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__NumSaturatedHeterocycles": {
+      "feature_name": "rdkit_pka__rdkit__NumSaturatedHeterocycles",
+      "display_name": "Num Saturated Heterocycles",
+      "description": "RDKit descriptor: Num Saturated Heterocycles",
+      "source_family": "rdkit",
+      "raw_name": "NumSaturatedHeterocycles",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__NumSaturatedRings": {
+      "feature_name": "rdkit_pka__rdkit__NumSaturatedRings",
+      "display_name": "Num Saturated Rings",
+      "description": "RDKit descriptor: Num Saturated Rings",
+      "source_family": "rdkit",
+      "raw_name": "NumSaturatedRings",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__RingCount": {
+      "feature_name": "rdkit_pka__rdkit__RingCount",
+      "display_name": "Ring Count",
+      "description": "RDKit descriptor: Ring Count",
+      "source_family": "rdkit",
+      "raw_name": "RingCount",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__TPSA": {
+      "feature_name": "rdkit_pka__rdkit__TPSA",
+      "display_name": "topological polar surface area",
+      "description": "topological polar surface area of the molecule",
+      "source_family": "rdkit",
+      "raw_name": "TPSA",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_Al_COO": {
+      "feature_name": "rdkit_pka__rdkit__fr_Al_COO",
+      "display_name": "aliphatic carboxylic acid count",
+      "description": "count of aliphatic carboxylic acid fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_Al_COO",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_Al_OH": {
+      "feature_name": "rdkit_pka__rdkit__fr_Al_OH",
+      "display_name": "Al OH fragment count",
+      "description": "count of RDKit-recognized Al OH fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_Al_OH",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_Al_OH_noTert": {
+      "feature_name": "rdkit_pka__rdkit__fr_Al_OH_noTert",
+      "display_name": "Al OH noTert fragment count",
+      "description": "count of RDKit-recognized Al OH noTert fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_Al_OH_noTert",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_ArN": {
+      "feature_name": "rdkit_pka__rdkit__fr_ArN",
+      "display_name": "ArN fragment count",
+      "description": "count of RDKit-recognized ArN fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_ArN",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_Ar_COO": {
+      "feature_name": "rdkit_pka__rdkit__fr_Ar_COO",
+      "display_name": "aromatic carboxylic acid count",
+      "description": "count of aromatic carboxylic acid fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_Ar_COO",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_Ar_N": {
+      "feature_name": "rdkit_pka__rdkit__fr_Ar_N",
+      "display_name": "Ar N fragment count",
+      "description": "count of RDKit-recognized Ar N fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_Ar_N",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_Ar_NH": {
+      "feature_name": "rdkit_pka__rdkit__fr_Ar_NH",
+      "display_name": "Ar NH fragment count",
+      "description": "count of RDKit-recognized Ar NH fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_Ar_NH",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_Ar_OH": {
+      "feature_name": "rdkit_pka__rdkit__fr_Ar_OH",
+      "display_name": "Ar OH fragment count",
+      "description": "count of RDKit-recognized Ar OH fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_Ar_OH",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_COO": {
+      "feature_name": "rdkit_pka__rdkit__fr_COO",
+      "display_name": "carboxylic acid fragment count",
+      "description": "count of carboxylic acid related fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_COO",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_COO2": {
+      "feature_name": "rdkit_pka__rdkit__fr_COO2",
+      "display_name": "carboxylate fragment count",
+      "description": "count of carboxylate or deprotonated carboxylic acid fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_COO2",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_C_O": {
+      "feature_name": "rdkit_pka__rdkit__fr_C_O",
+      "display_name": "C O fragment count",
+      "description": "count of RDKit-recognized C O fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_C_O",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_C_O_noCOO": {
+      "feature_name": "rdkit_pka__rdkit__fr_C_O_noCOO",
+      "display_name": "C O noCOO fragment count",
+      "description": "count of RDKit-recognized C O noCOO fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_C_O_noCOO",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_C_S": {
+      "feature_name": "rdkit_pka__rdkit__fr_C_S",
+      "display_name": "C S fragment count",
+      "description": "count of RDKit-recognized C S fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_C_S",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_HOCCN": {
+      "feature_name": "rdkit_pka__rdkit__fr_HOCCN",
+      "display_name": "HOCCN fragment count",
+      "description": "count of RDKit-recognized HOCCN fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_HOCCN",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_Imine": {
+      "feature_name": "rdkit_pka__rdkit__fr_Imine",
+      "display_name": "Imine fragment count",
+      "description": "count of RDKit-recognized Imine fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_Imine",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_NH0": {
+      "feature_name": "rdkit_pka__rdkit__fr_NH0",
+      "display_name": "tertiary amine-like NH0 fragment count",
+      "description": "count of tertiary amine-like nitrogen fragments with no hydrogens",
+      "source_family": "rdkit",
+      "raw_name": "fr_NH0",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_NH1": {
+      "feature_name": "rdkit_pka__rdkit__fr_NH1",
+      "display_name": "secondary amine-like NH1 fragment count",
+      "description": "count of nitrogen fragments with one attached hydrogen",
+      "source_family": "rdkit",
+      "raw_name": "fr_NH1",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_NH2": {
+      "feature_name": "rdkit_pka__rdkit__fr_NH2",
+      "display_name": "primary amine-like NH2 fragment count",
+      "description": "count of nitrogen fragments with two attached hydrogens",
+      "source_family": "rdkit",
+      "raw_name": "fr_NH2",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_N_O": {
+      "feature_name": "rdkit_pka__rdkit__fr_N_O",
+      "display_name": "N-oxide fragment count",
+      "description": "count of N-oxide fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_N_O",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_Ndealkylation1": {
+      "feature_name": "rdkit_pka__rdkit__fr_Ndealkylation1",
+      "display_name": "Ndealkylation1 fragment count",
+      "description": "count of RDKit-recognized Ndealkylation1 fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_Ndealkylation1",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_Ndealkylation2": {
+      "feature_name": "rdkit_pka__rdkit__fr_Ndealkylation2",
+      "display_name": "Ndealkylation2 fragment count",
+      "description": "count of RDKit-recognized Ndealkylation2 fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_Ndealkylation2",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_Nhpyrrole": {
+      "feature_name": "rdkit_pka__rdkit__fr_Nhpyrrole",
+      "display_name": "Nhpyrrole fragment count",
+      "description": "count of RDKit-recognized Nhpyrrole fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_Nhpyrrole",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_SH": {
+      "feature_name": "rdkit_pka__rdkit__fr_SH",
+      "display_name": "SH fragment count",
+      "description": "count of RDKit-recognized SH fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_SH",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_aldehyde": {
+      "feature_name": "rdkit_pka__rdkit__fr_aldehyde",
+      "display_name": "aldehyde fragment count",
+      "description": "count of RDKit-recognized aldehyde fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_aldehyde",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_alkyl_carbamate": {
+      "feature_name": "rdkit_pka__rdkit__fr_alkyl_carbamate",
+      "display_name": "alkyl carbamate fragment count",
+      "description": "count of RDKit-recognized alkyl carbamate fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_alkyl_carbamate",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_alkyl_halide": {
+      "feature_name": "rdkit_pka__rdkit__fr_alkyl_halide",
+      "display_name": "alkyl halide fragment count",
+      "description": "count of RDKit-recognized alkyl halide fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_alkyl_halide",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_allylic_oxid": {
+      "feature_name": "rdkit_pka__rdkit__fr_allylic_oxid",
+      "display_name": "allylic oxid fragment count",
+      "description": "count of RDKit-recognized allylic oxid fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_allylic_oxid",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_amide": {
+      "feature_name": "rdkit_pka__rdkit__fr_amide",
+      "display_name": "amide fragment count",
+      "description": "count of RDKit-recognized amide fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_amide",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_amidine": {
+      "feature_name": "rdkit_pka__rdkit__fr_amidine",
+      "display_name": "amidine fragment count",
+      "description": "count of RDKit-recognized amidine fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_amidine",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_aniline": {
+      "feature_name": "rdkit_pka__rdkit__fr_aniline",
+      "display_name": "aniline fragment count",
+      "description": "count of RDKit-recognized aniline fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_aniline",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_aryl_methyl": {
+      "feature_name": "rdkit_pka__rdkit__fr_aryl_methyl",
+      "display_name": "aryl methyl fragment count",
+      "description": "count of RDKit-recognized aryl methyl fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_aryl_methyl",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_azide": {
+      "feature_name": "rdkit_pka__rdkit__fr_azide",
+      "display_name": "azide fragment count",
+      "description": "count of RDKit-recognized azide fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_azide",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_azo": {
+      "feature_name": "rdkit_pka__rdkit__fr_azo",
+      "display_name": "azo fragment count",
+      "description": "count of RDKit-recognized azo fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_azo",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_barbitur": {
+      "feature_name": "rdkit_pka__rdkit__fr_barbitur",
+      "display_name": "barbitur fragment count",
+      "description": "count of RDKit-recognized barbitur fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_barbitur",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_benzene": {
+      "feature_name": "rdkit_pka__rdkit__fr_benzene",
+      "display_name": "benzene fragment count",
+      "description": "count of RDKit-recognized benzene fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_benzene",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_benzodiazepine": {
+      "feature_name": "rdkit_pka__rdkit__fr_benzodiazepine",
+      "display_name": "benzodiazepine fragment count",
+      "description": "count of RDKit-recognized benzodiazepine fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_benzodiazepine",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_bicyclic": {
+      "feature_name": "rdkit_pka__rdkit__fr_bicyclic",
+      "display_name": "bicyclic fragment count",
+      "description": "count of RDKit-recognized bicyclic fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_bicyclic",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_diazo": {
+      "feature_name": "rdkit_pka__rdkit__fr_diazo",
+      "display_name": "diazo fragment count",
+      "description": "count of RDKit-recognized diazo fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_diazo",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_dihydropyridine": {
+      "feature_name": "rdkit_pka__rdkit__fr_dihydropyridine",
+      "display_name": "dihydropyridine fragment count",
+      "description": "count of RDKit-recognized dihydropyridine fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_dihydropyridine",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_epoxide": {
+      "feature_name": "rdkit_pka__rdkit__fr_epoxide",
+      "display_name": "epoxide fragment count",
+      "description": "count of RDKit-recognized epoxide fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_epoxide",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_ester": {
+      "feature_name": "rdkit_pka__rdkit__fr_ester",
+      "display_name": "ester fragment count",
+      "description": "count of RDKit-recognized ester fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_ester",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_ether": {
+      "feature_name": "rdkit_pka__rdkit__fr_ether",
+      "display_name": "ether fragment count",
+      "description": "count of RDKit-recognized ether fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_ether",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_furan": {
+      "feature_name": "rdkit_pka__rdkit__fr_furan",
+      "display_name": "furan fragment count",
+      "description": "count of RDKit-recognized furan fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_furan",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_guanido": {
+      "feature_name": "rdkit_pka__rdkit__fr_guanido",
+      "display_name": "guanido fragment count",
+      "description": "count of RDKit-recognized guanido fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_guanido",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_halogen": {
+      "feature_name": "rdkit_pka__rdkit__fr_halogen",
+      "display_name": "halogen fragment count",
+      "description": "count of RDKit-recognized halogen fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_halogen",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_hdrzine": {
+      "feature_name": "rdkit_pka__rdkit__fr_hdrzine",
+      "display_name": "hdrzine fragment count",
+      "description": "count of RDKit-recognized hdrzine fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_hdrzine",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_hdrzone": {
+      "feature_name": "rdkit_pka__rdkit__fr_hdrzone",
+      "display_name": "hdrzone fragment count",
+      "description": "count of RDKit-recognized hdrzone fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_hdrzone",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_imidazole": {
+      "feature_name": "rdkit_pka__rdkit__fr_imidazole",
+      "display_name": "imidazole fragment count",
+      "description": "count of RDKit-recognized imidazole fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_imidazole",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_imide": {
+      "feature_name": "rdkit_pka__rdkit__fr_imide",
+      "display_name": "imide fragment count",
+      "description": "count of RDKit-recognized imide fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_imide",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_isocyan": {
+      "feature_name": "rdkit_pka__rdkit__fr_isocyan",
+      "display_name": "isocyan fragment count",
+      "description": "count of RDKit-recognized isocyan fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_isocyan",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_isothiocyan": {
+      "feature_name": "rdkit_pka__rdkit__fr_isothiocyan",
+      "display_name": "isothiocyan fragment count",
+      "description": "count of RDKit-recognized isothiocyan fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_isothiocyan",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_ketone": {
+      "feature_name": "rdkit_pka__rdkit__fr_ketone",
+      "display_name": "ketone fragment count",
+      "description": "count of RDKit-recognized ketone fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_ketone",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_ketone_Topliss": {
+      "feature_name": "rdkit_pka__rdkit__fr_ketone_Topliss",
+      "display_name": "ketone Topliss fragment count",
+      "description": "count of RDKit-recognized ketone Topliss fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_ketone_Topliss",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_lactam": {
+      "feature_name": "rdkit_pka__rdkit__fr_lactam",
+      "display_name": "lactam fragment count",
+      "description": "count of RDKit-recognized lactam fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_lactam",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_lactone": {
+      "feature_name": "rdkit_pka__rdkit__fr_lactone",
+      "display_name": "lactone fragment count",
+      "description": "count of RDKit-recognized lactone fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_lactone",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_methoxy": {
+      "feature_name": "rdkit_pka__rdkit__fr_methoxy",
+      "display_name": "methoxy fragment count",
+      "description": "count of RDKit-recognized methoxy fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_methoxy",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_morpholine": {
+      "feature_name": "rdkit_pka__rdkit__fr_morpholine",
+      "display_name": "morpholine fragment count",
+      "description": "count of RDKit-recognized morpholine fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_morpholine",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_nitrile": {
+      "feature_name": "rdkit_pka__rdkit__fr_nitrile",
+      "display_name": "nitrile fragment count",
+      "description": "count of RDKit-recognized nitrile fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_nitrile",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_nitro": {
+      "feature_name": "rdkit_pka__rdkit__fr_nitro",
+      "display_name": "nitro fragment count",
+      "description": "count of RDKit-recognized nitro fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_nitro",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_nitro_arom": {
+      "feature_name": "rdkit_pka__rdkit__fr_nitro_arom",
+      "display_name": "nitro arom fragment count",
+      "description": "count of RDKit-recognized nitro arom fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_nitro_arom",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_nitro_arom_nonortho": {
+      "feature_name": "rdkit_pka__rdkit__fr_nitro_arom_nonortho",
+      "display_name": "nitro arom nonortho fragment count",
+      "description": "count of RDKit-recognized nitro arom nonortho fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_nitro_arom_nonortho",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_nitroso": {
+      "feature_name": "rdkit_pka__rdkit__fr_nitroso",
+      "display_name": "nitroso fragment count",
+      "description": "count of RDKit-recognized nitroso fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_nitroso",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_oxazole": {
+      "feature_name": "rdkit_pka__rdkit__fr_oxazole",
+      "display_name": "oxazole fragment count",
+      "description": "count of RDKit-recognized oxazole fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_oxazole",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_oxime": {
+      "feature_name": "rdkit_pka__rdkit__fr_oxime",
+      "display_name": "oxime fragment count",
+      "description": "count of RDKit-recognized oxime fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_oxime",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_para_hydroxylation": {
+      "feature_name": "rdkit_pka__rdkit__fr_para_hydroxylation",
+      "display_name": "para hydroxylation fragment count",
+      "description": "count of RDKit-recognized para hydroxylation fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_para_hydroxylation",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_phenol": {
+      "feature_name": "rdkit_pka__rdkit__fr_phenol",
+      "display_name": "phenol fragment count",
+      "description": "count of RDKit-recognized phenol fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_phenol",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_phenol_noOrthoHbond": {
+      "feature_name": "rdkit_pka__rdkit__fr_phenol_noOrthoHbond",
+      "display_name": "phenol noOrthoHbond fragment count",
+      "description": "count of RDKit-recognized phenol noOrthoHbond fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_phenol_noOrthoHbond",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_phos_acid": {
+      "feature_name": "rdkit_pka__rdkit__fr_phos_acid",
+      "display_name": "phos acid fragment count",
+      "description": "count of RDKit-recognized phos acid fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_phos_acid",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_phos_ester": {
+      "feature_name": "rdkit_pka__rdkit__fr_phos_ester",
+      "display_name": "phos ester fragment count",
+      "description": "count of RDKit-recognized phos ester fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_phos_ester",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_piperdine": {
+      "feature_name": "rdkit_pka__rdkit__fr_piperdine",
+      "display_name": "piperdine fragment count",
+      "description": "count of RDKit-recognized piperdine fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_piperdine",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_piperzine": {
+      "feature_name": "rdkit_pka__rdkit__fr_piperzine",
+      "display_name": "piperzine fragment count",
+      "description": "count of RDKit-recognized piperzine fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_piperzine",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_priamide": {
+      "feature_name": "rdkit_pka__rdkit__fr_priamide",
+      "display_name": "priamide fragment count",
+      "description": "count of RDKit-recognized priamide fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_priamide",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_prisulfonamd": {
+      "feature_name": "rdkit_pka__rdkit__fr_prisulfonamd",
+      "display_name": "prisulfonamd fragment count",
+      "description": "count of RDKit-recognized prisulfonamd fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_prisulfonamd",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_pyridine": {
+      "feature_name": "rdkit_pka__rdkit__fr_pyridine",
+      "display_name": "pyridine fragment count",
+      "description": "count of RDKit-recognized pyridine fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_pyridine",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_quatN": {
+      "feature_name": "rdkit_pka__rdkit__fr_quatN",
+      "display_name": "quatN fragment count",
+      "description": "count of RDKit-recognized quatN fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_quatN",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_sulfide": {
+      "feature_name": "rdkit_pka__rdkit__fr_sulfide",
+      "display_name": "sulfide fragment count",
+      "description": "count of RDKit-recognized sulfide fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_sulfide",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_sulfonamd": {
+      "feature_name": "rdkit_pka__rdkit__fr_sulfonamd",
+      "display_name": "sulfonamd fragment count",
+      "description": "count of RDKit-recognized sulfonamd fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_sulfonamd",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_sulfone": {
+      "feature_name": "rdkit_pka__rdkit__fr_sulfone",
+      "display_name": "sulfone fragment count",
+      "description": "count of RDKit-recognized sulfone fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_sulfone",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_term_acetylene": {
+      "feature_name": "rdkit_pka__rdkit__fr_term_acetylene",
+      "display_name": "term acetylene fragment count",
+      "description": "count of RDKit-recognized term acetylene fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_term_acetylene",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_tetrazole": {
+      "feature_name": "rdkit_pka__rdkit__fr_tetrazole",
+      "display_name": "tetrazole fragment count",
+      "description": "count of RDKit-recognized tetrazole fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_tetrazole",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_thiazole": {
+      "feature_name": "rdkit_pka__rdkit__fr_thiazole",
+      "display_name": "thiazole fragment count",
+      "description": "count of RDKit-recognized thiazole fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_thiazole",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_thiocyan": {
+      "feature_name": "rdkit_pka__rdkit__fr_thiocyan",
+      "display_name": "thiocyan fragment count",
+      "description": "count of RDKit-recognized thiocyan fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_thiocyan",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_thiophene": {
+      "feature_name": "rdkit_pka__rdkit__fr_thiophene",
+      "display_name": "thiophene fragment count",
+      "description": "count of RDKit-recognized thiophene fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_thiophene",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_unbrch_alkane": {
+      "feature_name": "rdkit_pka__rdkit__fr_unbrch_alkane",
+      "display_name": "unbrch alkane fragment count",
+      "description": "count of RDKit-recognized unbrch alkane fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_unbrch_alkane",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__fr_urea": {
+      "feature_name": "rdkit_pka__rdkit__fr_urea",
+      "display_name": "urea fragment count",
+      "description": "count of RDKit-recognized urea fragments",
+      "source_family": "rdkit",
+      "raw_name": "fr_urea",
+      "nlp_readiness": "natural_language_ready"
+    },
+    "rdkit__qed": {
+      "feature_name": "rdkit_pka__rdkit__qed",
+      "display_name": "QED drug-likeness",
+      "description": "quantitative estimate of drug-likeness",
+      "source_family": "rdkit",
+      "raw_name": "qed",
+      "nlp_readiness": "natural_language_ready"
+    }
+  }
+}

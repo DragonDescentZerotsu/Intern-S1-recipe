@@ -47,6 +47,26 @@
   - 支持单条 SMILES、txt 文件、或者带 SMILES 列的 CSV
   - 默认优先从 `train/tree/bundles/<experiment>/<task>/<feature_set>/` 解析 bundle
 
+- `explain_random_forest_bundle.py`
+  - 读取 `model_bundle.pkl` 做 sample 级别 TreeSHAP 解释
+  - 支持直接传 `--smiles`，或者传 `--split` + `--sample-index` 解释 TDC 某条样本
+  - 当前只输出 feature 名、原始值、模型输入值、SHAP 值，不做自然语言描述映射
+
+- `select_reasoning_trees.py`
+  - 读取 `model_bundle.pkl`，先对 sample 做 TreeSHAP，再筛选可用于 reasoning data 的候选树
+  - 默认只保留 forest 整体预测也正确的 sample；可通过参数关闭
+  - 每棵候选树会输出命中的 SHAP top-k feature、叶子概率、以及 sample 在该树上的实际决策路径
+  - 决策路径里的 split threshold 同时给出 `model_input` 空间和还原后的 `raw` 空间数值
+  - 默认保存到 `train/tree/tree_reasoning_processes/<experiment>/<task>/<feature_set>/`
+  - 输出里额外包含一层 `reasoning_schema`，用于后续衔接 LLM/SFT 的 reasoning 模板
+
+## 当前 reasoning data 目标
+
+- 当前不是直接把树结构文本拿去做 SFT，而是先把树的细粒度决策过程尽量完整地写出来，再交给更大的 LLM 转成自然、可读、像模型自主分析分子的 reasoning data。
+- 因此 `reasoning_schema` 里的 `statement_for_sft` 和 `path_level_reasoning_note` 需要尽量保留细节，不要过早压缩成简短总结。
+- 同时这些文本不要过度暴露树实现细节；尤其避免类似“next node 的类别概率是多少”这种过强的树结构感表述。
+- 更合适的风格是：保留 feature、阈值、方向性证据，以及它支持哪一类结论，但让整体读起来更像在分析分子性质，而不是在逐行解释一棵树的数据结构。
+
 - `batch_tune_random_forest.py`
   - 负责 RF 调参
   - 支持用 `--tasks` 跑单个或多个任务；不传时默认跑全部任务
@@ -225,6 +245,70 @@ python train/tree/predict_random_forest_bundle.py \
   --task BBB_Martins \
   --smiles "CCO"
 ```
+
+解释某个 valid sample 的 top feature 贡献：
+
+```bash
+/data1/tianang/anaconda3/condabin/conda run -n vllm \
+python train/tree/explain_random_forest_bundle.py \
+  --experiment-name fg_top_level_plus_rdkit_pka_traincv5_n40_seed0 \
+  --task BBB_Martins \
+  --split valid \
+  --sample-index 0 \
+  --top-k 20
+```
+
+为某个 sample 选 5 棵最适合做 reasoning data 的树：
+
+```bash
+/data1/tianang/anaconda3/condabin/conda run -n vllm \
+python train/tree/select_reasoning_trees.py \
+  --experiment-name fg_top_level_plus_rdkit_pka_traincv5_n40_seed0 \
+  --task BBB_Martins \
+  --split valid \
+  --sample-index 0 \
+  --shap-top-k 30 \
+  --max-trees 5
+```
+
+为某个 task 的整套 split 批量生成 tree trace：
+
+```bash
+/data1/tianang/anaconda3/condabin/conda run -n vllm \
+python train/tree/batch_select_reasoning_trees.py \
+  --experiment-name fg_top_level_plus_rdkit_pka_easy_to_NLP_Lv1_traincv5_n40_eval0_jobs16 \
+  --task BBB_Martins \
+  --feature-set 'fg_top_level+rdkit_descriptors_and_pka_easy_to_NLP_Lv1' \
+  --splits train \
+  --shap-top-k 30 \
+  --max-trees 5 \
+  --allow-forest-incorrect
+```
+
+如果要一次跑 `train` 和 `valid`：
+
+```bash
+/data1/tianang/anaconda3/condabin/conda run -n vllm \
+python train/tree/batch_select_reasoning_trees.py \
+  --experiment-name fg_top_level_plus_rdkit_pka_easy_to_NLP_Lv1_traincv5_n40_eval0_jobs16 \
+  --task BBB_Martins \
+  --feature-set 'fg_top_level+rdkit_descriptors_and_pka_easy_to_NLP_Lv1' \
+  --splits all \
+  --shap-top-k 30 \
+  --max-trees 5 \
+  --allow-forest-incorrect \
+  --skip-existing
+```
+
+说明：
+
+- `batch_select_reasoning_trees.py` 会按 split 自动读取 TDC JSONL，并批量写出
+  `train/tree/tree_reasoning_processes/<experiment>/<task>/<feature_set>/*.json`
+- 对 SFT 数据主线，优先只跑 `train`；当前脚本默认也是 `--splits train`
+- `--allow-forest-incorrect` 很重要；否则 forest 预测错的样本会被整条跳过，很多输出会是空 `selected_trees`
+- `--skip-existing` 适合断点续跑
+- `--batch-size` 可调，默认 `64`
+- 默认显示进度条；如果不想显示可以加 `--no-progress`
 
 ## 当前默认假设
 

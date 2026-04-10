@@ -1,0 +1,1906 @@
+{
+  "sample_index": 0,
+  "smiles": "O=C(c1ccccc1)c1ccc2n1CCC2C(=O)O",
+  "label": 0,
+  "forest_prediction": 0,
+  "forest_prediction_correct": true,
+  "require_forest_correct": true,
+  "skipped_reason": null,
+  "feature_set_name": "fg_top_level+rdkit_descriptors_and_pka",
+  "explained_class": 0,
+  "class_index": 0,
+  "explained_class_probability": 0.7263805763325122,
+  "predicted_probabilities": [
+    0.7263805763325122,
+    0.27361942366748765
+  ],
+  "base_value": 0.5006483968484474,
+  "explained_output_value": 0.7263805763325085,
+  "shap_top_k": 30,
+  "shap_top_feature_names": [
+    "rdkit_pka__pka__logd_estimate",
+    "rdkit_pka__rdkit__TPSA",
+    "rdkit_pka__rdkit__fr_COO2",
+    "rdkit_pka__rdkit__fr_COO",
+    "rdkit_pka__rdkit__SMR_VSA1",
+    "rdkit_pka__rdkit__VSA_EState3",
+    "fg_top_level__carboxylic acid",
+    "rdkit_pka__rdkit__MinPartialCharge",
+    "rdkit_pka__pka__fraction_neutral",
+    "rdkit_pka__rdkit__BCUT2D_CHGLO",
+    "rdkit_pka__rdkit__NumHDonors",
+    "rdkit_pka__rdkit__EState_VSA10",
+    "rdkit_pka__rdkit__qed",
+    "rdkit_pka__rdkit__VSA_EState5",
+    "rdkit_pka__rdkit__VSA_EState7",
+    "rdkit_pka__rdkit__BCUT2D_LOGPLOW",
+    "rdkit_pka__rdkit__BCUT2D_MWLOW",
+    "rdkit_pka__rdkit__MinEStateIndex",
+    "rdkit_pka__rdkit__BCUT2D_MWHI",
+    "rdkit_pka__rdkit__Kappa3",
+    "rdkit_pka__rdkit__VSA_EState8",
+    "rdkit_pka__rdkit__VSA_EState6",
+    "rdkit_pka__rdkit__PEOE_VSA1",
+    "rdkit_pka__rdkit__BCUT2D_LOGPHI",
+    "rdkit_pka__rdkit__Chi2v",
+    "rdkit_pka__rdkit__PEOE_VSA10",
+    "rdkit_pka__rdkit__Kappa1",
+    "rdkit_pka__rdkit__SlogP_VSA2",
+    "rdkit_pka__rdkit__BCUT2D_MRLOW",
+    "rdkit_pka__rdkit__PEOE_VSA9"
+  ],
+  "shap_top_abs_sum": 0.6195583658555897,
+  "shap_top_features": [
+    {
+      "feature_name": "rdkit_pka__pka__logd_estimate",
+      "raw_value": -0.8615,
+      "model_input_value": -0.7342464407114919,
+      "shap_value": 0.14902722978842728,
+      "abs_shap_value": 0.14902722978842728
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__TPSA",
+      "raw_value": 59.3,
+      "model_input_value": -0.23403903742246576,
+      "shap_value": -0.09499484161287844,
+      "abs_shap_value": 0.09499484161287844
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__fr_COO2",
+      "raw_value": 1.0,
+      "model_input_value": 2.583606708082181,
+      "shap_value": 0.048634405766725196,
+      "abs_shap_value": 0.048634405766725196
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__fr_COO",
+      "raw_value": 1.0,
+      "model_input_value": 2.583606708082181,
+      "shap_value": 0.04188059433175361,
+      "abs_shap_value": 0.04188059433175361
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__SMR_VSA1",
+      "raw_value": 14.69560176298435,
+      "model_input_value": -0.09646853768063388,
+      "shap_value": 0.0379016649767593,
+      "abs_shap_value": 0.0379016649767593
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__VSA_EState3",
+      "raw_value": 9.126647546376985,
+      "model_input_value": -0.14637019963079065,
+      "shap_value": 0.03657115448583938,
+      "abs_shap_value": 0.03657115448583938
+    },
+    {
+      "feature_name": "fg_top_level__carboxylic acid",
+      "raw_value": 1.0,
+      "model_input_value": 2.583606708082181,
+      "shap_value": 0.03231957803518905,
+      "abs_shap_value": 0.03231957803518905
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__MinPartialCharge",
+      "raw_value": -0.4807387545756237,
+      "model_input_value": -0.8726409925731408,
+      "shap_value": 0.026991798809048378,
+      "abs_shap_value": 0.026991798809048378
+    },
+    {
+      "feature_name": "rdkit_pka__pka__fraction_neutral",
+      "raw_value": 0.0007,
+      "model_input_value": -1.0531608653797866,
+      "shap_value": 0.02169801371396414,
+      "abs_shap_value": 0.02169801371396414
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__BCUT2D_CHGLO",
+      "raw_value": -2.0498919351867726,
+      "model_input_value": 1.4910627489345376,
+      "shap_value": -0.012330561344836675,
+      "abs_shap_value": 0.012330561344836675
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__NumHDonors",
+      "raw_value": 1.0,
+      "model_input_value": -0.3150639543509965,
+      "shap_value": -0.01086733314894387,
+      "abs_shap_value": 0.01086733314894387
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__EState_VSA10",
+      "raw_value": 9.589074368143644,
+      "model_input_value": -0.18938979056468017,
+      "shap_value": -0.009983311045267064,
+      "abs_shap_value": 0.009983311045267064
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__qed",
+      "raw_value": 0.855918702387755,
+      "model_input_value": 1.087326351727939,
+      "shap_value": -0.009796058639229551,
+      "abs_shap_value": 0.009796058639229551
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__VSA_EState5",
+      "raw_value": -1.369655349794238,
+      "model_input_value": -0.46630923565258453,
+      "shap_value": 0.009651600344824172,
+      "abs_shap_value": 0.009651600344824172
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__VSA_EState7",
+      "raw_value": 0.5561273305618544,
+      "model_input_value": -0.3521017703699628,
+      "shap_value": 0.007778076587390709,
+      "abs_shap_value": 0.007778076587390709
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__BCUT2D_LOGPLOW",
+      "raw_value": -2.094236455088789,
+      "model_input_value": 1.5778782887463059,
+      "shap_value": -0.006235447021495027,
+      "abs_shap_value": 0.006235447021495027
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__BCUT2D_MWLOW",
+      "raw_value": 10.055450333731416,
+      "model_input_value": 0.5088668155093932,
+      "shap_value": 0.005947981240401583,
+      "abs_shap_value": 0.005947981240401583
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__MinEStateIndex",
+      "raw_value": -0.8235554715713442,
+      "model_input_value": -0.0040242483859076,
+      "shap_value": 0.0058101327670915795,
+      "abs_shap_value": 0.0058101327670915795
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__BCUT2D_MWHI",
+      "raw_value": 16.366727303549325,
+      "model_input_value": -0.6983959406833798,
+      "shap_value": 0.005619514460576752,
+      "abs_shap_value": 0.005619514460576752
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__Kappa3",
+      "raw_value": 1.8518175588367969,
+      "model_input_value": -0.7814309725970426,
+      "shap_value": -0.005574490252578639,
+      "abs_shap_value": 0.005574490252578639
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__VSA_EState8",
+      "raw_value": 0.5904830404383976,
+      "model_input_value": -0.9042776201050227,
+      "shap_value": -0.00531503444667127,
+      "abs_shap_value": 0.00531503444667127
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__VSA_EState6",
+      "raw_value": 12.515476510405712,
+      "model_input_value": 0.7260110120727233,
+      "shap_value": -0.005064507531101684,
+      "abs_shap_value": 0.005064507531101684
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__PEOE_VSA1",
+      "raw_value": 9.67362704263206,
+      "model_input_value": -0.38556361929372684,
+      "shap_value": -0.004992163738639137,
+      "abs_shap_value": 0.004992163738639137
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__BCUT2D_LOGPHI",
+      "raw_value": 2.308788810527606,
+      "model_input_value": -0.3291729872663632,
+      "shap_value": 0.0047034622001256715,
+      "abs_shap_value": 0.0047034622001256715
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__Chi2v",
+      "raw_value": 4.669725472796263,
+      "model_input_value": -0.790055988608238,
+      "shap_value": -0.00417883284655399,
+      "abs_shap_value": 0.00417883284655399
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__PEOE_VSA10",
+      "raw_value": 0.0,
+      "model_input_value": -0.8104650107134284,
+      "shap_value": -0.0038173310712062507,
+      "abs_shap_value": 0.0038173310712062507
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__Kappa1",
+      "raw_value": 11.71480336716462,
+      "model_input_value": -0.7335613554527206,
+      "shap_value": -0.00334520992479843,
+      "abs_shap_value": 0.00334520992479843
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__SlogP_VSA2",
+      "raw_value": 21.42617727694885,
+      "model_input_value": -0.7372494420952994,
+      "shap_value": -0.002909964851413597,
+      "abs_shap_value": 0.002909964851413597
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__BCUT2D_MRLOW",
+      "raw_value": -0.1382669800354174,
+      "model_input_value": -0.4961820268350446,
+      "shap_value": -0.002864495439802855,
+      "abs_shap_value": 0.002864495439802855
+    },
+    {
+      "feature_name": "rdkit_pka__rdkit__PEOE_VSA9",
+      "raw_value": 11.611834041009852,
+      "model_input_value": 0.016457378227599653,
+      "shap_value": -0.0027535754320564335,
+      "abs_shap_value": 0.0027535754320564335
+    }
+  ],
+  "selected_trees": [
+    {
+      "tree_index": 395,
+      "tree_prediction": 0.0,
+      "tree_prediction_correct": true,
+      "leaf_node_id": 23,
+      "leaf_target_class_probability": 1.0,
+      "tree_predicted_probabilities": [
+        1.0,
+        0.0
+      ],
+      "tree_class_probability_map": {
+        "0.0": 1.0,
+        "1.0": 0.0
+      },
+      "path_length": 12,
+      "hit_count": 9,
+      "hit_abs_shap_sum": 0.33554954594721265,
+      "hit_feature_names": [
+        "rdkit_pka__rdkit__TPSA",
+        "rdkit_pka__pka__logd_estimate",
+        "rdkit_pka__rdkit__VSA_EState3",
+        "rdkit_pka__pka__fraction_neutral",
+        "rdkit_pka__rdkit__VSA_EState7",
+        "rdkit_pka__rdkit__MinEStateIndex",
+        "rdkit_pka__rdkit__VSA_EState8",
+        "rdkit_pka__rdkit__VSA_EState5",
+        "rdkit_pka__rdkit__BCUT2D_LOGPHI"
+      ],
+      "hit_features": [
+        {
+          "feature_name": "rdkit_pka__rdkit__TPSA",
+          "raw_value": 59.3,
+          "model_input_value": -0.23403903742246576,
+          "shap_value": -0.09499484161287844,
+          "abs_shap_value": 0.09499484161287844
+        },
+        {
+          "feature_name": "rdkit_pka__pka__logd_estimate",
+          "raw_value": -0.8615,
+          "model_input_value": -0.7342464407114919,
+          "shap_value": 0.14902722978842728,
+          "abs_shap_value": 0.14902722978842728
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__VSA_EState3",
+          "raw_value": 9.126647546376985,
+          "model_input_value": -0.14637019963079065,
+          "shap_value": 0.03657115448583938,
+          "abs_shap_value": 0.03657115448583938
+        },
+        {
+          "feature_name": "rdkit_pka__pka__fraction_neutral",
+          "raw_value": 0.0007,
+          "model_input_value": -1.0531608653797866,
+          "shap_value": 0.02169801371396414,
+          "abs_shap_value": 0.02169801371396414
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__VSA_EState7",
+          "raw_value": 0.5561273305618544,
+          "model_input_value": -0.3521017703699628,
+          "shap_value": 0.007778076587390709,
+          "abs_shap_value": 0.007778076587390709
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__MinEStateIndex",
+          "raw_value": -0.8235554715713442,
+          "model_input_value": -0.0040242483859076,
+          "shap_value": 0.0058101327670915795,
+          "abs_shap_value": 0.0058101327670915795
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__VSA_EState8",
+          "raw_value": 0.5904830404383976,
+          "model_input_value": -0.9042776201050227,
+          "shap_value": -0.00531503444667127,
+          "abs_shap_value": 0.00531503444667127
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__VSA_EState5",
+          "raw_value": -1.369655349794238,
+          "model_input_value": -0.46630923565258453,
+          "shap_value": 0.009651600344824172,
+          "abs_shap_value": 0.009651600344824172
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__BCUT2D_LOGPHI",
+          "raw_value": 2.308788810527606,
+          "model_input_value": -0.3291729872663632,
+          "shap_value": 0.0047034622001256715,
+          "abs_shap_value": 0.0047034622001256715
+        }
+      ],
+      "decision_path": {
+        "node_ids": [
+          0,
+          1,
+          2,
+          10,
+          11,
+          12,
+          13,
+          15,
+          17,
+          18,
+          20,
+          22,
+          23
+        ],
+        "steps": [
+          {
+            "depth": 0,
+            "node_id": 0,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__TPSA",
+            "feature_index": 672,
+            "threshold_model_input": 0.5682263374328613,
+            "threshold_raw_value": 107.10000073941511,
+            "sample_model_input_value": -0.23403903742246576,
+            "sample_raw_value": 59.3,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 1,
+            "n_node_samples": 862
+          },
+          {
+            "depth": 1,
+            "node_id": 1,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__pka__logd_estimate",
+            "feature_index": 540,
+            "threshold_model_input": -0.20669206976890564,
+            "threshold_raw_value": 0.6283499892761052,
+            "sample_model_input_value": -0.7342464407114919,
+            "sample_raw_value": -0.8615,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 2,
+            "n_node_samples": 711
+          },
+          {
+            "depth": 2,
+            "node_id": 2,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__VSA_EState3",
+            "feature_index": 676,
+            "threshold_model_input": -0.22282730042934418,
+            "threshold_raw_value": 7.9994121443812745,
+            "sample_model_input_value": -0.14637019963079065,
+            "sample_raw_value": 9.126647546376985,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 10,
+            "n_node_samples": 127
+          },
+          {
+            "depth": 3,
+            "node_id": 10,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__BertzCT",
+            "feature_index": 562,
+            "threshold_model_input": 0.5281826853752136,
+            "threshold_raw_value": 936.8299851633287,
+            "sample_model_input_value": -0.25617164896863764,
+            "sample_raw_value": 642.6652275716834,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 11,
+            "n_node_samples": 69
+          },
+          {
+            "depth": 4,
+            "node_id": 11,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__pka__fraction_neutral",
+            "feature_index": 536,
+            "threshold_model_input": 1.1947389245033264,
+            "threshold_raw_value": 0.9982000070865185,
+            "sample_model_input_value": -1.0531608653797866,
+            "sample_raw_value": 0.0007,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 12,
+            "n_node_samples": 65
+          },
+          {
+            "depth": 5,
+            "node_id": 12,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__VSA_EState7",
+            "feature_index": 680,
+            "threshold_model_input": 0.4389113038778305,
+            "threshold_raw_value": 3.7848391988835726,
+            "sample_model_input_value": -0.3521017703699628,
+            "sample_raw_value": 0.5561273305618544,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 13,
+            "n_node_samples": 61
+          },
+          {
+            "depth": 6,
+            "node_id": 13,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__MinEStateIndex",
+            "feature_index": 605,
+            "threshold_model_input": -1.2231944650411606,
+            "threshold_raw_value": -2.338975045559513,
+            "sample_model_input_value": -0.0040242483859076,
+            "sample_raw_value": -0.8235554715713442,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 15,
+            "n_node_samples": 57
+          },
+          {
+            "depth": 7,
+            "node_id": 15,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__VSA_EState8",
+            "feature_index": 681,
+            "threshold_model_input": -1.1765013933181763,
+            "threshold_raw_value": -0.34530982108425423,
+            "sample_model_input_value": -0.9042776201050227,
+            "sample_raw_value": 0.5904830404383976,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 17,
+            "n_node_samples": 55
+          },
+          {
+            "depth": 8,
+            "node_id": 17,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__VSA_EState5",
+            "feature_index": 678,
+            "threshold_model_input": 0.2674785405397415,
+            "threshold_raw_value": 0.22608900130632614,
+            "sample_model_input_value": -0.46630923565258453,
+            "sample_raw_value": -1.369655349794238,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 18,
+            "n_node_samples": 53
+          },
+          {
+            "depth": 9,
+            "node_id": 18,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__FractionCSP3",
+            "feature_index": 590,
+            "threshold_model_input": -1.4601764678955078,
+            "threshold_raw_value": 0.12916666571781027,
+            "sample_model_input_value": -1.136536704950996,
+            "sample_raw_value": 0.2,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 20,
+            "n_node_samples": 44
+          },
+          {
+            "depth": 10,
+            "node_id": 20,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__BCUT2D_LOGPHI",
+            "feature_index": 555,
+            "threshold_model_input": -1.1472418904304504,
+            "threshold_raw_value": 2.15962201947201,
+            "sample_model_input_value": -0.3291729872663632,
+            "sample_raw_value": 2.308788810527606,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 22,
+            "n_node_samples": 38
+          },
+          {
+            "depth": 11,
+            "node_id": 22,
+            "is_leaf": false,
+            "feature_name": "fg_top_level__piperazine",
+            "feature_index": 376,
+            "threshold_model_input": 1.3421720564365387,
+            "threshold_raw_value": 0.5000000095366631,
+            "sample_model_input_value": -0.32670490698844257,
+            "sample_raw_value": 0.0,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 23,
+            "n_node_samples": 34
+          },
+          {
+            "depth": 12,
+            "node_id": 23,
+            "is_leaf": true,
+            "leaf_node_id": 23,
+            "n_node_samples": 28
+          }
+        ],
+        "path_length": 12,
+        "decision_features": [
+          "rdkit_pka__rdkit__TPSA",
+          "rdkit_pka__pka__logd_estimate",
+          "rdkit_pka__rdkit__VSA_EState3",
+          "rdkit_pka__rdkit__BertzCT",
+          "rdkit_pka__pka__fraction_neutral",
+          "rdkit_pka__rdkit__VSA_EState7",
+          "rdkit_pka__rdkit__MinEStateIndex",
+          "rdkit_pka__rdkit__VSA_EState8",
+          "rdkit_pka__rdkit__VSA_EState5",
+          "rdkit_pka__rdkit__FractionCSP3",
+          "rdkit_pka__rdkit__BCUT2D_LOGPHI",
+          "fg_top_level__piperazine"
+        ]
+      }
+    },
+    {
+      "tree_index": 248,
+      "tree_prediction": 0.0,
+      "tree_prediction_correct": true,
+      "leaf_node_id": 23,
+      "leaf_target_class_probability": 1.0,
+      "tree_predicted_probabilities": [
+        1.0,
+        0.0
+      ],
+      "tree_class_probability_map": {
+        "0.0": 1.0,
+        "1.0": 0.0
+      },
+      "path_length": 11,
+      "hit_count": 9,
+      "hit_abs_shap_sum": 0.32953025443887257,
+      "hit_feature_names": [
+        "rdkit_pka__rdkit__TPSA",
+        "rdkit_pka__pka__logd_estimate",
+        "rdkit_pka__rdkit__VSA_EState3",
+        "rdkit_pka__rdkit__VSA_EState7",
+        "rdkit_pka__pka__fraction_neutral",
+        "rdkit_pka__rdkit__PEOE_VSA1",
+        "rdkit_pka__rdkit__BCUT2D_MWLOW",
+        "rdkit_pka__rdkit__PEOE_VSA10",
+        "rdkit_pka__rdkit__BCUT2D_LOGPHI"
+      ],
+      "hit_features": [
+        {
+          "feature_name": "rdkit_pka__rdkit__TPSA",
+          "raw_value": 59.3,
+          "model_input_value": -0.23403903742246576,
+          "shap_value": -0.09499484161287844,
+          "abs_shap_value": 0.09499484161287844
+        },
+        {
+          "feature_name": "rdkit_pka__pka__logd_estimate",
+          "raw_value": -0.8615,
+          "model_input_value": -0.7342464407114919,
+          "shap_value": 0.14902722978842728,
+          "abs_shap_value": 0.14902722978842728
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__VSA_EState3",
+          "raw_value": 9.126647546376985,
+          "model_input_value": -0.14637019963079065,
+          "shap_value": 0.03657115448583938,
+          "abs_shap_value": 0.03657115448583938
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__VSA_EState7",
+          "raw_value": 0.5561273305618544,
+          "model_input_value": -0.3521017703699628,
+          "shap_value": 0.007778076587390709,
+          "abs_shap_value": 0.007778076587390709
+        },
+        {
+          "feature_name": "rdkit_pka__pka__fraction_neutral",
+          "raw_value": 0.0007,
+          "model_input_value": -1.0531608653797866,
+          "shap_value": 0.02169801371396414,
+          "abs_shap_value": 0.02169801371396414
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__PEOE_VSA1",
+          "raw_value": 9.67362704263206,
+          "model_input_value": -0.38556361929372684,
+          "shap_value": -0.004992163738639137,
+          "abs_shap_value": 0.004992163738639137
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__BCUT2D_MWLOW",
+          "raw_value": 10.055450333731416,
+          "model_input_value": 0.5088668155093932,
+          "shap_value": 0.005947981240401583,
+          "abs_shap_value": 0.005947981240401583
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__PEOE_VSA10",
+          "raw_value": 0.0,
+          "model_input_value": -0.8104650107134284,
+          "shap_value": -0.0038173310712062507,
+          "abs_shap_value": 0.0038173310712062507
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__BCUT2D_LOGPHI",
+          "raw_value": 2.308788810527606,
+          "model_input_value": -0.3291729872663632,
+          "shap_value": 0.0047034622001256715,
+          "abs_shap_value": 0.0047034622001256715
+        }
+      ],
+      "decision_path": {
+        "node_ids": [
+          0,
+          1,
+          2,
+          12,
+          13,
+          14,
+          15,
+          16,
+          18,
+          20,
+          21,
+          23
+        ],
+        "steps": [
+          {
+            "depth": 0,
+            "node_id": 0,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__TPSA",
+            "feature_index": 672,
+            "threshold_model_input": 0.4817058742046356,
+            "threshold_raw_value": 101.94500049148652,
+            "sample_model_input_value": -0.23403903742246576,
+            "sample_raw_value": 59.3,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 1,
+            "n_node_samples": 870
+          },
+          {
+            "depth": 1,
+            "node_id": 1,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__pka__logd_estimate",
+            "feature_index": 540,
+            "threshold_model_input": -0.0477193258702755,
+            "threshold_raw_value": 1.077300000569525,
+            "sample_model_input_value": -0.7342464407114919,
+            "sample_raw_value": -0.8615,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 2,
+            "n_node_samples": 680
+          },
+          {
+            "depth": 2,
+            "node_id": 2,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__VSA_EState3",
+            "feature_index": 676,
+            "threshold_model_input": -0.3412318527698517,
+            "threshold_raw_value": 6.253729902161083,
+            "sample_model_input_value": -0.14637019963079065,
+            "sample_raw_value": 9.126647546376985,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 12,
+            "n_node_samples": 168
+          },
+          {
+            "depth": 3,
+            "node_id": 12,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__VSA_EState7",
+            "feature_index": 680,
+            "threshold_model_input": 0.25764690339565277,
+            "threshold_raw_value": 3.044964549279877,
+            "sample_model_input_value": -0.3521017703699628,
+            "sample_raw_value": 0.5561273305618544,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 13,
+            "n_node_samples": 82
+          },
+          {
+            "depth": 4,
+            "node_id": 13,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__pka__fraction_neutral",
+            "feature_index": 536,
+            "threshold_model_input": 1.1500062942504883,
+            "threshold_raw_value": 0.9783500123514217,
+            "sample_model_input_value": -1.0531608653797866,
+            "sample_raw_value": 0.0007,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 14,
+            "n_node_samples": 71
+          },
+          {
+            "depth": 5,
+            "node_id": 14,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__fr_NH1",
+            "feature_index": 699,
+            "threshold_model_input": 1.2201177477836609,
+            "threshold_raw_value": 1.5000000055665597,
+            "sample_model_input_value": -0.6174413210600955,
+            "sample_raw_value": 0.0,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 15,
+            "n_node_samples": 64
+          },
+          {
+            "depth": 6,
+            "node_id": 15,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__AvgIpc",
+            "feature_index": 552,
+            "threshold_model_input": 0.8364978730678558,
+            "threshold_raw_value": 3.065422390772339,
+            "sample_model_input_value": 0.6468410598392866,
+            "sample_raw_value": 2.9917453860635552,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 16,
+            "n_node_samples": 58
+          },
+          {
+            "depth": 7,
+            "node_id": 16,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__PEOE_VSA1",
+            "feature_index": 633,
+            "threshold_model_input": -0.7083475887775421,
+            "threshold_raw_value": 5.266159416305637,
+            "sample_model_input_value": -0.38556361929372684,
+            "sample_raw_value": 9.67362704263206,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 18,
+            "n_node_samples": 54
+          },
+          {
+            "depth": 8,
+            "node_id": 18,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__BCUT2D_MWLOW",
+            "feature_index": 560,
+            "threshold_model_input": -0.4061086028814316,
+            "threshold_raw_value": 9.818804293808789,
+            "sample_model_input_value": 0.5088668155093932,
+            "sample_raw_value": 10.055450333731416,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 20,
+            "n_node_samples": 51
+          },
+          {
+            "depth": 9,
+            "node_id": 20,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__PEOE_VSA10",
+            "feature_index": 634,
+            "threshold_model_input": 0.8350854218006134,
+            "threshold_raw_value": 17.702562823285632,
+            "sample_model_input_value": -0.8104650107134284,
+            "sample_raw_value": 0.0,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 21,
+            "n_node_samples": 49
+          },
+          {
+            "depth": 10,
+            "node_id": 21,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__BCUT2D_LOGPHI",
+            "feature_index": 555,
+            "threshold_model_input": -1.1472418904304504,
+            "threshold_raw_value": 2.15962201947201,
+            "sample_model_input_value": -0.3291729872663632,
+            "sample_raw_value": 2.308788810527606,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 23,
+            "n_node_samples": 43
+          },
+          {
+            "depth": 11,
+            "node_id": 23,
+            "is_leaf": true,
+            "leaf_node_id": 23,
+            "n_node_samples": 41
+          }
+        ],
+        "path_length": 11,
+        "decision_features": [
+          "rdkit_pka__rdkit__TPSA",
+          "rdkit_pka__pka__logd_estimate",
+          "rdkit_pka__rdkit__VSA_EState3",
+          "rdkit_pka__rdkit__VSA_EState7",
+          "rdkit_pka__pka__fraction_neutral",
+          "rdkit_pka__rdkit__fr_NH1",
+          "rdkit_pka__rdkit__AvgIpc",
+          "rdkit_pka__rdkit__PEOE_VSA1",
+          "rdkit_pka__rdkit__BCUT2D_MWLOW",
+          "rdkit_pka__rdkit__PEOE_VSA10",
+          "rdkit_pka__rdkit__BCUT2D_LOGPHI"
+        ]
+      }
+    },
+    {
+      "tree_index": 206,
+      "tree_prediction": 0.0,
+      "tree_prediction_correct": true,
+      "leaf_node_id": 45,
+      "leaf_target_class_probability": 1.0,
+      "tree_predicted_probabilities": [
+        1.0,
+        0.0
+      ],
+      "tree_class_probability_map": {
+        "0.0": 1.0,
+        "1.0": 0.0
+      },
+      "path_length": 11,
+      "hit_count": 9,
+      "hit_abs_shap_sum": 0.31497677814541464,
+      "hit_feature_names": [
+        "rdkit_pka__rdkit__TPSA",
+        "rdkit_pka__rdkit__VSA_EState3",
+        "rdkit_pka__pka__logd_estimate",
+        "rdkit_pka__rdkit__VSA_EState7",
+        "rdkit_pka__rdkit__BCUT2D_LOGPHI",
+        "rdkit_pka__rdkit__BCUT2D_MWLOW",
+        "rdkit_pka__rdkit__VSA_EState8",
+        "rdkit_pka__rdkit__Kappa3",
+        "rdkit_pka__rdkit__VSA_EState6"
+      ],
+      "hit_features": [
+        {
+          "feature_name": "rdkit_pka__rdkit__TPSA",
+          "raw_value": 59.3,
+          "model_input_value": -0.23403903742246576,
+          "shap_value": -0.09499484161287844,
+          "abs_shap_value": 0.09499484161287844
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__VSA_EState3",
+          "raw_value": 9.126647546376985,
+          "model_input_value": -0.14637019963079065,
+          "shap_value": 0.03657115448583938,
+          "abs_shap_value": 0.03657115448583938
+        },
+        {
+          "feature_name": "rdkit_pka__pka__logd_estimate",
+          "raw_value": -0.8615,
+          "model_input_value": -0.7342464407114919,
+          "shap_value": 0.14902722978842728,
+          "abs_shap_value": 0.14902722978842728
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__VSA_EState7",
+          "raw_value": 0.5561273305618544,
+          "model_input_value": -0.3521017703699628,
+          "shap_value": 0.007778076587390709,
+          "abs_shap_value": 0.007778076587390709
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__BCUT2D_LOGPHI",
+          "raw_value": 2.308788810527606,
+          "model_input_value": -0.3291729872663632,
+          "shap_value": 0.0047034622001256715,
+          "abs_shap_value": 0.0047034622001256715
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__BCUT2D_MWLOW",
+          "raw_value": 10.055450333731416,
+          "model_input_value": 0.5088668155093932,
+          "shap_value": 0.005947981240401583,
+          "abs_shap_value": 0.005947981240401583
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__VSA_EState8",
+          "raw_value": 0.5904830404383976,
+          "model_input_value": -0.9042776201050227,
+          "shap_value": -0.00531503444667127,
+          "abs_shap_value": 0.00531503444667127
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__Kappa3",
+          "raw_value": 1.8518175588367969,
+          "model_input_value": -0.7814309725970426,
+          "shap_value": -0.005574490252578639,
+          "abs_shap_value": 0.005574490252578639
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__VSA_EState6",
+          "raw_value": 12.515476510405712,
+          "model_input_value": 0.7260110120727233,
+          "shap_value": -0.005064507531101684,
+          "abs_shap_value": 0.005064507531101684
+        }
+      ],
+      "decision_path": {
+        "node_ids": [
+          0,
+          1,
+          33,
+          34,
+          35,
+          37,
+          39,
+          41,
+          42,
+          43,
+          44,
+          45
+        ],
+        "steps": [
+          {
+            "depth": 0,
+            "node_id": 0,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__TPSA",
+            "feature_index": 672,
+            "threshold_model_input": 0.5682263374328613,
+            "threshold_raw_value": 107.10000073941511,
+            "sample_model_input_value": -0.23403903742246576,
+            "sample_raw_value": 59.3,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 1,
+            "n_node_samples": 881
+          },
+          {
+            "depth": 1,
+            "node_id": 1,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__VSA_EState3",
+            "feature_index": 676,
+            "threshold_model_input": -0.322480246424675,
+            "threshold_raw_value": 6.530191791191676,
+            "sample_model_input_value": -0.14637019963079065,
+            "sample_raw_value": 9.126647546376985,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 33,
+            "n_node_samples": 736
+          },
+          {
+            "depth": 2,
+            "node_id": 33,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__pka__logd_estimate",
+            "feature_index": 540,
+            "threshold_model_input": -0.060927219688892365,
+            "threshold_raw_value": 1.0399999959674064,
+            "sample_model_input_value": -0.7342464407114919,
+            "sample_raw_value": -0.8615,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 34,
+            "n_node_samples": 312
+          },
+          {
+            "depth": 3,
+            "node_id": 34,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__VSA_EState7",
+            "feature_index": 680,
+            "threshold_model_input": 0.38574275374412537,
+            "threshold_raw_value": 3.5678188556972144,
+            "sample_model_input_value": -0.3521017703699628,
+            "sample_raw_value": 0.5561273305618544,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 35,
+            "n_node_samples": 94
+          },
+          {
+            "depth": 4,
+            "node_id": 35,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__BCUT2D_LOGPHI",
+            "feature_index": 555,
+            "threshold_model_input": -1.1316839456558228,
+            "threshold_raw_value": 2.1624588571619348,
+            "sample_model_input_value": -0.3291729872663632,
+            "sample_raw_value": 2.308788810527606,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 37,
+            "n_node_samples": 81
+          },
+          {
+            "depth": 5,
+            "node_id": 37,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__BCUT2D_MWLOW",
+            "feature_index": 560,
+            "threshold_model_input": -0.020751353353261948,
+            "threshold_raw_value": 9.9184717441286,
+            "sample_model_input_value": 0.5088668155093932,
+            "sample_raw_value": 10.055450333731416,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 39,
+            "n_node_samples": 64
+          },
+          {
+            "depth": 6,
+            "node_id": 39,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__VSA_EState8",
+            "feature_index": 681,
+            "threshold_model_input": -1.2134947776794434,
+            "threshold_raw_value": -0.4724777924933168,
+            "sample_model_input_value": -0.9042776201050227,
+            "sample_raw_value": 0.5904830404383976,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 41,
+            "n_node_samples": 59
+          },
+          {
+            "depth": 7,
+            "node_id": 41,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__FpDensityMorgan3",
+            "feature_index": 589,
+            "threshold_model_input": 1.312471330165863,
+            "threshold_raw_value": 2.927083340818931,
+            "sample_model_input_value": 0.13478975558500014,
+            "sample_raw_value": 2.526315789473684,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 42,
+            "n_node_samples": 56
+          },
+          {
+            "depth": 8,
+            "node_id": 42,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__BertzCT",
+            "feature_index": 562,
+            "threshold_model_input": 0.5611574947834015,
+            "threshold_raw_value": 949.1968790421071,
+            "sample_model_input_value": -0.25617164896863764,
+            "sample_raw_value": 642.6652275716834,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 43,
+            "n_node_samples": 53
+          },
+          {
+            "depth": 9,
+            "node_id": 43,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__Kappa3",
+            "feature_index": 597,
+            "threshold_model_input": 1.4361750483512878,
+            "threshold_raw_value": 6.6356306898789725,
+            "sample_model_input_value": -0.7814309725970426,
+            "sample_raw_value": 1.8518175588367969,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 44,
+            "n_node_samples": 50
+          },
+          {
+            "depth": 10,
+            "node_id": 44,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__VSA_EState6",
+            "feature_index": 679,
+            "threshold_model_input": 0.9550431370735168,
+            "threshold_raw_value": 14.049826589931932,
+            "sample_model_input_value": 0.7260110120727233,
+            "sample_raw_value": 12.515476510405712,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 45,
+            "n_node_samples": 48
+          },
+          {
+            "depth": 11,
+            "node_id": 45,
+            "is_leaf": true,
+            "leaf_node_id": 45,
+            "n_node_samples": 43
+          }
+        ],
+        "path_length": 11,
+        "decision_features": [
+          "rdkit_pka__rdkit__TPSA",
+          "rdkit_pka__rdkit__VSA_EState3",
+          "rdkit_pka__pka__logd_estimate",
+          "rdkit_pka__rdkit__VSA_EState7",
+          "rdkit_pka__rdkit__BCUT2D_LOGPHI",
+          "rdkit_pka__rdkit__BCUT2D_MWLOW",
+          "rdkit_pka__rdkit__VSA_EState8",
+          "rdkit_pka__rdkit__FpDensityMorgan3",
+          "rdkit_pka__rdkit__BertzCT",
+          "rdkit_pka__rdkit__Kappa3",
+          "rdkit_pka__rdkit__VSA_EState6"
+        ]
+      }
+    },
+    {
+      "tree_index": 7,
+      "tree_prediction": 0.0,
+      "tree_prediction_correct": true,
+      "leaf_node_id": 21,
+      "leaf_target_class_probability": 0.8274963349079656,
+      "tree_predicted_probabilities": [
+        0.8274963349079656,
+        0.17250366509203455
+      ],
+      "tree_class_probability_map": {
+        "0.0": 0.8274963349079656,
+        "1.0": 0.17250366509203455
+      },
+      "path_length": 12,
+      "hit_count": 9,
+      "hit_abs_shap_sum": 0.30279028098981076,
+      "hit_feature_names": [
+        "rdkit_pka__rdkit__TPSA",
+        "rdkit_pka__pka__logd_estimate",
+        "rdkit_pka__pka__fraction_neutral",
+        "rdkit_pka__rdkit__VSA_EState8",
+        "rdkit_pka__rdkit__BCUT2D_MWLOW",
+        "rdkit_pka__rdkit__SlogP_VSA2",
+        "rdkit_pka__rdkit__PEOE_VSA1",
+        "rdkit_pka__rdkit__Kappa3",
+        "rdkit_pka__rdkit__BCUT2D_CHGLO"
+      ],
+      "hit_features": [
+        {
+          "feature_name": "rdkit_pka__rdkit__TPSA",
+          "raw_value": 59.3,
+          "model_input_value": -0.23403903742246576,
+          "shap_value": -0.09499484161287844,
+          "abs_shap_value": 0.09499484161287844
+        },
+        {
+          "feature_name": "rdkit_pka__pka__logd_estimate",
+          "raw_value": -0.8615,
+          "model_input_value": -0.7342464407114919,
+          "shap_value": 0.14902722978842728,
+          "abs_shap_value": 0.14902722978842728
+        },
+        {
+          "feature_name": "rdkit_pka__pka__fraction_neutral",
+          "raw_value": 0.0007,
+          "model_input_value": -1.0531608653797866,
+          "shap_value": 0.02169801371396414,
+          "abs_shap_value": 0.02169801371396414
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__VSA_EState8",
+          "raw_value": 0.5904830404383976,
+          "model_input_value": -0.9042776201050227,
+          "shap_value": -0.00531503444667127,
+          "abs_shap_value": 0.00531503444667127
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__BCUT2D_MWLOW",
+          "raw_value": 10.055450333731416,
+          "model_input_value": 0.5088668155093932,
+          "shap_value": 0.005947981240401583,
+          "abs_shap_value": 0.005947981240401583
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__SlogP_VSA2",
+          "raw_value": 21.42617727694885,
+          "model_input_value": -0.7372494420952994,
+          "shap_value": -0.002909964851413597,
+          "abs_shap_value": 0.002909964851413597
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__PEOE_VSA1",
+          "raw_value": 9.67362704263206,
+          "model_input_value": -0.38556361929372684,
+          "shap_value": -0.004992163738639137,
+          "abs_shap_value": 0.004992163738639137
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__Kappa3",
+          "raw_value": 1.8518175588367969,
+          "model_input_value": -0.7814309725970426,
+          "shap_value": -0.005574490252578639,
+          "abs_shap_value": 0.005574490252578639
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__BCUT2D_CHGLO",
+          "raw_value": -2.0498919351867726,
+          "model_input_value": 1.4910627489345376,
+          "shap_value": -0.012330561344836675,
+          "abs_shap_value": 0.012330561344836675
+        }
+      ],
+      "decision_path": {
+        "node_ids": [
+          0,
+          1,
+          2,
+          4,
+          5,
+          6,
+          8,
+          10,
+          12,
+          13,
+          14,
+          15,
+          21
+        ],
+        "steps": [
+          {
+            "depth": 0,
+            "node_id": 0,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__TPSA",
+            "feature_index": 672,
+            "threshold_model_input": 0.5703243017196655,
+            "threshold_raw_value": 107.22500014435465,
+            "sample_model_input_value": -0.23403903742246576,
+            "sample_raw_value": 59.3,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 1,
+            "n_node_samples": 850
+          },
+          {
+            "depth": 1,
+            "node_id": 1,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__pka__logd_estimate",
+            "feature_index": 540,
+            "threshold_model_input": -0.248688206076622,
+            "threshold_raw_value": 0.5097499990686535,
+            "sample_model_input_value": -0.7342464407114919,
+            "sample_raw_value": -0.8615,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 2,
+            "n_node_samples": 698
+          },
+          {
+            "depth": 2,
+            "node_id": 2,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__TPSA",
+            "feature_index": 672,
+            "threshold_model_input": -0.5176012217998505,
+            "threshold_raw_value": 42.40500110346479,
+            "sample_model_input_value": -0.23403903742246576,
+            "sample_raw_value": 59.3,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 4,
+            "n_node_samples": 125
+          },
+          {
+            "depth": 3,
+            "node_id": 4,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__pka__fraction_neutral",
+            "feature_index": 536,
+            "threshold_model_input": 1.103470802307129,
+            "threshold_raw_value": 0.9577000021720581,
+            "sample_model_input_value": -1.0531608653797866,
+            "sample_raw_value": 0.0007,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 5,
+            "n_node_samples": 97
+          },
+          {
+            "depth": 4,
+            "node_id": 5,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__VSA_EState8",
+            "feature_index": 681,
+            "threshold_model_input": 0.833998441696167,
+            "threshold_raw_value": 6.56595796237171,
+            "sample_model_input_value": -0.9042776201050227,
+            "sample_raw_value": 0.5904830404383976,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 6,
+            "n_node_samples": 77
+          },
+          {
+            "depth": 5,
+            "node_id": 6,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__PEOE_VSA8",
+            "feature_index": 645,
+            "threshold_model_input": -1.2518797516822815,
+            "threshold_raw_value": 2.373511807100794,
+            "sample_model_input_value": -0.2173909643738048,
+            "sample_raw_value": 17.802135892458033,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 8,
+            "n_node_samples": 72
+          },
+          {
+            "depth": 6,
+            "node_id": 8,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__BCUT2D_MWLOW",
+            "feature_index": 560,
+            "threshold_model_input": -0.30372194945812225,
+            "threshold_raw_value": 9.845285219510782,
+            "sample_model_input_value": 0.5088668155093932,
+            "sample_raw_value": 10.055450333731416,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 10,
+            "n_node_samples": 65
+          },
+          {
+            "depth": 7,
+            "node_id": 10,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__SlogP_VSA2",
+            "feature_index": 664,
+            "threshold_model_input": -1.0975761413574219,
+            "threshold_raw_value": 10.54356761064517,
+            "sample_model_input_value": -0.7372494420952994,
+            "sample_raw_value": 21.42617727694885,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 12,
+            "n_node_samples": 61
+          },
+          {
+            "depth": 8,
+            "node_id": 12,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__SMR_VSA3",
+            "feature_index": 652,
+            "threshold_model_input": 1.962270975112915,
+            "threshold_raw_value": 22.093360363178707,
+            "sample_model_input_value": -0.40125202137326804,
+            "sample_raw_value": 4.567099647791355,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 13,
+            "n_node_samples": 58
+          },
+          {
+            "depth": 9,
+            "node_id": 13,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__PEOE_VSA1",
+            "feature_index": 633,
+            "threshold_model_input": 0.5711350589990616,
+            "threshold_raw_value": 22.736910388046674,
+            "sample_model_input_value": -0.38556361929372684,
+            "sample_raw_value": 9.67362704263206,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 14,
+            "n_node_samples": 55
+          },
+          {
+            "depth": 10,
+            "node_id": 14,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__Kappa3",
+            "feature_index": 597,
+            "threshold_model_input": 1.5911059975624084,
+            "threshold_raw_value": 6.969847273997029,
+            "sample_model_input_value": -0.7814309725970426,
+            "sample_raw_value": 1.8518175588367969,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 15,
+            "n_node_samples": 51
+          },
+          {
+            "depth": 11,
+            "node_id": 15,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__BCUT2D_CHGLO",
+            "feature_index": 554,
+            "threshold_model_input": 1.303916573524475,
+            "threshold_raw_value": -2.0842601293633694,
+            "sample_model_input_value": 1.4910627489345376,
+            "sample_raw_value": -2.0498919351867726,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 21,
+            "n_node_samples": 49
+          },
+          {
+            "depth": 12,
+            "node_id": 21,
+            "is_leaf": true,
+            "leaf_node_id": 21,
+            "n_node_samples": 12
+          }
+        ],
+        "path_length": 12,
+        "decision_features": [
+          "rdkit_pka__rdkit__TPSA",
+          "rdkit_pka__pka__logd_estimate",
+          "rdkit_pka__rdkit__TPSA",
+          "rdkit_pka__pka__fraction_neutral",
+          "rdkit_pka__rdkit__VSA_EState8",
+          "rdkit_pka__rdkit__PEOE_VSA8",
+          "rdkit_pka__rdkit__BCUT2D_MWLOW",
+          "rdkit_pka__rdkit__SlogP_VSA2",
+          "rdkit_pka__rdkit__SMR_VSA3",
+          "rdkit_pka__rdkit__PEOE_VSA1",
+          "rdkit_pka__rdkit__Kappa3",
+          "rdkit_pka__rdkit__BCUT2D_CHGLO"
+        ]
+      }
+    },
+    {
+      "tree_index": 85,
+      "tree_prediction": 0.0,
+      "tree_prediction_correct": true,
+      "leaf_node_id": 42,
+      "leaf_target_class_probability": 1.0,
+      "tree_predicted_probabilities": [
+        1.0,
+        0.0
+      ],
+      "tree_class_probability_map": {
+        "0.0": 1.0,
+        "1.0": 0.0
+      },
+      "path_length": 14,
+      "hit_count": 9,
+      "hit_abs_shap_sum": 0.22052974372460724,
+      "hit_feature_names": [
+        "rdkit_pka__rdkit__TPSA",
+        "rdkit_pka__rdkit__SMR_VSA1",
+        "rdkit_pka__pka__fraction_neutral",
+        "rdkit_pka__rdkit__BCUT2D_LOGPHI",
+        "rdkit_pka__rdkit__VSA_EState3",
+        "rdkit_pka__rdkit__VSA_EState8",
+        "rdkit_pka__rdkit__VSA_EState7",
+        "rdkit_pka__rdkit__BCUT2D_MWHI",
+        "rdkit_pka__rdkit__BCUT2D_MWLOW"
+      ],
+      "hit_features": [
+        {
+          "feature_name": "rdkit_pka__rdkit__TPSA",
+          "raw_value": 59.3,
+          "model_input_value": -0.23403903742246576,
+          "shap_value": -0.09499484161287844,
+          "abs_shap_value": 0.09499484161287844
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__SMR_VSA1",
+          "raw_value": 14.69560176298435,
+          "model_input_value": -0.09646853768063388,
+          "shap_value": 0.0379016649767593,
+          "abs_shap_value": 0.0379016649767593
+        },
+        {
+          "feature_name": "rdkit_pka__pka__fraction_neutral",
+          "raw_value": 0.0007,
+          "model_input_value": -1.0531608653797866,
+          "shap_value": 0.02169801371396414,
+          "abs_shap_value": 0.02169801371396414
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__BCUT2D_LOGPHI",
+          "raw_value": 2.308788810527606,
+          "model_input_value": -0.3291729872663632,
+          "shap_value": 0.0047034622001256715,
+          "abs_shap_value": 0.0047034622001256715
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__VSA_EState3",
+          "raw_value": 9.126647546376985,
+          "model_input_value": -0.14637019963079065,
+          "shap_value": 0.03657115448583938,
+          "abs_shap_value": 0.03657115448583938
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__VSA_EState8",
+          "raw_value": 0.5904830404383976,
+          "model_input_value": -0.9042776201050227,
+          "shap_value": -0.00531503444667127,
+          "abs_shap_value": 0.00531503444667127
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__VSA_EState7",
+          "raw_value": 0.5561273305618544,
+          "model_input_value": -0.3521017703699628,
+          "shap_value": 0.007778076587390709,
+          "abs_shap_value": 0.007778076587390709
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__BCUT2D_MWHI",
+          "raw_value": 16.366727303549325,
+          "model_input_value": -0.6983959406833798,
+          "shap_value": 0.005619514460576752,
+          "abs_shap_value": 0.005619514460576752
+        },
+        {
+          "feature_name": "rdkit_pka__rdkit__BCUT2D_MWLOW",
+          "raw_value": 10.055450333731416,
+          "model_input_value": 0.5088668155093932,
+          "shap_value": 0.005947981240401583,
+          "abs_shap_value": 0.005947981240401583
+        }
+      ],
+      "decision_path": {
+        "node_ids": [
+          0,
+          1,
+          25,
+          26,
+          27,
+          29,
+          30,
+          31,
+          33,
+          35,
+          36,
+          37,
+          38,
+          40,
+          42
+        ],
+        "steps": [
+          {
+            "depth": 0,
+            "node_id": 0,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__TPSA",
+            "feature_index": 672,
+            "threshold_model_input": 0.20653555542230606,
+            "threshold_raw_value": 85.54999971804251,
+            "sample_model_input_value": -0.23403903742246576,
+            "sample_raw_value": 59.3,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 1,
+            "n_node_samples": 861
+          },
+          {
+            "depth": 1,
+            "node_id": 1,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__SMR_VSA1",
+            "feature_index": 649,
+            "threshold_model_input": -0.4106462895870209,
+            "threshold_raw_value": 9.872227492061825,
+            "sample_model_input_value": -0.09646853768063388,
+            "sample_raw_value": 14.69560176298435,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 25,
+            "n_node_samples": 620
+          },
+          {
+            "depth": 2,
+            "node_id": 25,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__pka__fraction_neutral",
+            "feature_index": 536,
+            "threshold_model_input": -0.18848001956939697,
+            "threshold_raw_value": 0.3844000001980915,
+            "sample_model_input_value": -1.0531608653797866,
+            "sample_raw_value": 0.0007,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 26,
+            "n_node_samples": 214
+          },
+          {
+            "depth": 3,
+            "node_id": 26,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__BCUT2D_LOGPHI",
+            "feature_index": 555,
+            "threshold_model_input": 0.658592700958252,
+            "threshold_raw_value": 2.488898135619181,
+            "sample_model_input_value": -0.3291729872663632,
+            "sample_raw_value": 2.308788810527606,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 27,
+            "n_node_samples": 92
+          },
+          {
+            "depth": 4,
+            "node_id": 27,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__VSA_EState3",
+            "feature_index": 676,
+            "threshold_model_input": -0.5192205011844635,
+            "threshold_raw_value": 3.6295772263364476,
+            "sample_model_input_value": -0.14637019963079065,
+            "sample_raw_value": 9.126647546376985,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 29,
+            "n_node_samples": 73
+          },
+          {
+            "depth": 5,
+            "node_id": 29,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__VSA_EState8",
+            "feature_index": 681,
+            "threshold_model_input": 0.7482414543628693,
+            "threshold_raw_value": 6.27116087090185,
+            "sample_model_input_value": -0.9042776201050227,
+            "sample_raw_value": 0.5904830404383976,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 30,
+            "n_node_samples": 56
+          },
+          {
+            "depth": 6,
+            "node_id": 30,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__VSA_EState7",
+            "feature_index": 680,
+            "threshold_model_input": 0.9107988774776459,
+            "threshold_raw_value": 5.710962873696539,
+            "sample_model_input_value": -0.3521017703699628,
+            "sample_raw_value": 0.5561273305618544,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 31,
+            "n_node_samples": 51
+          },
+          {
+            "depth": 7,
+            "node_id": 31,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__BCUT2D_MWHI",
+            "feature_index": 559,
+            "threshold_model_input": -0.7068414688110352,
+            "threshold_raw_value": 16.267351681240868,
+            "sample_model_input_value": -0.6983959406833798,
+            "sample_raw_value": 16.366727303549325,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 33,
+            "n_node_samples": 49
+          },
+          {
+            "depth": 8,
+            "node_id": 33,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__HallKierAlpha",
+            "feature_index": 591,
+            "threshold_model_input": -1.0285197496414185,
+            "threshold_raw_value": -2.9300000066880783,
+            "sample_model_input_value": -0.4448153032559719,
+            "sample_raw_value": -2.3600000000000003,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 35,
+            "n_node_samples": 47
+          },
+          {
+            "depth": 9,
+            "node_id": 35,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__BCUT2D_MRHI",
+            "feature_index": 557,
+            "threshold_model_input": 1.5607810020446777,
+            "threshold_raw_value": 7.993330812297449,
+            "sample_model_input_value": -0.32714986120643863,
+            "sample_raw_value": 6.077836110665321,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 36,
+            "n_node_samples": 44
+          },
+          {
+            "depth": 10,
+            "node_id": 36,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__BCUT2D_MWLOW",
+            "feature_index": 560,
+            "threshold_model_input": 0.8392833173274994,
+            "threshold_raw_value": 10.14090810134867,
+            "sample_model_input_value": 0.5088668155093932,
+            "sample_raw_value": 10.055450333731416,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 37,
+            "n_node_samples": 42
+          },
+          {
+            "depth": 11,
+            "node_id": 37,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__VSA_EState10",
+            "feature_index": 674,
+            "threshold_model_input": 2.3951919078826904,
+            "threshold_raw_value": 12.066723967053035,
+            "sample_model_input_value": -0.5350055637873522,
+            "sample_raw_value": 0.0,
+            "sample_value_was_imputed": false,
+            "decision_operator": "<=",
+            "decision_goes_left": true,
+            "next_node_id": 38,
+            "n_node_samples": 38
+          },
+          {
+            "depth": 12,
+            "node_id": 38,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__MinAbsEStateIndex",
+            "feature_index": 603,
+            "threshold_model_input": -0.8071821331977844,
+            "threshold_raw_value": 0.005729244138620526,
+            "sample_model_input_value": -0.6015674272322724,
+            "sample_raw_value": 0.0575103930461067,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 40,
+            "n_node_samples": 36
+          },
+          {
+            "depth": 13,
+            "node_id": 40,
+            "is_leaf": false,
+            "feature_name": "rdkit_pka__rdkit__MaxAbsPartialCharge",
+            "feature_index": 600,
+            "threshold_model_input": -0.3143889158964157,
+            "threshold_raw_value": 0.38941416754095637,
+            "sample_model_input_value": 0.853880304100354,
+            "sample_raw_value": 0.4807387545756237,
+            "sample_value_was_imputed": false,
+            "decision_operator": ">",
+            "decision_goes_left": false,
+            "next_node_id": 42,
+            "n_node_samples": 34
+          },
+          {
+            "depth": 14,
+            "node_id": 42,
+            "is_leaf": true,
+            "leaf_node_id": 42,
+            "n_node_samples": 32
+          }
+        ],
+        "path_length": 14,
+        "decision_features": [
+          "rdkit_pka__rdkit__TPSA",
+          "rdkit_pka__rdkit__SMR_VSA1",
+          "rdkit_pka__pka__fraction_neutral",
+          "rdkit_pka__rdkit__BCUT2D_LOGPHI",
+          "rdkit_pka__rdkit__VSA_EState3",
+          "rdkit_pka__rdkit__VSA_EState8",
+          "rdkit_pka__rdkit__VSA_EState7",
+          "rdkit_pka__rdkit__BCUT2D_MWHI",
+          "rdkit_pka__rdkit__HallKierAlpha",
+          "rdkit_pka__rdkit__BCUT2D_MRHI",
+          "rdkit_pka__rdkit__BCUT2D_MWLOW",
+          "rdkit_pka__rdkit__VSA_EState10",
+          "rdkit_pka__rdkit__MinAbsEStateIndex",
+          "rdkit_pka__rdkit__MaxAbsPartialCharge"
+        ]
+      }
+    }
+  ],
+  "bundle_path": "/data1/tianang/Projects/Intern-S1/train/tree/bundles/fg_top_level_plus_rdkit_pka_traincv5_n40_seed0/BBB_Martins/fg_top_level+rdkit_descriptors_and_pka/model_bundle.pkl",
+  "input_mode": "tdc_split",
+  "task": "BBB_Martins",
+  "split": "valid"
+}

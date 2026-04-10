@@ -4,6 +4,7 @@ import json
 import math
 import os
 import pickle
+import tempfile
 from pathlib import Path
 
 
@@ -235,14 +236,13 @@ def predict_with_model_bundle(
     model_bundle: dict[str, object] | None = None,
     bundle_path: str | Path | None = None,
 ) -> pd.DataFrame:
-    if model_bundle is None:
-        if bundle_path is None:
-            raise ValueError("Either model_bundle or bundle_path must be provided")
-        model_bundle = load_model_bundle(bundle_path)
-
-    feature_source = build_feature_source_for_model_bundle(model_bundle)
-    feature_frame = feature_source.load(smiles_list)
-    _, transformed_frame = transform_feature_frame(feature_frame, model_bundle["preprocessor"])
+    feature_payload = load_feature_frames_with_model_bundle(
+        smiles_list=smiles_list,
+        model_bundle=model_bundle,
+        bundle_path=bundle_path,
+    )
+    model_bundle = feature_payload["model_bundle"]
+    transformed_frame = feature_payload["transformed_feature_frame"]
 
     model = model_bundle["model"]
     x_matrix = transformed_frame.to_numpy()
@@ -259,6 +259,538 @@ def predict_with_model_bundle(
             "score": scores,
         }
     )
+
+
+def load_feature_frames_with_model_bundle(
+    *,
+    smiles_list: list[str],
+    model_bundle: dict[str, object] | None = None,
+    bundle_path: str | Path | None = None,
+) -> dict[str, object]:
+    if model_bundle is None:
+        if bundle_path is None:
+            raise ValueError("Either model_bundle or bundle_path must be provided")
+        model_bundle = load_model_bundle(bundle_path)
+
+    feature_source = build_feature_source_for_model_bundle(model_bundle)
+    raw_feature_frame = feature_source.load(smiles_list)
+    aligned_feature_frame, transformed_feature_frame = transform_feature_frame(
+        raw_feature_frame,
+        model_bundle["preprocessor"],
+    )
+    return {
+        "model_bundle": model_bundle,
+        "raw_feature_frame": raw_feature_frame,
+        "aligned_feature_frame": aligned_feature_frame,
+        "transformed_feature_frame": transformed_feature_frame,
+    }
+
+
+def _load_shap_module():
+    matplotlib_cache_dir = Path(tempfile.gettempdir()) / "matplotlib"
+    matplotlib_cache_dir.mkdir(parents=True, exist_ok=True)
+    os.environ.setdefault("MPLCONFIGDIR", str(matplotlib_cache_dir))
+    try:
+        import shap
+    except ImportError as exc:
+        raise ImportError(
+            "The shap package is required for TreeSHAP explanations. "
+            "Please install shap in the active environment."
+        ) from exc
+    return shap
+
+
+def _coerce_python_scalar(value):
+    if isinstance(value, np.generic):
+        return value.item()
+    return value
+
+
+def _coerce_json_scalar(value):
+    value = _coerce_python_scalar(value)
+    if isinstance(value, (int, float, str, bool)) or value is None:
+        return value
+    return str(value)
+
+
+def _select_output_matrix(values: np.ndarray, class_indices: list[int]) -> np.ndarray:
+    num_rows = len(class_indices)
+    if values.ndim == 1:
+        if num_rows != 1:
+            raise ValueError(f"Expected one class index for 1D SHAP values, got {num_rows}.")
+        return values.reshape(1, -1)
+    if values.ndim == 2:
+        if values.shape[0] == num_rows:
+            return values
+        if num_rows == 1:
+            return values[[0], :]
+        raise ValueError(
+            f"2D SHAP values row count {values.shape[0]} does not match class index count {num_rows}."
+        )
+    if values.ndim == 3:
+        if values.shape[0] == num_rows:
+            return np.stack(
+                [values[row_index, :, class_indices[row_index]] for row_index in range(num_rows)],
+                axis=0,
+            )
+        if values.shape[1] == num_rows:
+            return np.stack(
+                [values[class_indices[row_index], row_index, :] for row_index in range(num_rows)],
+                axis=0,
+            )
+    raise ValueError(f"Unsupported SHAP value shape: {values.shape}")
+
+
+def _select_base_values(base_values: np.ndarray, class_indices: list[int]) -> np.ndarray:
+    num_rows = len(class_indices)
+    if base_values.ndim == 0:
+        return np.full(num_rows, float(base_values))
+    if base_values.ndim == 1:
+        if len(base_values) == 1:
+            return np.full(num_rows, float(base_values[0]))
+        if num_rows == 1:
+            return np.asarray([float(base_values[class_indices[0]])])
+        if len(base_values) == num_rows:
+            return np.asarray(base_values, dtype=float)
+        raise ValueError(
+            f"Unsupported 1D SHAP base value length {len(base_values)} for {num_rows} rows."
+        )
+    if base_values.ndim == 2:
+        if base_values.shape[0] == num_rows:
+            return np.asarray(
+                [float(base_values[row_index, class_indices[row_index]]) for row_index in range(num_rows)],
+                dtype=float,
+            )
+        if base_values.shape[1] == num_rows:
+            return np.asarray(
+                [float(base_values[class_indices[row_index], row_index]) for row_index in range(num_rows)],
+                dtype=float,
+            )
+    raise ValueError(f"Unsupported SHAP base value shape: {base_values.shape}")
+
+
+def _extract_model_outputs(
+    model,
+    transformed_array: np.ndarray,
+) -> tuple[np.ndarray | None, list[object] | None, list[list[float]] | None, list[object] | None]:
+    predicted_raw = None
+    predicted_classes = None
+    predicted_probabilities = None
+    model_classes = None
+
+    if hasattr(model, "predict"):
+        predicted_raw = np.asarray(model.predict(transformed_array))
+        predicted_classes = [_coerce_python_scalar(value) for value in predicted_raw.tolist()]
+    if hasattr(model, "predict_proba"):
+        probability_rows = np.asarray(model.predict_proba(transformed_array))
+        predicted_probabilities = [
+            [float(probability) for probability in probability_row]
+            for probability_row in probability_rows.tolist()
+        ]
+    if hasattr(model, "classes_"):
+        model_classes = [_coerce_python_scalar(value) for value in model.classes_.tolist()]
+
+    return predicted_raw, predicted_classes, predicted_probabilities, model_classes
+
+
+def _resolve_class_indices(
+    *,
+    class_index: int | None,
+    predicted_classes: list[object] | None,
+    model_classes: list[object] | None,
+    num_rows: int,
+) -> list[int]:
+    if class_index is not None:
+        return [class_index] * num_rows
+
+    if predicted_classes is not None and model_classes is not None:
+        class_indices = []
+        for predicted_class in predicted_classes:
+            if predicted_class in model_classes:
+                class_indices.append(model_classes.index(predicted_class))
+            else:
+                class_indices.append(len(model_classes) - 1)
+        return class_indices
+
+    return [1] * num_rows
+
+
+def explain_with_model_bundle(
+    *,
+    smiles_list: list[str],
+    model_bundle: dict[str, object] | None = None,
+    bundle_path: str | Path | None = None,
+    class_index: int | None = 1,
+    top_k: int | None = 20,
+) -> list[dict[str, object]]:
+    if not smiles_list:
+        return []
+    if top_k is not None and top_k <= 0:
+        raise ValueError("top_k must be positive when provided")
+
+    shap = _load_shap_module()
+    feature_payload = load_feature_frames_with_model_bundle(
+        smiles_list=smiles_list,
+        model_bundle=model_bundle,
+        bundle_path=bundle_path,
+    )
+    model_bundle = feature_payload["model_bundle"]
+    aligned_feature_frame = feature_payload["aligned_feature_frame"]
+    transformed_feature_frame = feature_payload["transformed_feature_frame"]
+
+    transformed_array = transformed_feature_frame.to_numpy()
+    model = model_bundle["model"]
+    predicted_raw, predicted_classes, predicted_probabilities, model_classes = _extract_model_outputs(
+        model,
+        transformed_array,
+    )
+    resolved_class_indices = _resolve_class_indices(
+        class_index=class_index,
+        predicted_classes=predicted_classes,
+        model_classes=model_classes,
+        num_rows=len(smiles_list),
+    )
+
+    explainer = shap.TreeExplainer(model)
+    explanation = explainer(transformed_feature_frame)
+    shap_matrix = _select_output_matrix(np.asarray(explanation.values), resolved_class_indices)
+    base_values = _select_base_values(np.asarray(explanation.base_values), resolved_class_indices)
+
+    feature_names = transformed_feature_frame.columns.tolist()
+    results = []
+    for row_index, smiles in enumerate(smiles_list):
+        aligned_row = aligned_feature_frame.iloc[row_index]
+        transformed_row = transformed_feature_frame.iloc[row_index]
+
+        feature_rows = []
+        for feature_name, shap_value in zip(feature_names, shap_matrix[row_index].tolist()):
+            raw_value = aligned_row[feature_name]
+            feature_rows.append(
+                {
+                    "feature_name": feature_name,
+                    "raw_value": None if pd.isna(raw_value) else float(raw_value),
+                    "model_input_value": float(transformed_row[feature_name]),
+                    "shap_value": float(shap_value),
+                    "abs_shap_value": abs(float(shap_value)),
+                }
+            )
+        feature_rows.sort(key=lambda row: row["abs_shap_value"], reverse=True)
+        if top_k is not None:
+            feature_rows = feature_rows[:top_k]
+
+        result = {
+            "smiles": str(smiles),
+            "feature_set_name": model_bundle["feature_set_name"],
+            "class_index": int(resolved_class_indices[row_index]),
+            "base_value": float(base_values[row_index]),
+            "explained_output_value": float(base_values[row_index] + shap_matrix[row_index].sum()),
+            "features": feature_rows,
+        }
+        if predicted_classes is not None:
+            result["predicted_class"] = _coerce_json_scalar(predicted_classes[row_index])
+        if predicted_probabilities is not None:
+            result["predicted_probabilities"] = predicted_probabilities[row_index]
+            explained_probability = predicted_probabilities[row_index][resolved_class_indices[row_index]]
+            result["explained_class_probability"] = float(explained_probability)
+        if model_classes is not None:
+            result["model_classes"] = [_coerce_json_scalar(value) for value in model_classes]
+            result["explained_class"] = _coerce_json_scalar(model_classes[resolved_class_indices[row_index]])
+        elif predicted_raw is not None:
+            result["predicted_value"] = float(predicted_raw[row_index])
+
+        results.append(result)
+
+    return results
+
+
+def _get_feature_index_lookup(preprocessor: dict[str, object]) -> dict[str, int]:
+    surviving_columns = list(preprocessor["surviving_columns"])
+    return {feature_name: index for index, feature_name in enumerate(surviving_columns)}
+
+
+def inverse_transform_feature_value(
+    *,
+    feature_name: str,
+    transformed_value: float,
+    preprocessor: dict[str, object],
+) -> float:
+    index_lookup = _get_feature_index_lookup(preprocessor)
+    if feature_name not in index_lookup:
+        raise KeyError(f"Feature {feature_name!r} is not present in the preprocessor surviving columns")
+
+    feature_index = index_lookup[feature_name]
+    scaler = preprocessor.get("scaler")
+    value = float(transformed_value)
+    if scaler is not None:
+        value = value * float(scaler.scale_[feature_index]) + float(scaler.mean_[feature_index])
+    return value
+
+
+def _extract_single_tree_outputs(
+    estimator,
+    transformed_row: np.ndarray,
+    *,
+    target_class_index: int,
+) -> dict[str, object]:
+    predicted_class = _coerce_python_scalar(estimator.predict(transformed_row)[0])
+    probability_row = estimator.predict_proba(transformed_row)[0]
+    leaf_node_id = int(estimator.apply(transformed_row)[0])
+    classes = [_coerce_python_scalar(value) for value in estimator.classes_.tolist()]
+    class_probability_map = {
+        _coerce_json_scalar(class_label): float(probability_row[class_index])
+        for class_index, class_label in enumerate(classes)
+    }
+    return {
+        "predicted_class": predicted_class,
+        "predicted_probabilities": [float(probability) for probability in probability_row.tolist()],
+        "leaf_node_id": leaf_node_id,
+        "leaf_target_class_probability": float(probability_row[target_class_index]),
+        "classes": classes,
+        "class_probability_map": class_probability_map,
+    }
+
+
+def _build_tree_path_for_sample(
+    *,
+    estimator,
+    aligned_row: pd.Series,
+    transformed_row: pd.Series,
+    preprocessor: dict[str, object],
+) -> dict[str, object]:
+    tree = estimator.tree_
+    estimator_classes = [_coerce_python_scalar(value) for value in estimator.classes_.tolist()]
+    transformed_array = transformed_row.to_numpy(dtype=float).reshape(1, -1)
+    node_indicator = estimator.decision_path(transformed_array)
+    node_ids = node_indicator.indices[node_indicator.indptr[0]:node_indicator.indptr[1]].tolist()
+
+    steps = []
+    for depth, node_id in enumerate(node_ids):
+        feature_index = int(tree.feature[node_id])
+        if feature_index < 0:
+            steps.append(
+                {
+                    "depth": depth,
+                    "node_id": int(node_id),
+                    "is_leaf": True,
+                    "leaf_node_id": int(node_id),
+                    "n_node_samples": int(tree.n_node_samples[node_id]),
+                }
+            )
+            continue
+
+        feature_name = str(transformed_row.index[feature_index])
+        threshold_model_input = float(tree.threshold[node_id])
+        threshold_raw_value = inverse_transform_feature_value(
+            feature_name=feature_name,
+            transformed_value=threshold_model_input,
+            preprocessor=preprocessor,
+        )
+
+        sample_model_input_value = float(transformed_row.iloc[feature_index])
+        sample_raw_cell = aligned_row.iloc[feature_index]
+        sample_raw_value = None if pd.isna(sample_raw_cell) else float(sample_raw_cell)
+        sample_value_was_imputed = sample_raw_value is None
+        decision_goes_left = sample_model_input_value <= threshold_model_input
+        operator = "<=" if decision_goes_left else ">"
+        next_node_id = int(tree.children_left[node_id] if decision_goes_left else tree.children_right[node_id])
+        child_value_vector = np.asarray(tree.value[next_node_id][0], dtype=float)
+        child_total = float(child_value_vector.sum())
+        if child_total > 0:
+            child_probabilities = [float(value / child_total) for value in child_value_vector.tolist()]
+        else:
+            child_probabilities = [0.0 for _ in child_value_vector.tolist()]
+        branch_majority_class_index = int(np.argmax(child_value_vector)) if len(child_value_vector) else 0
+        branch_majority_class = estimator_classes[branch_majority_class_index]
+        branch_class_probability_map = {
+            _coerce_json_scalar(class_label): float(child_probabilities[class_index])
+            for class_index, class_label in enumerate(estimator_classes)
+        }
+
+        steps.append(
+            {
+                "depth": depth,
+                "node_id": int(node_id),
+                "is_leaf": False,
+                "feature_name": feature_name,
+                "feature_index": feature_index,
+                "threshold_model_input": threshold_model_input,
+                "threshold_raw_value": float(threshold_raw_value),
+                "sample_model_input_value": sample_model_input_value,
+                "sample_raw_value": sample_raw_value,
+                "sample_value_was_imputed": sample_value_was_imputed,
+                "decision_operator": operator,
+                "decision_goes_left": decision_goes_left,
+                "next_node_id": next_node_id,
+                "n_node_samples": int(tree.n_node_samples[node_id]),
+                "next_node_majority_class": _coerce_json_scalar(branch_majority_class),
+                "next_node_majority_class_probability": float(child_probabilities[branch_majority_class_index]),
+                "next_node_class_probability_map": branch_class_probability_map,
+            }
+        )
+
+    decision_features = [
+        step["feature_name"]
+        for step in steps
+        if not step["is_leaf"]
+    ]
+    return {
+        "node_ids": [int(node_id) for node_id in node_ids],
+        "steps": steps,
+        "path_length": len(decision_features),
+        "decision_features": decision_features,
+    }
+
+
+def select_reasoning_trees_with_model_bundle(
+    *,
+    smiles_list: list[str],
+    labels: list[object] | None = None,
+    model_bundle: dict[str, object] | None = None,
+    bundle_path: str | Path | None = None,
+    shap_top_k: int = 30,
+    max_trees: int = 5,
+    class_index: int | None = None,
+    require_forest_correct: bool = True,
+) -> list[dict[str, object]]:
+    if not smiles_list:
+        return []
+    if labels is not None and len(labels) != len(smiles_list):
+        raise ValueError("labels length must match smiles_list length")
+    if shap_top_k <= 0:
+        raise ValueError("shap_top_k must be positive")
+    if max_trees <= 0:
+        raise ValueError("max_trees must be positive")
+
+    feature_payload = load_feature_frames_with_model_bundle(
+        smiles_list=smiles_list,
+        model_bundle=model_bundle,
+        bundle_path=bundle_path,
+    )
+    model_bundle = feature_payload["model_bundle"]
+    aligned_feature_frame = feature_payload["aligned_feature_frame"]
+    transformed_feature_frame = feature_payload["transformed_feature_frame"]
+    forest_model = model_bundle["model"]
+
+    explanations = explain_with_model_bundle(
+        smiles_list=smiles_list,
+        model_bundle=model_bundle,
+        class_index=class_index,
+        top_k=shap_top_k,
+    )
+
+    results = []
+    for sample_index, explanation in enumerate(explanations):
+        aligned_row = aligned_feature_frame.iloc[sample_index]
+        transformed_row = transformed_feature_frame.iloc[sample_index]
+        transformed_array = transformed_row.to_numpy(dtype=float).reshape(1, -1)
+
+        label = None if labels is None else _coerce_json_scalar(labels[sample_index])
+        forest_predicted_class = explanation.get("predicted_class")
+        forest_is_correct = None if label is None else (forest_predicted_class == label)
+
+        feature_lookup = {
+            feature_row["feature_name"]: feature_row
+            for feature_row in explanation["features"]
+        }
+        shap_top_features = [feature_row["feature_name"] for feature_row in explanation["features"]]
+        shap_abs_sum = float(sum(feature_row["abs_shap_value"] for feature_row in explanation["features"]))
+
+        selected_tree_rows = []
+        skipped_reason = None
+        if require_forest_correct and forest_is_correct is False:
+            skipped_reason = "forest_prediction_incorrect"
+        else:
+            target_class = explanation.get("explained_class", explanation.get("predicted_class"))
+            model_classes = explanation.get("model_classes")
+            if model_classes is not None and target_class in model_classes:
+                target_class_index = model_classes.index(target_class)
+            elif class_index is not None:
+                target_class_index = int(class_index)
+            else:
+                target_class_index = 1
+
+            for tree_index, estimator in enumerate(forest_model.estimators_):
+                tree_output = _extract_single_tree_outputs(
+                    estimator,
+                    transformed_array,
+                    target_class_index=target_class_index,
+                )
+                tree_is_correct = None if label is None else (tree_output["predicted_class"] == label)
+                if label is not None and not tree_is_correct:
+                    continue
+
+                tree_path = _build_tree_path_for_sample(
+                    estimator=estimator,
+                    aligned_row=aligned_row,
+                    transformed_row=transformed_row,
+                    preprocessor=model_bundle["preprocessor"],
+                )
+                hit_features = []
+                seen_hit_features: set[str] = set()
+                for feature_name in tree_path["decision_features"]:
+                    if feature_name not in feature_lookup or feature_name in seen_hit_features:
+                        continue
+                    seen_hit_features.add(feature_name)
+                    hit_features.append(feature_lookup[feature_name])
+
+                hit_count = len(hit_features)
+                hit_abs_shap_sum = float(sum(feature_row["abs_shap_value"] for feature_row in hit_features))
+
+                selected_tree_rows.append(
+                    {
+                        "tree_index": int(tree_index),
+                        "tree_prediction": _coerce_json_scalar(tree_output["predicted_class"]),
+                        "tree_prediction_correct": tree_is_correct,
+                        "leaf_node_id": int(tree_output["leaf_node_id"]),
+                        "leaf_target_class_probability": float(tree_output["leaf_target_class_probability"]),
+                        "tree_predicted_probabilities": tree_output["predicted_probabilities"],
+                        "tree_class_probability_map": tree_output["class_probability_map"],
+                        "path_length": int(tree_path["path_length"]),
+                        "hit_count": int(hit_count),
+                        "hit_abs_shap_sum": float(hit_abs_shap_sum),
+                        "hit_feature_names": [feature_row["feature_name"] for feature_row in hit_features],
+                        "hit_features": hit_features,
+                        "decision_path": tree_path,
+                    }
+                )
+
+            selected_tree_rows.sort(
+                key=lambda row: (
+                    row["hit_count"],
+                    row["hit_abs_shap_sum"],
+                    row["leaf_target_class_probability"],
+                    -row["path_length"],
+                    -row["tree_index"],
+                ),
+                reverse=True,
+            )
+            selected_tree_rows = selected_tree_rows[:max_trees]
+
+        results.append(
+            {
+                "sample_index": int(sample_index),
+                "smiles": explanation["smiles"],
+                "label": label,
+                "forest_prediction": forest_predicted_class,
+                "forest_prediction_correct": forest_is_correct,
+                "require_forest_correct": require_forest_correct,
+                "skipped_reason": skipped_reason,
+                "feature_set_name": explanation["feature_set_name"],
+                "explained_class": explanation.get("explained_class"),
+                "class_index": explanation["class_index"],
+                "explained_class_probability": explanation.get("explained_class_probability"),
+                "predicted_probabilities": explanation.get("predicted_probabilities"),
+                "base_value": explanation["base_value"],
+                "explained_output_value": explanation["explained_output_value"],
+                "shap_top_k": int(shap_top_k),
+                "shap_top_feature_names": shap_top_features,
+                "shap_top_abs_sum": shap_abs_sum,
+                "shap_top_features": explanation["features"],
+                "selected_trees": selected_tree_rows,
+            }
+        )
+
+    return results
 
 
 def load_task_feature_matrices(

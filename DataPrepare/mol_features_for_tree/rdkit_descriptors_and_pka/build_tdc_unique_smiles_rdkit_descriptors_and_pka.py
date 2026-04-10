@@ -31,6 +31,7 @@ os.environ.setdefault("MPLCONFIGDIR", "/local/tmp/matplotlib")
 from rdkit import Chem, RDLogger
 from rdkit.Chem import Descriptors
 
+from train.tree.feature_semantics import build_feature_semantics_map
 from tools.pka_related_tools_for_feature_extract import estimate_logd_structured, predict_pka_structured
 
 try:
@@ -301,6 +302,7 @@ def build_feature_table(
         "max_basic_sites": max_basic_sites,
         "max_acidic_sites": max_acidic_sites,
         "feature_column_count": len(frame.columns) - 1,
+        "feature_semantics": build_feature_semantics_map([column for column in frame.columns if column != "smiles"]),
     }
     return frame, metadata
 
