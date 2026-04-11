@@ -1,0 +1,16 @@
+{
+  "feature_set_name": "fg_top_level+rdkit_descriptors_and_pka_easy_to_NLP_Lv1",
+  "sources": [
+    {
+      "source_type": "fg_top_level_csv",
+      "name": "fg_top_level"
+    },
+    {
+      "source_type": "csv_smiles_lookup",
+      "name": "rdkit_descriptors_and_pka_easy_to_NLP_Lv1",
+      "csv_path": "/data1/tianang/Projects/Intern-S1/DataPrepare/mol_features_for_tree/rdkit_descriptors_and_pka_easy_to_NLP_Lv1/tdc_no_conflict_labels_salt_removed_unique_smiles_rdkit_descriptors_and_pka_easy_to_NLP_Lv1.csv",
+      "smiles_column": "smiles",
+      "prefix": "rdkit_pka__"
+    }
+  ]
+}

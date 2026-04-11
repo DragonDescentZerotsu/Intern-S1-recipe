@@ -11,7 +11,7 @@ if str(THIS_DIR) not in sys.path:
     sys.path.insert(0, str(THIS_DIR))
 
 from data import DEFAULT_DATA_ROOT, DEFAULT_LABEL_FIELD, DEFAULT_SMILES_FIELD
-from rf_pipeline import (
+from figs_pipeline import (
     build_training_experiment_name,
     build_feature_source_bundle,
     default_feature_config_paths,
@@ -23,7 +23,7 @@ from rf_pipeline import (
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Train a RandomForest classifier on the TDC JSONL train split and report valid metrics."
+        description="Train a FIGS classifier on the TDC JSONL train split and report valid metrics."
     )
     parser.add_argument("--task", required=True, help="TDC task name")
     parser.add_argument("--data-root", default=str(DEFAULT_DATA_ROOT), help="Root directory of TDC JSONL splits")
@@ -41,10 +41,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--params-json",
         default=None,
-        help="JSON file produced by batch_tune_random_forest.py or another tuning run",
+        help="JSON file produced by batch_tune_random_forest.py or another FIGS tuning run",
     )
-    parser.add_argument("--seed", type=int, default=0, help="RandomForest random_state for the final saved model")
-    parser.add_argument("--rf-jobs", type=int, default=1, help="n_jobs passed into RandomForestClassifier")
+    parser.add_argument("--seed", type=int, default=0, help="FIGS random_state for the final saved model")
+    parser.add_argument("--rf-jobs", type=int, default=1, help="Unused by FIGS; kept for CLI compatibility")
     parser.add_argument("--scale-features", dest="scale_features", action="store_true", help="Apply standardization after median imputation")
     parser.add_argument("--no-scale-features", dest="scale_features", action="store_false", help="Disable feature scaling")
     parser.add_argument("--output-dir", default=str(THIS_DIR / "results"), help="Root directory for experiment artifacts")
@@ -60,14 +60,11 @@ def parse_args() -> argparse.Namespace:
 def load_training_params(params_json_path: str | None) -> dict[str, object]:
     if params_json_path is None:
         return {
-            "n_estimators": 300,
-            "max_depth": None,
-            "min_samples_split": 2,
-            "min_samples_leaf": 1,
-            "bootstrap": True,
-            "criterion": "gini",
+            "max_rules": 12,
+            "max_trees": 4,
+            "min_impurity_decrease": 0.0,
             "max_features": "sqrt",
-            "class_weight": None,
+            "max_depth": None,
         }
     with Path(params_json_path).open("r", encoding="utf-8") as handle:
         payload = json.load(handle)
@@ -76,9 +73,24 @@ def load_training_params(params_json_path: str | None) -> dict[str, object]:
     return dict(payload)
 
 
+def load_feature_config_paths_from_params_json(params_json_path: str | None) -> list[str] | None:
+    if params_json_path is None:
+        return None
+    with Path(params_json_path).open("r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+    config_paths = payload.get("feature_config_paths")
+    if not isinstance(config_paths, list) or not config_paths:
+        return None
+    return [str(path) for path in config_paths]
+
+
 def main() -> int:
     args = parse_args()
-    feature_config_paths = args.feature_configs or default_feature_config_paths(THIS_DIR)
+    feature_config_paths = (
+        args.feature_configs
+        or load_feature_config_paths_from_params_json(args.params_json)
+        or default_feature_config_paths(THIS_DIR)
+    )
     feature_bundle = build_feature_source_bundle(feature_config_paths)
     default_experiment_name = infer_experiment_name_from_params_json(args.params_json, base_dir=THIS_DIR)
     if default_experiment_name is None:

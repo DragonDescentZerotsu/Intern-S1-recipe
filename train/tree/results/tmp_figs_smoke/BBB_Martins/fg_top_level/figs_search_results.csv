@@ -1,0 +1,2 @@
+candidate_index,max_rules,max_trees,min_impurity_decrease,max_features,max_depth,mean_train_macro_f1,std_train_macro_f1,mean_valid_macro_f1,std_valid_macro_f1,mean_train_roc_auc,std_train_roc_auc,mean_valid_roc_auc,std_valid_roc_auc
+1,4,,0.0005,log2,2,0.6063846311136004,0.07878511993249927,0.6183026899893977,0.07202198111385325,0.6419462870035713,0.07410413102790736,0.6454869227924294,0.07143884036189886

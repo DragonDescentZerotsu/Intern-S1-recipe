@@ -1,0 +1,27 @@
+{
+  "tasks": [
+    "BBB_Martins"
+  ],
+  "experiment_name": "tmp_figs_smoke",
+  "experiment_dir": "/data1/tianang/Projects/Intern-S1/train/tree/results/tmp_figs_smoke",
+  "model_family": "figs",
+  "feature_sets": [
+    {
+      "feature_set_name": "fg_top_level",
+      "feature_config_paths": [
+        "/data1/tianang/Projects/Intern-S1/train/tree/configs/fg_top_level_features.json"
+      ]
+    }
+  ],
+  "selection_metric": "macro_f1",
+  "selection_mode": "train_cv_5fold",
+  "n_iter": 1,
+  "search_seed": 0,
+  "eval_seeds": [
+    0
+  ],
+  "summary_csv": "/data1/tianang/Projects/Intern-S1/train/tree/results/tmp_figs_smoke/all_tasks_tuning_summary.csv",
+  "num_successful_tasks": 1,
+  "num_failed_tasks": 0,
+  "failures": []
+}

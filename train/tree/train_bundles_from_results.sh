@@ -11,8 +11,8 @@ Options:
                          Default: train/tree/results
   --bundle-root <dir>    Root directory for exported bundles.
                          Default: train/tree/bundles
-  --seed <int>           Random seed for final RF training. Default: 0
-  --rf-jobs <int>        n_jobs passed to RandomForestClassifier. Default: 1
+  --seed <int>           Random seed for final FIGS training. Default: 0
+  --rf-jobs <int>        Unused by FIGS. Kept only for CLI compatibility. Default: 1
   --conda-bin <path>     Path to conda executable.
                          Default: /data1/tianang/anaconda3/condabin/conda
   --conda-env <name>     Conda env used for training.
@@ -25,7 +25,7 @@ This script expects:
   <results-root>/<experiment>/<task>/<feature_set>/best_params.json
 
 It will:
-  1. Re-train one final model per best_params.json
+  1. Re-train one final FIGS model per best_params.json
   2. Keep the full training artifacts in train/tree/results/<experiment>/...
   3. Export a compact bundle copy to:
      <bundle-root>/<experiment>/<task>/<feature_set>/

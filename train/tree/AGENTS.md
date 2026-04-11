@@ -28,11 +28,15 @@
   - 放分类指标计算
 
 - `rf_pipeline.py`
-  - 放 RF 的共享逻辑
-  - 包含：feature config 解析、矩阵准备、调参、最终训练、结果保存
-  - 以后如果要接别的树模型，也优先在这里复用公共部分
+  - 目前主要保留 RF bundle / TreeSHAP / reasoning tree 相关逻辑
+  - 这些逻辑仍然服务于旧的 RF reasoning 流程
+
+- `figs_pipeline.py`
+  - 放 FIGS 的共享训练逻辑
+  - 包含：feature config 解析复用、矩阵准备、5-fold 调参、最终训练、结果保存
 
 - `train_random_forest.py`
+  - 文件名保留历史兼容性，但现在内部训练的是 `FIGSClassifier`
   - 读取 `best_params.json` 后训练一个最终模型
   - 输出 `train_predictions.csv`、`valid_predictions.csv`、`train_summary.json`、`model_bundle.pkl`
   - 默认会把结果写到 `train/tree/results/<experiment>/<task>/<feature_set>/`
@@ -68,8 +72,12 @@
 - 更合适的风格是：保留 feature、阈值、方向性证据，以及它支持哪一类结论，但让整体读起来更像在分析分子性质，而不是在逐行解释一棵树的数据结构。
 
 - `batch_tune_random_forest.py`
-  - 负责 RF 调参
+  - 文件名保留历史兼容性，但现在内部调的是 `FIGSClassifier`
   - 支持用 `--tasks` 跑单个或多个任务；不传时默认跑全部任务
+  - 不传 `--feature-config` 时，默认会顺序跑 3 套 feature scheme：
+    - `rdkit_descriptors_and_pka_easy_to_NLP_Lv1`
+    - `fg_top_level`
+    - `fg_top_level+rdkit_descriptors_and_pka_easy_to_NLP_Lv1`
   - 严格遵守：只用 `train` 拟合，只在 `valid` 上选超参，或者只在 `train` 上做 CV 选参后再汇报 `valid`
   - 会输出一个汇总表，方便统一查看每个任务的 `valid macro_f1`
   - 默认会把汇总和各任务结果都收口到 `train/tree/results/<experiment>/`
@@ -113,6 +121,10 @@
 默认配置文件：
 
 - `/data1/tianang/Projects/Intern-S1/train/tree/configs/rdkit_descriptors_and_pka_features.json`
+
+默认组合配置文件：
+
+- `/data1/tianang/Projects/Intern-S1/train/tree/configs/fg_top_level_plus_rdkit_descriptors_and_pka_easy_to_NLP_Lv1_features.json`
 
 ## 怎么新增新的 feature 来源
 
