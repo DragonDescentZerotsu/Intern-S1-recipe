@@ -109,3 +109,6 @@ __pycache__/
 /playbooks/modified/hERG_Karim.jinja2
 
 /AGENTS.md
+
+train/tree/
+DataPrepare/cache_tdc_mol_fingerprints.tar.gz

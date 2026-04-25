@@ -50,6 +50,42 @@ logger = logging.getLogger(__name__)
 _CLIENT = None
 _RUN_TURN = None
 
+OPENAI_OFFICIAL_API_BASE = "https://api.openai.com/v1"
+DEFAULT_API_BASE = "http://localhost:8001/v1"
+DEFAULT_API_KEY = "EMPTY"
+OPENAI_REASONING_EFFORTS = ("none", "minimal", "low", "medium", "high", "xhigh")
+
+
+def is_openai_official_model(model_name: str) -> bool:
+    """Return True for model IDs that should call the official OpenAI API."""
+    if not model_name:
+        return False
+    return model_name == "gpt-5.4-mini" or model_name.startswith("gpt-5.4-mini-")
+
+
+def is_openai_official_api_base(api_base: str) -> bool:
+    return api_base.rstrip("/") == OPENAI_OFFICIAL_API_BASE.rstrip("/")
+
+
+def resolve_api_settings(args):
+    """
+    Keep local/OpenRouter behavior unchanged, but make official OpenAI models
+    work without requiring --api-base/--api-key on the command line.
+    """
+    if not is_openai_official_model(args.model):
+        return args
+
+    if args.api_base == DEFAULT_API_BASE:
+        args.api_base = OPENAI_OFFICIAL_API_BASE
+
+    if args.api_key == DEFAULT_API_KEY:
+        openai_api_key = os.getenv("OPENAI_API_KEY")
+        if not openai_api_key:
+            raise ValueError("OPENAI_API_KEY is required in .env or environment for official OpenAI models.")
+        args.api_key = openai_api_key
+
+    return args
+
 def get_tools_for_task(task_name):
     """Combine BASIC_TOOLS with task-specific tools."""
     specific_tools = TDC_RDKIT_SPECIFIC_OPENAI_TOOLS_MAP.get(task_name, [])
@@ -63,9 +99,9 @@ def get_args():
                         choices=['ADME', 'Tox', 'HTS', 'Develop', 'PPI', 'TCREpitopeBinding', 'TrialOutcome', 'PeptideMHC', 'Other', 'all'],
                         help='Task groups to run')
     parser.add_argument('--n-samples', type=int, default=1, help='Number of samples per query')  # sample only once for F1 score
-    parser.add_argument('--api-base', type=str, default="http://localhost:8001/v1", help='API Base URL')  # TODO: port number | local model: http://localhost:8000/v1 | openrouter: https://openrouter.ai/api/v1 ｜ deepseek: https://api.deepseek.com/v1
-    parser.add_argument('--api-key', type=str, default="EMPTY", help='API Key')  # TODO: API Key | local model: "EMPTY" | openrouter: os.environ["OPENROUTER_API_KEY_Haydn"], os.environ["OPENROUTER_API_KEY_Mark"] | deepseek: os.environ["DEEPSEEK_API_KEY"]
-    parser.add_argument('--model', type=str, default="", help='Model name (optional, will query server if empty)')  # TODO: model name | local model: "" | openrouter: deepseek/deepseek-v3.2; openai/gpt-5.2; openai/gpt-5-mini | deepseek: deepseek-chat
+    parser.add_argument('--api-base', type=str, default=DEFAULT_API_BASE, help='API Base URL')  # TODO: port number | local model: http://localhost:8000/v1 | openrouter: https://openrouter.ai/api/v1 ｜ deepseek: https://api.deepseek.com/v1 ｜ official OpenAI: https://api.openai.com/v1
+    parser.add_argument('--api-key', type=str, default=DEFAULT_API_KEY, help='API Key')  # TODO: API Key | local model: "EMPTY" | official OpenAI: loaded from OPENAI_API_KEY when using gpt-5.4-mini
+    parser.add_argument('--model', type=str, default="", help='Model name (optional, will query server if empty)')  # TODO: model name | local model: "" | openrouter: deepseek/deepseek-v3.2; openai/gpt-5.2; openai/gpt-5-mini | official OpenAI: gpt-5.4-mini | deepseek: deepseek-chat
     parser.add_argument('--num-processes', type=int, default=8, help='Number of parallel workers')  # 16 for intern-s1-mini, 8 for GLM-4.7-Flash
     parser.add_argument('--data-dir', type=Path, default=current_dir.parent / "DataPrepare/TDC_prepended/playbook_removed/valid", help='Directory containing processed test data') # current_dir.parent / "DataPrepare/TDC_valid_prompts_label_scaffold"
     parser.add_argument('--thinking', action='store_true', default=True, help='Enable thinking parameter for DeepSeek models')  # TODO: 注意这里 thinking 到底是开了还是没开
@@ -74,8 +110,10 @@ def get_args():
     parser.add_argument('--log-file-name', type=str, default="playbook_gpt-oss-20b_{t_stamp}_1.log", help='logs file name')   # TODO: log file name
     parser.add_argument('--langfuse', action='store_true', default=False, help='Save traces to langfuse')  # TODO: 注意这里 langfuse trace 到底是开了还是没开
     parser.add_argument('--max-retry', type=int, default=4, help='Max retries for answer parsing failure')
-    parser.add_argument('--use-playbook', action='store_true', default=True, help='Inject playbook into the prompt')
+    parser.add_argument('--use-playbook', action=argparse.BooleanOptionalAction, default=True, help='Inject playbook into the prompt')
     parser.add_argument('--score-based', action='store_true', default=False, help='If true, expect and parse a 0-100 probability instead of (A)/(B)')
+    parser.add_argument('--openai-reasoning-effort', type=str, default="medium", choices=OPENAI_REASONING_EFFORTS,
+                        help='Reasoning effort for official OpenAI GPT-5.4-mini Chat Completions')
     
     args = parser.parse_args()
     return args
@@ -87,7 +125,7 @@ def init_worker(api_base, api_key, use_langfuse, task_name):
         base_url=api_base,
         # 让问题暴露得更明显，避免一直重试掩盖根因
         max_retries=1,          # 或 1/2
-        timeout=60.0           # 视你模型速度调整
+        timeout=600.0 if is_openai_official_api_base(api_base) else 60.0           # 视你模型速度调整
     )
 
     _RUN_TURN = get_run_turn(use_langfuse, task_name)
@@ -226,7 +264,7 @@ def get_run_turn(use_langfuse: bool, task_name: str):
     return run_turn_base
 
 # @observe(as_type="agent")  # langfuse
-def run_turn_base(client, messages, model_name, thinking=False, tools=None, use_langfuse=False, ground_truth_label=None):
+def run_turn_base(client, messages, model_name, thinking=False, tools=None, use_langfuse=False, ground_truth_label=None, openai_reasoning_effort="medium"):
     """
     Executes a single turn of conversation with optional tool support.
     """
@@ -271,14 +309,27 @@ def run_turn_base(client, messages, model_name, thinking=False, tools=None, use_
             #         }
             #     }
             # )
-            # TODO: local gpt-oss
-            response = client.chat.completions.create(
-                # name='repaired_QED',  # langfuse
-                model=model_name,
-                messages=messages,
-                tools=tools,
-                max_tokens=10240, # Reduced from 20000 to be safe/faster, usually enough. Important to keep this small other wise retry and slow down the speed.
-            )
+            if is_openai_official_model(model_name):
+                # Official OpenAI GPT-5.4 models support Chat Completions, but
+                # use max_completion_tokens instead of the deprecated max_tokens.
+                request_kwargs = {
+                    "model": model_name,
+                    "messages": messages,
+                    "max_completion_tokens": 10240, # Reduced from 20000 to be safe/faster, usually enough.
+                    "reasoning_effort": openai_reasoning_effort,
+                }
+                if tools is not None:
+                    request_kwargs["tools"] = tools
+                response = client.chat.completions.create(**request_kwargs)
+            else:
+                # TODO: local gpt-oss
+                response = client.chat.completions.create(
+                    # name='repaired_QED',  # langfuse
+                    model=model_name,
+                    messages=messages,
+                    tools=tools,
+                    max_tokens=10240, # Reduced from 20000 to be safe/faster, usually enough. Important to keep this small other wise retry and slow down the speed.
+                )
             # TODO: local DeepSeek V3.2
             # response = client.chat.completions.create(
             #     model=model_name,
@@ -448,12 +499,12 @@ def load_playbook(task_name):
 
 def worker_process_sample(args):
     """
-    Args: (index, text, label_dummy, api_base, api_key, model_name, thinking, enable_tools, task_name, use_langfuse, max_retry, use_playbook, score_based)
+    Args: (index, text, label_dummy, api_base, api_key, model_name, thinking, enable_tools, task_name, use_langfuse, max_retry, use_playbook, score_based, openai_reasoning_effort)
     Returns: (index, prediction_int_or_None)
     """
     global _CLIENT, _RUN_TURN
 
-    index, text, label, api_base, api_key, model_name, thinking, enable_tools, task_name, use_langfuse, max_retry, use_playbook, score_based = args
+    index, text, label, api_base, api_key, model_name, thinking, enable_tools, task_name, use_langfuse, max_retry, use_playbook, score_based, openai_reasoning_effort = args
     ground_truth_label = int(label)  # Keep track of ground truth for Langfuse metadata
     
     # client = OpenAI(
@@ -507,7 +558,7 @@ def worker_process_sample(args):
             # Usually for retry we want a fresh start.
             current_messages = [m.copy() for m in messages]
             
-            response_text, tool_count = _RUN_TURN(client, current_messages, model_name, thinking, tools, use_langfuse, ground_truth_label)
+            response_text, tool_count = _RUN_TURN(client, current_messages, model_name, thinking, tools, use_langfuse, ground_truth_label, openai_reasoning_effort)
             if response_text:
                 # parsing logic
                 # Ensure extract_answer and parse_answer are available
@@ -594,6 +645,11 @@ def load_tasks_map(data_dir):
 
 def main():
     args = get_args()
+    try:
+        args = resolve_api_settings(args)
+    except ValueError as e:
+        logger.error(str(e))
+        return
 
     # if args.logfire:
     #     logfire.configure()
@@ -665,7 +721,7 @@ def main():
             # Prepare args for multiprocessing
             worker_tasks = []
             for idx, item in enumerate(raw_data):
-                task_tuple = (idx, item['text'], item['Y'], args.api_base, args.api_key, args.model, args.thinking, args.enable_tools, task_name, args.langfuse, args.max_retry, args.use_playbook, args.score_based)
+                task_tuple = (idx, item['text'], item['Y'], args.api_base, args.api_key, args.model, args.thinking, args.enable_tools, task_name, args.langfuse, args.max_retry, args.use_playbook, args.score_based, args.openai_reasoning_effort)
                 for _ in range(args.n_samples):
                     worker_tasks.append(task_tuple)
             
