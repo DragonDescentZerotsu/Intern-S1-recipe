@@ -92,6 +92,15 @@ def get_args():
     )
     parser.add_argument("--max-tokens", type=int, default=10240, help="Max generated tokens.")
     parser.add_argument(
+        "--chat-template-kwargs-json",
+        type=str,
+        default="",
+        help=(
+            "Optional JSON object passed to OpenAI-compatible servers as "
+            "extra_body.chat_template_kwargs, e.g. '{\"enable_thinking\": true}' for Gemma 4 on vLLM."
+        ),
+    )
+    parser.add_argument(
         "--openai-input-price-per-mtok",
         type=float,
         default=0.75,
@@ -136,6 +145,21 @@ def get_args():
         help="TRIM tools available to the model: none, properties, similar, or both.",
     )
     parser.add_argument(
+        "--first-turn-tool-choice",
+        choices=["auto", "required"],
+        default="auto",
+        help=(
+            "Tool choice for the first Chat Completions turn when tools are enabled. "
+            "Use required for smoke tests that must verify the tool round-trip."
+        ),
+    )
+    parser.add_argument(
+        "--debug-parse-failures",
+        action="store_true",
+        default=False,
+        help="Log a short raw response excerpt when answer parsing fails.",
+    )
+    parser.add_argument(
         "--neighbors-per-label",
         type=int,
         default=3,
@@ -165,6 +189,10 @@ def infer_provider(args) -> str:
 def resolve_api_settings(args):
     provider = infer_provider(args)
     args.provider = provider
+    args.chat_template_kwargs = parse_json_object_arg(
+        args.chat_template_kwargs_json,
+        "--chat-template-kwargs-json",
+    )
 
     if provider == "openai":
         if args.api_base == DEFAULT_LOCAL_API_BASE:
@@ -193,6 +221,18 @@ def resolve_api_settings(args):
             args.api_key = api_key
 
     return args
+
+
+def parse_json_object_arg(value: str, arg_name: str) -> dict[str, Any]:
+    if not value:
+        return {}
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{arg_name} must be valid JSON: {exc}") from exc
+    if not isinstance(parsed, dict):
+        raise ValueError(f"{arg_name} must decode to a JSON object.")
+    return parsed
 
 
 def first_env_value(*names: str) -> str | None:
@@ -313,6 +353,14 @@ def init_worker(api_base, api_key, provider, tool_mode):
         _TOOL_RUNTIME = build_openai_tool_runtime()
 
 
+def message_role(message) -> str | None:
+    if isinstance(message, Mapping):
+        role = message.get("role")
+    else:
+        role = getattr(message, "role", None)
+    return str(role) if role is not None else None
+
+
 def create_chat_completion(client, *, provider, model_name, messages, tools, args):
     request_kwargs = {
         "model": model_name,
@@ -320,6 +368,11 @@ def create_chat_completion(client, *, provider, model_name, messages, tools, arg
     }
     if tools is not None:
         request_kwargs["tools"] = tools
+        if (
+            getattr(args, "first_turn_tool_choice", "auto") == "required"
+            and not any(message_role(message) == "tool" for message in messages)
+        ):
+            request_kwargs["tool_choice"] = "required"
 
     if provider == "openai":
         request_kwargs["max_completion_tokens"] = args.max_tokens
@@ -331,10 +384,15 @@ def create_chat_completion(client, *, provider, model_name, messages, tools, arg
             request_kwargs["reasoning_effort"] = args.openai_reasoning_effort
     else:
         request_kwargs["max_tokens"] = args.max_tokens
+        extra_body = {}
+        if args.chat_template_kwargs:
+            extra_body["chat_template_kwargs"] = args.chat_template_kwargs
         if provider == "openrouter":
-            request_kwargs["extra_body"] = {"usage": {"include": True}}
+            extra_body["usage"] = {"include": True}
             if args.thinking:
-                request_kwargs["extra_body"]["reasoning"] = {"enabled": True}
+                extra_body["reasoning"] = {"enabled": True}
+        if extra_body:
+            request_kwargs["extra_body"] = extra_body
 
     return client.chat.completions.create(**request_kwargs)
 
@@ -549,7 +607,16 @@ def worker_process_sample(payload):
     api_style = "responses" if args.provider == "openai" and args.tool_mode != "none" else "chat"
     tools = get_trim_tools_for_mode(args.tool_mode, api_style=api_style)
 
-    for _ in range(args.max_retry):
+    last_tool_count = 0
+    last_usage_cost = {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "reasoning_tokens": 0,
+        "cost_usd": 0.0,
+    }
+
+    for attempt in range(args.max_retry):
         current_messages = [dict(message) for message in messages]
         response_text, tool_count, usage_cost = run_turn_base(
             _CLIENT,
@@ -561,6 +628,8 @@ def worker_process_sample(payload):
             neighbors_per_label=args.neighbors_per_label,
             args=args,
         )
+        last_tool_count = tool_count
+        last_usage_cost = usage_cost
         if not response_text:
             continue
 
@@ -568,14 +637,14 @@ def worker_process_sample(payload):
         prediction = parse_answer(ans_txt, fmt_ok, think_is_on=args.thinking, score_based=False)
         if prediction is not None:
             return index, prediction, tool_count, usage_cost
+        if getattr(args, "debug_parse_failures", False):
+            excerpt = response_text.replace("\n", "\\n")[:1000]
+            logger.warning(
+                f"{task_name} idx={index} parse failed on attempt {attempt + 1}/{args.max_retry}; "
+                f"tool_count={tool_count}; response excerpt: {excerpt}"
+            )
 
-    return index, None, 0, {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0,
-        "reasoning_tokens": 0,
-        "cost_usd": 0.0,
-    }
+    return index, None, last_tool_count, last_usage_cost
 
 
 def load_tasks_map(data_dir: Path) -> dict[str, list[str]]:

@@ -1,5 +1,5 @@
 pytdc
-vllm==0.15.0
+vllm==0.19.1
 transformers==5.0.0
 molgpka @ git+https://github.com/haydn-jones/MolGpKa.git
 freesasa

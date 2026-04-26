@@ -1,6 +1,15 @@
 import re
 
 # ====== 解析工具：从模型文本中剥离最终选项并映射到 0/1 ======
+def strip_known_reasoning_blocks(text: str) -> str:
+    """Keep only visible final-answer text for common local reasoning templates."""
+    if '</think>' in text:
+        text = text.rsplit('</think>', 1)[-1].strip()
+    if '<|channel>thought' in text and '<channel|>' in text:
+        text = text.rsplit('<channel|>', 1)[-1].strip()
+    return text
+
+
 def extract_answer(response:str):
     """从模型回答中提取最后一个Answer:之后的内容"""
     # 找到所有"Answer:"的位置
@@ -45,8 +54,7 @@ def parse_prob_answer(answer_text, format_correct, think_is_on:bool=True):
     
     # 兼容思绪标签如果没有写完整的Answer的情况
     if think_is_on and not format_correct:
-        if '</think>' in answer_text:
-            text_to_search = answer_text.rsplit('</think>')[-1].strip()
+        text_to_search = strip_known_reasoning_blocks(answer_text)
 
     # 正则提取文本中 0 到 100 范围的整数
     # 匹配独立的数字 0-100
@@ -104,9 +112,12 @@ def parse_answer(answer_text, format_correct, think_is_on:bool=True, score_based
             else:
                 return None
         else:
-            if '</think>' in answer_text:  # more robust for answer matching without correct "Answer:" flags
-                answer_text = answer_text.rsplit('</think>')[1].strip()
-            if '\\boxed{A}' in answer_text:
+            answer_text = strip_known_reasoning_blocks(answer_text)
+            if '(A)' in answer_text:
+                return 0
+            elif '(B)' in answer_text:
+                return 1
+            elif '\\boxed{A}' in answer_text:
                 return 0
             elif '\\text{A}' in answer_text:
                 return 0
