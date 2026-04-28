@@ -28,9 +28,18 @@ Supported API providers:
 
 Tool modes:
 - `--tool-mode none`: no tools.
-- `--tool-mode **properties**`: only `get_mol_properties_and_fg`.
+- `--tool-mode properties`: only `get_mol_properties_and_fg`.
 - `--tool-mode similar`: only `compare_similar_mols`.
 - `--tool-mode both`: expose both TRIM tools.
+
+Compare tool ablations:
+- `compare_similar_mols` always runs through the original TRIM runtime first; the evaluator only postprocesses the returned text before sending it back to the model.
+- `--similar-tool-feature-view all`: keep the original `compare_similar_mols` text, including neighbor metadata, `properties`, and `functional group differences`.
+- `--similar-tool-feature-view properties`: keep neighbor metadata and `properties`, but remove `functional group differences`.
+- `--similar-tool-feature-view functional_groups`: keep neighbor metadata and `functional group differences`, but remove `properties`.
+- `--similar-tool-feature-view neighbors_only`: keep only neighbor metadata (`label`, `similarity`, `smiles`) and remove both `properties` and `functional group differences`.
+- `--similar-tool-property-lines {9,18,27,36}`: optionally keep only the first N property comparison lines per neighbor. This is intended for properties-only ablations; `36` is the current full property block.
+- These options only affect `compare_similar_mols`. They do not change `get_mol_properties_and_fg`, TRIM cache payloads, or the underlying TRIM tool implementation.
 
 Useful commands:
 
@@ -41,6 +50,39 @@ Useful commands:
   --tasks DILI \
   --limit-samples 10 \
   --tool-mode both \
+  --num-processes 1
+```
+
+Compare tool feature ablation examples:
+
+```bash
+/data1/tianang/anaconda3/condabin/conda run -n vllm python test/test_tdc_via_api_F1_TRIM.py \
+  --provider openai \
+  --model gpt-5.4-mini \
+  --tasks BBB_Martins \
+  --tool-mode similar \
+  --similar-tool-feature-view properties \
+  --similar-tool-property-lines 9 \
+  --num-processes 1
+```
+
+```bash
+/data1/tianang/anaconda3/condabin/conda run -n vllm python test/test_tdc_via_api_F1_TRIM.py \
+  --provider openai \
+  --model gpt-5.4-mini \
+  --tasks BBB_Martins \
+  --tool-mode similar \
+  --similar-tool-feature-view functional_groups \
+  --num-processes 1
+```
+
+```bash
+/data1/tianang/anaconda3/condabin/conda run -n vllm python test/test_tdc_via_api_F1_TRIM.py \
+  --provider openai \
+  --model gpt-5.4-mini \
+  --tasks BBB_Martins \
+  --tool-mode similar \
+  --similar-tool-feature-view neighbors_only \
   --num-processes 1
 ```
 

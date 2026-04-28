@@ -22,12 +22,36 @@ os.environ["RDKIT_MAX_THREADS"] = "1"
 
 # TDC imports
 from tdc.single_pred import ADME, HTS, Tox
+from tdc.utils import retrieve_label_name_list
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 VALID_SPLITS = ("train", "valid", "test")
+
+
+def expand_task(task_name, group_name):
+    """
+    Expand high-level TDC tasks that are multi-label into the single-label
+    task instances expected by the binary similarity pipeline.
+    """
+    if group_name == "Tox" and task_name == "Tox21":
+        return [(f"Tox21_{label}", "Tox") for label in retrieve_label_name_list("Tox21")]
+    return [(task_name, group_name)]
+
+
+def load_tdc_task(task_name, group_name):
+    if group_name == 'Tox':
+        if task_name.startswith("Tox21_"):
+            label_name = task_name.split("Tox21_", 1)[1].replace("_", "-")
+            return Tox(name="Tox21", label_name=label_name)
+        return Tox(name=task_name)
+    if group_name == 'ADME':
+        return ADME(name=task_name)
+    if group_name == 'HTS':
+        return HTS(name=task_name)
+    raise ValueError(f"Unknown group {group_name} for task {task_name}.")
 
 
 def load_pickle_if_exists(path):
@@ -222,16 +246,11 @@ def process_task(task_name, group_name, requested_splits, export_clean_data=True
             (clean_export_root / split_name).mkdir(parents=True, exist_ok=True)
     
     # 1. Load Data
-    data = None
-    if group_name == 'Tox':
-        data = Tox(name=task_name)
-    elif group_name == 'ADME':
-        data = ADME(name=task_name)
-    elif group_name == 'HTS':
-        data = HTS(name=task_name)
-    else:
-         logger.error(f"Unknown group {group_name} for task {task_name}.")
-         return
+    try:
+        data = load_tdc_task(task_name, group_name)
+    except ValueError as e:
+        logger.error(str(e))
+        return
          
     requested_splits = tuple(dict.fromkeys(requested_splits))
     required_splits = set(requested_splits)
@@ -335,7 +354,7 @@ def process_task(task_name, group_name, requested_splits, export_clean_data=True
     feature_morgan_sim_dir.mkdir(parents=True, exist_ok=True)
 
     # 3. Load or compute FPs
-    num_cpus = max(1, mp.cpu_count() - 2)
+    num_cpus = max(1, mp.cpu_count() - 28)
     logger.info(f"Using {num_cpus} CPUs for parallelization...")
     
     morgan_fps_by_split = {split_name: {} for split_name in required_splits}
@@ -525,6 +544,12 @@ def main():
         ("AMES", "Tox"),
         ("Skin_Reaction", "Tox"),
         ("ClinTox", "Tox"),
+        ("Tox21", "Tox"),
+        ("CYP1A2_Veith", "ADME"),
+        ("CYP2C19_Veith", "ADME"),
+        ("CYP2C9_Veith", "ADME"),
+        ("CYP2D6_Veith", "ADME"),
+        ("CYP3A4_Veith", "ADME"),
         ("CYP2C9_Substrate_CarbonMangels", "ADME"),
         ("CYP2D6_Substrate_CarbonMangels", "ADME"),
         ("CYP3A4_Substrate_CarbonMangels", "ADME"),
@@ -533,13 +558,14 @@ def main():
     ]
     
     for task_name, group_name in tasks:
-        process_task(
-            task_name,
-            group_name,
-            args.splits,
-            export_clean_data=args.export_clean_data,
-            export_clean_only=args.export_clean_only,
-        )
+        for expanded_task_name, expanded_group_name in expand_task(task_name, group_name):
+            process_task(
+                expanded_task_name,
+                expanded_group_name,
+                args.splits,
+                export_clean_data=args.export_clean_data,
+                export_clean_only=args.export_clean_only,
+            )
 
 if __name__ == "__main__":
     main()

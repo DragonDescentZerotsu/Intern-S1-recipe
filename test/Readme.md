@@ -97,7 +97,7 @@ CUDA_VISIBLE_DEVICES=0 vllm serve google/gemma-4-26B-A4B-it \
   --host 0.0.0.0 \
   --port 8001 \
   --api-key EMPTY \
-  --max-model-len 16384 \
+  --max-model-len 32768 \
   --gpu-memory-utilization 0.90 \
   --served-model-name gemma-4-26B-A4B-it \
   --enable-auto-tool-choice \

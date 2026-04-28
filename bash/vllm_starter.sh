@@ -4,14 +4,14 @@ set -euo pipefail
 SESSION="gemma4"
 
 # 默认 conda 环境名；也可以通过第一个参数覆盖
-CONDA_ENV="${1:-reasonv}"
+CONDA_ENV="${1:-vllm}"
 
 MODEL="google/gemma-4-26B-A4B-it"
 SERVED_NAME="gemma-4-26B-A4B-it"
 CHAT_TEMPLATE="test/chat_templates/tool_chat_template_gemma4.jinja"
 
 BASE_PORT=8001
-NUM_GPUS=4
+NUM_GPUS=8
 
 mkdir -p logs
 

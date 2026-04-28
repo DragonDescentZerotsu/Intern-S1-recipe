@@ -1,0 +1,1 @@
+{"canonical_smiles": "O=C(O)c1nc(Cl)ccc1Cl", "examples": [{"original_smiles": "O=C(O)c1nc(Cl)ccc1Cl", "label": 1.0}, {"original_smiles": "NCCO.O=C(O)c1nc(Cl)ccc1Cl", "label": 0.0}], "num_rows": 2, "all_labels": [0, 1], "has_label_conflict": true, "has_raw_label_conflict": false, "has_canonicalization_conflict": true}

@@ -41,6 +41,8 @@ DEFAULT_LOCAL_API_BASE = "http://localhost:8001/v1"
 DEFAULT_API_KEY = "EMPTY"
 OPENAI_REASONING_EFFORTS = ("none", "minimal", "low", "medium", "high", "xhigh")
 TOOL_MODES = ("none", "properties", "similar", "both")
+SIMILAR_TOOL_FEATURE_VIEWS = ("all", "properties", "functional_groups", "neighbors_only")
+SIMILAR_TOOL_PROPERTY_LINE_COUNTS = (9, 18, 27, 36)
 TRIM_TOOL_NAMES_BY_MODE = {
     "none": (),
     "properties": ("get_mol_properties_and_fg",),
@@ -165,6 +167,26 @@ def get_args():
         default=3,
         choices=[1, 2, 3],
         help="Neighbors per label for compare_similar_mols.",
+    )
+    parser.add_argument(
+        "--similar-tool-feature-view",
+        choices=SIMILAR_TOOL_FEATURE_VIEWS,
+        default="all",
+        help=(
+            "Postprocess compare_similar_mols output without changing the TRIM tool runtime: "
+            "all keeps the original text, properties drops functional-group differences, "
+            "functional_groups drops property comparisons, neighbors_only drops both."
+        ),
+    )
+    parser.add_argument(
+        "--similar-tool-property-lines",
+        type=int,
+        default=None,
+        choices=SIMILAR_TOOL_PROPERTY_LINE_COUNTS,
+        help=(
+            "Optional number of property comparison lines to keep per neighbor in compare_similar_mols. "
+            "Use with --similar-tool-feature-view properties for properties-only ablations; 36 is the full current property set."
+        ),
     )
     parser.add_argument("--log-file", action="store_true", default=False, help="Save logs to file.")
     parser.add_argument("--log-file-name", type=str, default="trim_api_f1_{t_stamp}.log", help="Log file name.")
@@ -407,16 +429,104 @@ def create_openai_response(client, *, model_name, input_items, tools, args):
     )
 
 
-def call_trim_tool(tool_call, *, task_name: str, neighbors_per_label: int) -> str:
+def get_tool_call_name(tool_call) -> str | None:
+    if isinstance(tool_call, Mapping):
+        function_payload = tool_call.get("function")
+        if isinstance(function_payload, Mapping):
+            name = function_payload.get("name")
+        else:
+            name = tool_call.get("name")
+    else:
+        function_payload = getattr(tool_call, "function", None)
+        name = (
+            getattr(function_payload, "name", None)
+            if function_payload is not None
+            else getattr(tool_call, "name", None)
+        )
+    return str(name) if name else None
+
+
+def postprocess_compare_similar_mols_text(
+    text: str,
+    *,
+    feature_view: str,
+    property_lines: int | None,
+) -> str:
+    if feature_view == "all" and property_lines is None:
+        return text
+
+    include_properties = feature_view in {"all", "properties"}
+    include_functional_groups = feature_view in {"all", "functional_groups"}
+    output_lines: list[str] = []
+    section: str | None = None
+    kept_property_lines = 0
+
+    for line in text.splitlines():
+        if line == "properties:":
+            section = "properties"
+            kept_property_lines = 0
+            if include_properties:
+                output_lines.append(line)
+            continue
+
+        if line.startswith("functional group differences:"):
+            section = "functional_groups"
+            if include_functional_groups:
+                output_lines.append(line)
+            continue
+
+        if section == "properties":
+            if line == "" or line.startswith("Neighbor ") or line in {"positive neighbors:", "negative neighbors:"}:
+                section = None
+                output_lines.append(line)
+                continue
+            if include_properties and (property_lines is None or kept_property_lines < property_lines):
+                output_lines.append(line)
+            kept_property_lines += 1
+            continue
+
+        if section == "functional_groups":
+            if line == "":
+                section = None
+                output_lines.append(line)
+                continue
+            if line.startswith("Neighbor ") or line in {"positive neighbors:", "negative neighbors:"}:
+                section = None
+                output_lines.append(line)
+                continue
+            if include_functional_groups:
+                output_lines.append(line)
+            continue
+
+        output_lines.append(line)
+
+    return "\n".join(output_lines)
+
+
+def call_trim_tool(
+    tool_call,
+    *,
+    task_name: str,
+    neighbors_per_label: int,
+    similar_tool_feature_view: str = "all",
+    similar_tool_property_lines: int | None = None,
+) -> str:
     if _TOOL_RUNTIME is None:
         return "Error executing tool: TRIM tool runtime is not initialized."
 
     try:
-        return _TOOL_RUNTIME.call_openai_function_call(
+        tool_result = _TOOL_RUNTIME.call_openai_function_call(
             tool_call,
             task=task_name,
             neighbors_per_label=neighbors_per_label,
         )
+        if get_tool_call_name(tool_call) == "compare_similar_mols":
+            tool_result = postprocess_compare_similar_mols_text(
+                tool_result,
+                feature_view=similar_tool_feature_view,
+                property_lines=similar_tool_property_lines,
+            )
+        return tool_result
     except Exception as exc:
         return f"Error executing tool: {exc}"
 
@@ -477,6 +587,8 @@ def run_openai_responses_turn(
                 output_item,
                 task_name=task_name,
                 neighbors_per_label=neighbors_per_label,
+                similar_tool_feature_view=args.similar_tool_feature_view,
+                similar_tool_property_lines=args.similar_tool_property_lines,
             )
             function_outputs.append(
                 {
@@ -568,6 +680,8 @@ def run_turn_base(
                 tool_call,
                 task_name=task_name,
                 neighbors_per_label=neighbors_per_label,
+                similar_tool_feature_view=args.similar_tool_feature_view,
+                similar_tool_property_lines=args.similar_tool_property_lines,
             )
             messages.append(
                 {
@@ -735,6 +849,9 @@ def main():
     logger.info(f"Model: {args.model}")
     logger.info(f"Data dir: {args.data_dir}")
     logger.info(f"Tool mode: {args.tool_mode}")
+    if args.tool_mode in {"similar", "both"}:
+        logger.info(f"Similar tool feature view: {args.similar_tool_feature_view}")
+        logger.info(f"Similar tool property lines: {args.similar_tool_property_lines or 'all'}")
     logger.info(f"Running groups: {groups_to_run}")
 
     all_results: dict[str, dict[str, float]] = {}

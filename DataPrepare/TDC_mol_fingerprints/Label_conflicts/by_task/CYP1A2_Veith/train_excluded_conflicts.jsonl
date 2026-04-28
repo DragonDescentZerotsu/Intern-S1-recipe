@@ -1,0 +1,1 @@
+{"canonical_smiles": "O=C(O)c1ccncc1", "examples": [{"original_smiles": "O=C(O)c1ccncc1.O=C(O)c1ccncc1.[NH2-].[NH2-].[Pt]", "label": 0}, {"original_smiles": "Cl[Pt](Cl)(Cl)Cl.O=C(O)c1ccncc1.O=C(O)c1ccncc1", "label": 1}], "num_rows": 2, "all_labels": [0, 1], "has_label_conflict": true, "has_raw_label_conflict": false, "has_canonicalization_conflict": true}

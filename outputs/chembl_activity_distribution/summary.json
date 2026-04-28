@@ -1,0 +1,229 @@
+{
+  "database": "/data1/tianang/Projects/Intern-S1/DataPrepare/chembl_related/chembl_36/chembl_36_sqlite/chembl_36.db",
+  "counting_rule": "Number of rows in activities per molregno; molecules with no activities counted as zero in totals.",
+  "total_molecules_in_molecule_dictionary": 2878135,
+  "total_activity_rows": 24267312,
+  "molecules_with_at_least_one_activity": 2774266,
+  "molecules_with_zero_activity": 103869,
+  "mean_activities_per_active_molecule": 8.747290995167731,
+  "mean_activities_per_all_molecules": 8.431610053037819,
+  "quantiles_active_molecules": {
+    "p50": 4.0,
+    "p75": 8.0,
+    "p90": 18.0,
+    "p95": 26.0,
+    "p99": 59.0,
+    "p99.5": 72.0,
+    "p99.9": 351.0,
+    "max": 19590
+  },
+  "threshold_counts_active_molecules": {
+    ">=1": 2774266,
+    ">=2": 2319973,
+    ">=5": 1216679,
+    ">=10": 541822,
+    ">=20": 251129,
+    ">=50": 63944,
+    ">=100": 8714,
+    ">=200": 3973,
+    ">=500": 1932,
+    ">=1000": 938,
+    ">=2000": 290,
+    ">=4000": 60
+  },
+  "chembl25": {
+    "chembl_id": "CHEMBL25",
+    "pref_name": "ASPIRIN",
+    "molregno": 1280,
+    "n_activities": 4073,
+    "n_distinct_assays": 1996
+  },
+  "top_20_by_activity_count": [
+    {
+      "chembl_id": "CHEMBL8",
+      "pref_name": "CIPROFLOXACIN",
+      "molregno": 241,
+      "n_activities": 19590
+    },
+    {
+      "chembl_id": "CHEMBL53463",
+      "pref_name": "DOXORUBICIN",
+      "molregno": 78759,
+      "n_activities": 15025
+    },
+    {
+      "chembl_id": "CHEMBL428647",
+      "pref_name": "PACLITAXEL",
+      "molregno": 8062,
+      "n_activities": 12819
+    },
+    {
+      "chembl_id": "CHEMBL262777",
+      "pref_name": "VANCOMYCIN",
+      "molregno": 70140,
+      "n_activities": 12676
+    },
+    {
+      "chembl_id": "CHEMBL106",
+      "pref_name": "FLUCONAZOLE",
+      "molregno": 13758,
+      "n_activities": 9845
+    },
+    {
+      "chembl_id": "CHEMBL267345",
+      "pref_name": "AMPHOTERICIN B",
+      "molregno": 8873,
+      "n_activities": 8505
+    },
+    {
+      "chembl_id": "CHEMBL98",
+      "pref_name": "VORINOSTAT",
+      "molregno": 11305,
+      "n_activities": 8274
+    },
+    {
+      "chembl_id": "CHEMBL374478",
+      "pref_name": "RIFAMPIN",
+      "molregno": 365189,
+      "n_activities": 8051
+    },
+    {
+      "chembl_id": "CHEMBL5315124",
+      "pref_name": "LEVOFLOXACIN",
+      "molregno": 2832775,
+      "n_activities": 8001
+    },
+    {
+      "chembl_id": "CHEMBL174",
+      "pref_name": "AMPICILLIN",
+      "molregno": 305519,
+      "n_activities": 7783
+    },
+    {
+      "chembl_id": "CHEMBL6",
+      "pref_name": "INDOMETHACIN",
+      "molregno": 173,
+      "n_activities": 7764
+    },
+    {
+      "chembl_id": "CHEMBL388978",
+      "pref_name": "STAUROSPORINE",
+      "molregno": 373381,
+      "n_activities": 7636
+    },
+    {
+      "chembl_id": "CHEMBL126",
+      "pref_name": "LINEZOLID",
+      "molregno": 26280,
+      "n_activities": 7542
+    },
+    {
+      "chembl_id": "CHEMBL44657",
+      "pref_name": "ETOPOSIDE",
+      "molregno": 68607,
+      "n_activities": 7303
+    },
+    {
+      "chembl_id": "CHEMBL6067485",
+      "pref_name": "GENTAMICIN",
+      "molregno": 3283076,
+      "n_activities": 7060
+    },
+    {
+      "chembl_id": "CHEMBL127",
+      "pref_name": "MEROPENEM",
+      "molregno": 26386,
+      "n_activities": 6925
+    },
+    {
+      "chembl_id": "CHEMBL185",
+      "pref_name": "FLUOROURACIL",
+      "molregno": 368538,
+      "n_activities": 6884
+    },
+    {
+      "chembl_id": "CHEMBL148",
+      "pref_name": "IMIPENEM ANHYDROUS",
+      "molregno": 43934,
+      "n_activities": 6808
+    },
+    {
+      "chembl_id": "CHEMBL64",
+      "pref_name": "ISONIAZID",
+      "molregno": 4941,
+      "n_activities": 6737
+    },
+    {
+      "chembl_id": "CHEMBL157101",
+      "pref_name": "KETOCONAZOLE",
+      "molregno": 255904,
+      "n_activities": 6637
+    }
+  ],
+  "histogram_active_molecules": [
+    {
+      "bucket": "1",
+      "n_molecules": 454293
+    },
+    {
+      "bucket": "2",
+      "n_molecules": 466996
+    },
+    {
+      "bucket": "3",
+      "n_molecules": 421193
+    },
+    {
+      "bucket": "4",
+      "n_molecules": 215105
+    },
+    {
+      "bucket": "5",
+      "n_molecules": 165300
+    },
+    {
+      "bucket": "6-10",
+      "n_molecules": 557202
+    },
+    {
+      "bucket": "11-20",
+      "n_molecules": 256654
+    },
+    {
+      "bucket": "21-50",
+      "n_molecules": 175327
+    },
+    {
+      "bucket": "51-100",
+      "n_molecules": 53571
+    },
+    {
+      "bucket": "101-200",
+      "n_molecules": 4659
+    },
+    {
+      "bucket": "201-500",
+      "n_molecules": 2037
+    },
+    {
+      "bucket": "501-1000",
+      "n_molecules": 992
+    },
+    {
+      "bucket": "1001-2000",
+      "n_molecules": 647
+    },
+    {
+      "bucket": "2001-5000",
+      "n_molecules": 256
+    },
+    {
+      "bucket": "5001-10000",
+      "n_molecules": 30
+    },
+    {
+      "bucket": "10001-19590",
+      "n_molecules": 4
+    }
+  ]
+}

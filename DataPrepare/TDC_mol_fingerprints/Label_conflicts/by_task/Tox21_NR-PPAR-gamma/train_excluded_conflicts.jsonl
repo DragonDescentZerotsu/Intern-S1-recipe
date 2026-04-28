@@ -1,0 +1,1 @@
+{"canonical_smiles": "CCCCN(CCCC)C(=S)[S-]", "examples": [{"original_smiles": "CCCCN(CCCC)C(=S)[S-]", "label": 0.0}, {"original_smiles": "CCCCN(CCCC)C(=S)[S-].CCCCN(CCCC)C(=S)[S-].[Zn+2]", "label": 1.0}], "num_rows": 2, "all_labels": [0, 1], "has_label_conflict": true, "has_raw_label_conflict": false, "has_canonicalization_conflict": true}

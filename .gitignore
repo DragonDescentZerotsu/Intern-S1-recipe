@@ -112,3 +112,5 @@ __pycache__/
 
 train/tree/
 DataPrepare/cache_tdc_mol_fingerprints.tar.gz
+
+DataPrepare/chembl_related/
