@@ -6,8 +6,8 @@ SESSION="gpt20b"
 # 默认 conda 环境名；也可以通过第一个参数覆盖
 CONDA_ENV="${1:-reasonv}"
 
-MODEL="jiosephlee/grpo-tdc-gptoss-dequant-unsloth-16t-v15_neighbor_only-ep1-0428_0119"
-SERVED_NAME="gpt-oss-20b-RL-baseline"
+MODEL="jiosephlee/grpo-tdc-gptoss-dequant-unsloth-16t-v15_neighbor_only-ep1-0428_1036"
+SERVED_NAME="gpt-oss-20b-SFT+RL"
 
 BASE_PORT=8001
 NUM_GPUS=4
