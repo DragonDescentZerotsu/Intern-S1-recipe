@@ -107,7 +107,7 @@ run_model() {
 
 trap cleanup_vllm EXIT
 
-run_model ./bash/vllm_starters/vllm_starter_gpt-20b-RL-baseline.sh gpt-oss-20b-RL-baseline
+# run_model ./bash/vllm_starters/vllm_starter_gpt-20b-RL-baseline.sh gpt-oss-20b-RL-baseline
 run_model ./bash/vllm_starters/vllm_starter_gpt-20b-SFT.sh gpt-oss-20b-SFT
 run_model ./bash/vllm_starters/vllm_starter_gpt-20b-SFT+RL.sh gpt-oss-20b-SFT+RL
 
