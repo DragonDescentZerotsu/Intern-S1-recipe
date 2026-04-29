@@ -114,3 +114,7 @@ train/tree/
 DataPrepare/cache_tdc_mol_fingerprints.tar.gz
 
 DataPrepare/chembl_related/
+reasoning-trajectory/**
+!reasoning-trajectory/*.sh
+!reasoning-trajectory/*.html
+!reasoning-trajectory/*.md

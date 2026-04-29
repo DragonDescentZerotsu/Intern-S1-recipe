@@ -41,6 +41,15 @@ Compare tool ablations:
 - `--similar-tool-property-lines {9,18,27,36}`: optionally keep only the first N property comparison lines per neighbor. This is intended for properties-only ablations; `36` is the current full property block.
 - These options only affect `compare_similar_mols`. They do not change `get_mol_properties_and_fg`, TRIM cache payloads, or the underlying TRIM tool implementation.
 
+Reasoning trace saving:
+- Add `--save-reasoning-trajectories` to save one JSONL record per evaluated sample.
+- Output directory: `reasoning-trajectory/<formatted-log-file-name>/`.
+- Each task is saved as one file: `reasoning-trajectory/<formatted-log-file-name>/<task>.jsonl`.
+- The run folder name uses `--log-file-name` after `{t_stamp}` substitution, even if `--log-file` is not enabled.
+- Each JSONL line contains `task`, `index`, `sample_id`, `attempt`, `smiles`, `label`, `prediction`, `tool_count`, `usage`, `response_text`, and full `messages`.
+- `label` and `prediction` are 0/1 labels; `prediction` is `null` when answer parsing fails.
+- `messages` includes assistant reasoning text when the API returns it, tool calls, and tool results. Use `reasoning-trajectory/viewer.html` or `reasoning-trajectory/start_viewer.sh` to inspect these traces.
+
 Useful commands:
 
 ```bash
@@ -102,6 +111,24 @@ Compare tool feature ablation examples:
   --model deepseek/deepseek-v3.2 \
   --task-groups Tox \
   --tool-mode none
+```
+
+No-tool test split run with trace saving:
+
+```bash
+/home/tianang/anaconda3/bin/conda run -n reasonv python test/test_tdc_via_api_F1_TRIM.py \
+  --provider local \
+  --api-base http://127.0.0.1:9001/v1 \
+  --api-key EMPTY \
+  --model gpt-oss-20b \
+  --tool-mode none \
+  --data-dir DataPrepare/TDC_no_conflict_labels_salt_removed/test \
+  --max-tokens 4096 \
+  --chat-template-kwargs-json '{"enable_thinking": true}' \
+  --num-processes 8 \
+  --log-file \
+  --log-file-name "test_no_tool_gpt_oss_20b_{t_stamp}.log" \
+  --save-reasoning-trajectories
 ```
 
 Use `--tasks DILI BBB_Martins` for explicit task selection, or `--task-groups ADME Tox HTS` / `--task-groups all` for grouped runs.

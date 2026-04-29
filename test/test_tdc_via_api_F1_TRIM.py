@@ -190,6 +190,15 @@ def get_args():
     )
     parser.add_argument("--log-file", action="store_true", default=False, help="Save logs to file.")
     parser.add_argument("--log-file-name", type=str, default="trim_api_f1_{t_stamp}.log", help="Log file name.")
+    parser.add_argument(
+        "--save-reasoning-trajectories",
+        action="store_true",
+        default=False,
+        help=(
+            "Save one JSONL trajectory record per evaluated sample under "
+            "reasoning-trajectory/<formatted log-file-name>/<task>.jsonl."
+        ),
+    )
 
     return parser.parse_args()
 
@@ -308,6 +317,33 @@ def extract_usage_cost(response, *, provider: str, args) -> dict[str, float | in
         "reasoning_tokens": int(reasoning_tokens) if reasoning_tokens is not None else 0,
         "cost_usd": cost,
     }
+
+
+def to_jsonable(value: Any) -> Any:
+    if hasattr(value, "model_dump"):
+        return value.model_dump(exclude_none=True, mode="json")
+    if isinstance(value, Mapping):
+        return {str(key): to_jsonable(item) for key, item in value.items()}
+    if isinstance(value, list | tuple):
+        return [to_jsonable(item) for item in value]
+    if isinstance(value, Path):
+        return str(value)
+    try:
+        json.dumps(value)
+        return value
+    except TypeError:
+        return str(value)
+
+
+def normalize_messages_for_trace(messages: list[Any]) -> list[dict[str, Any]]:
+    normalized = []
+    for message in messages:
+        item = to_jsonable(message)
+        if isinstance(item, Mapping):
+            normalized.append(dict(item))
+        else:
+            normalized.append({"value": item})
+    return normalized
 
 
 def to_chat_completion_tool_schema(schema: dict[str, object]) -> dict[str, object]:
@@ -568,7 +604,7 @@ def run_openai_responses_turn(
             )
         except Exception as exc:
             logger.error(f"Error in OpenAI Responses API call: {exc}")
-            return None, total_tool_calls, usage_cost
+            return None, total_tool_calls, usage_cost, normalize_messages_for_trace(input_items)
 
         call_usage_cost = extract_usage_cost(response, provider="openai", args=args)
         usage_cost["prompt_tokens"] += int(call_usage_cost["prompt_tokens"] or 0)
@@ -599,11 +635,12 @@ def run_openai_responses_turn(
             )
 
         if not function_outputs:
-            return response.output_text or "", total_tool_calls, usage_cost
+            trace_items = list(input_items) + list(response.output)
+            return response.output_text or "", total_tool_calls, usage_cost, normalize_messages_for_trace(trace_items)
 
         input_items = list(input_items) + list(response.output) + function_outputs
 
-    return "", total_tool_calls, usage_cost
+    return "", total_tool_calls, usage_cost, normalize_messages_for_trace(input_items)
 
 
 def run_turn_base(
@@ -656,7 +693,7 @@ def run_turn_base(
             )
         except Exception as exc:
             logger.error(f"Error in chat completion: {exc}")
-            return None, total_tool_calls, usage_cost
+            return None, total_tool_calls, usage_cost, normalize_messages_for_trace(messages)
 
         call_usage_cost = extract_usage_cost(response, provider=provider, args=args)
         usage_cost["prompt_tokens"] += int(call_usage_cost["prompt_tokens"] or 0)
@@ -672,7 +709,7 @@ def run_turn_base(
 
         tool_calls = message.tool_calls or []
         if not tool_calls:
-            return final_content, total_tool_calls, usage_cost
+            return final_content, total_tool_calls, usage_cost, normalize_messages_for_trace(messages)
 
         total_tool_calls += len(tool_calls)
         for tool_call in tool_calls:
@@ -692,7 +729,7 @@ def run_turn_base(
                 }
             )
 
-    return final_content, total_tool_calls, usage_cost
+    return final_content, total_tool_calls, usage_cost, normalize_messages_for_trace(messages)
 
 
 def render_user_text(task_name: str, smiles: str) -> str:
@@ -712,7 +749,11 @@ def get_smiles(item: Mapping[str, Any]) -> str:
 def worker_process_sample(payload):
     global _CLIENT
 
-    index, item, task_name, args_dict = payload
+    if len(payload) == 5:
+        index, sample_id, item, task_name, args_dict = payload
+    else:
+        index, item, task_name, args_dict = payload
+        sample_id = 0
     args = argparse.Namespace(**args_dict)
     label = int(item["Y"])
     smiles = get_smiles(item)
@@ -729,10 +770,27 @@ def worker_process_sample(payload):
         "reasoning_tokens": 0,
         "cost_usd": 0.0,
     }
+    last_trace_messages = normalize_messages_for_trace(messages)
+    last_response_text = ""
+
+    def build_trajectory_record(attempt: int, prediction: int | None) -> dict[str, Any]:
+        return {
+            "task": task_name,
+            "index": index,
+            "sample_id": sample_id,
+            "attempt": attempt,
+            "smiles": smiles,
+            "label": label,
+            "prediction": prediction,
+            "tool_count": last_tool_count,
+            "usage": last_usage_cost,
+            "response_text": last_response_text,
+            "messages": last_trace_messages,
+        }
 
     for attempt in range(args.max_retry):
         current_messages = [dict(message) for message in messages]
-        response_text, tool_count, usage_cost = run_turn_base(
+        response_text, tool_count, usage_cost, trace_messages = run_turn_base(
             _CLIENT,
             current_messages,
             provider=args.provider,
@@ -744,13 +802,15 @@ def worker_process_sample(payload):
         )
         last_tool_count = tool_count
         last_usage_cost = usage_cost
+        last_trace_messages = trace_messages
+        last_response_text = response_text or ""
         if not response_text:
             continue
 
         ans_txt, fmt_ok = extract_answer(response_text)
         prediction = parse_answer(ans_txt, fmt_ok, think_is_on=args.thinking, score_based=False)
         if prediction is not None:
-            return index, prediction, tool_count, usage_cost
+            return index, prediction, tool_count, usage_cost, build_trajectory_record(attempt + 1, prediction)
         if getattr(args, "debug_parse_failures", False):
             excerpt = response_text.replace("\n", "\\n")[:1000]
             logger.warning(
@@ -758,7 +818,7 @@ def worker_process_sample(payload):
                 f"tool_count={tool_count}; response excerpt: {excerpt}"
             )
 
-    return index, None, last_tool_count, last_usage_cost
+    return index, None, last_tool_count, last_usage_cost, build_trajectory_record(args.max_retry, None)
 
 
 def load_tasks_map(data_dir: Path) -> dict[str, list[str]]:
@@ -799,12 +859,28 @@ def configure_file_logging(args) -> None:
         return
     log_dir = project_root / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_path = log_dir / args.log_file_name.format(t_stamp=timestamp)
+    log_path = log_dir / args.run_name
     file_handler = logging.FileHandler(log_path)
     file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
     logging.getLogger().addHandler(file_handler)
     logger.info(f"Logging to file: {log_path}")
+
+
+def configure_reasoning_trajectory_dir(args) -> Path | None:
+    if not args.save_reasoning_trajectories:
+        return None
+    trajectory_dir = project_root / "reasoning-trajectory" / args.run_name
+    trajectory_dir.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Saving reasoning trajectories to: {trajectory_dir}")
+    return trajectory_dir
+
+
+def write_task_trajectories(output_dir: Path, task_name: str, records: list[dict[str, Any]]) -> None:
+    output_path = output_dir / f"{task_name}.jsonl"
+    with output_path.open("w", encoding="utf-8") as handle:
+        for record in sorted(records, key=lambda item: (int(item["index"]), int(item["sample_id"]))):
+            handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+    logger.info(f"Saved {len(records)} reasoning trajectories to {output_path}")
 
 
 def main():
@@ -815,7 +891,10 @@ def main():
         logger.error(str(exc))
         return
 
+    args.run_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    args.run_name = args.log_file_name.format(t_stamp=args.run_timestamp)
     configure_file_logging(args)
+    reasoning_trajectory_dir = configure_reasoning_trajectory_dir(args)
 
     if not args.data_dir.exists():
         logger.error(f"Data directory does not exist: {args.data_dir}")
@@ -890,8 +969,8 @@ def main():
 
             worker_tasks = []
             for idx, item in enumerate(raw_data):
-                for _ in range(args.n_samples):
-                    worker_tasks.append((idx, item, task_name, args_dict))
+                for sample_id in range(args.n_samples):
+                    worker_tasks.append((idx, sample_id, item, task_name, args_dict))
 
             results = []
             with multiprocessing.Pool(
@@ -908,7 +987,11 @@ def main():
 
             item_results: dict[int, list[int]] = {}
             item_tool_counts: dict[int, list[int]] = {}
-            none_pred_count = sum(1 for _, pred, _, _ in results if pred is None)
+            if reasoning_trajectory_dir is not None:
+                task_trajectory_records = [trajectory for _, _, _, _, trajectory in results]
+                write_task_trajectories(reasoning_trajectory_dir, task_name, task_trajectory_records)
+
+            none_pred_count = sum(1 for _, pred, _, _, _ in results if pred is None)
             logger.info(
                 f"{task_name} Failure Rate (pred is None): "
                 f"{none_pred_count}/{len(results)} ({none_pred_count / len(results) * 100:.2f}%)"
@@ -922,7 +1005,7 @@ def main():
                 "cost_usd": 0.0,
             }
 
-            for idx, pred, tool_count, usage_cost in results:
+            for idx, pred, tool_count, usage_cost, _ in results:
                 for key in ("prompt_tokens", "completion_tokens", "total_tokens", "reasoning_tokens"):
                     task_usage_cost[key] += int(usage_cost.get(key, 0) or 0)
                 task_usage_cost["cost_usd"] += float(usage_cost.get("cost_usd", 0.0) or 0.0)

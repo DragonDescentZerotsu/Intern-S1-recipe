@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TDC Reasoning Trace Viewer</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #f6f7f9;
+    color: #1f2937;
+  }
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: #202938;
+    color: white;
+    padding: 12px 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  h1 {
+    margin: 0 0 10px 0;
+    font-size: 18px;
+    font-weight: 650;
+  }
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+  label {
+    font-size: 12px;
+    color: #d6dce7;
+    margin-right: 4px;
+  }
+  input, select, button {
+    font: inherit;
+    font-size: 13px;
+    border-radius: 5px;
+  }
+  input[type="file"], input[type="text"], select {
+    background: #303b4d;
+    color: white;
+    border: 1px solid #4b5870;
+    padding: 6px 8px;
+  }
+  input[type="text"] { width: min(560px, 90vw); }
+  button {
+    border: 0;
+    padding: 7px 12px;
+    background: #2563eb;
+    color: white;
+    cursor: pointer;
+  }
+  button:disabled {
+    background: #748095;
+    cursor: not-allowed;
+  }
+  .stats {
+    margin-left: auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: #111827;
+    color: #e5e7eb;
+    font-size: 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  main {
+    max-width: 1480px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 340px minmax(0, 1fr);
+    gap: 16px;
+  }
+  .panel {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .panel-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: #eef1f5;
+    border-bottom: 1px solid #e1e5eb;
+    font-weight: 650;
+    font-size: 13px;
+  }
+  .panel-body { padding: 12px; }
+  .list-tools {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .list-tools input, .list-tools select {
+    width: 100%;
+    background: white;
+    color: #111827;
+    border: 1px solid #d1d5db;
+  }
+  .sample-list {
+    max-height: calc(100vh - 260px);
+    overflow: auto;
+  }
+  .sample-item {
+    width: 100%;
+    text-align: left;
+    background: white;
+    color: #111827;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 8px;
+    margin-bottom: 7px;
+  }
+  .sample-item.active {
+    border-color: #2563eb;
+    box-shadow: inset 3px 0 0 #2563eb;
+  }
+  .sample-title {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-weight: 650;
+    font-size: 13px;
+  }
+  .sample-sub {
+    margin-top: 4px;
+    color: #5b6472;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ok { color: #047857; font-weight: 750; }
+  .bad { color: #b91c1c; font-weight: 750; }
+  .unknown { color: #6b7280; font-weight: 750; }
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 10px;
+  }
+  .field {
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 8px;
+    min-width: 0;
+  }
+  .field .k {
+    color: #697386;
+    text-transform: uppercase;
+    font-size: 10px;
+    font-weight: 750;
+    letter-spacing: 0.05em;
+  }
+  .field .v {
+    margin-top: 4px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+    word-break: break-word;
+  }
+  .trace {
+    display: grid;
+    gap: 12px;
+  }
+  .message {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+  }
+  .message-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .role {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 750;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .role-user { background: #dbeafe; color: #1e40af; }
+  .role-assistant { background: #d1fae5; color: #065f46; }
+  .role-tool, .role-function_call_output { background: #ffedd5; color: #9a3412; }
+  .role-function_call { background: #ede9fe; color: #5b21b6; }
+  .role-system, .role-developer { background: #e5e7eb; color: #374151; }
+  .small-tag {
+    font-size: 11px;
+    color: #566174;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .block {
+    padding: 10px;
+    border-top: 1px solid #f0f2f5;
+  }
+  .block:first-child { border-top: 0; }
+  .block-title {
+    margin-bottom: 6px;
+    color: #4b5563;
+    font-size: 11px;
+    font-weight: 750;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .reasoning {
+    background: #fff7ed;
+    border-left: 3px solid #f97316;
+  }
+  .tool-call {
+    background: #f5f3ff;
+    border-left: 3px solid #8b5cf6;
+  }
+  .tool-result {
+    background: #fefce8;
+    border-left: 3px solid #eab308;
+  }
+  pre {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    line-height: 1.52;
+  }
+  details.raw {
+    margin-top: 8px;
+  }
+  details.raw summary {
+    cursor: pointer;
+    color: #4b5563;
+    font-size: 12px;
+  }
+  .empty {
+    padding: 28px;
+    text-align: center;
+    color: #6b7280;
+  }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .sample-list { max-height: 320px; }
+    .stats { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>TDC Reasoning Trace Viewer</h1>
+  <div class="bar">
+    <div>
+      <label for="serverRunSelect">run folder</label>
+      <select id="serverRunSelect">
+        <option value="">Scanning...</option>
+      </select>
+    </div>
+    <div>
+      <label for="serverTaskSelect">task file</label>
+      <select id="serverTaskSelect">
+        <option value="">Select a run first</option>
+      </select>
+      <button id="loadSelectedBtn">Load selected</button>
+      <button id="refreshFilesBtn">Refresh files</button>
+    </div>
+    <div>
+      <label for="fileInput">JSONL files</label>
+      <input id="fileInput" type="file" accept=".jsonl,.txt" multiple>
+    </div>
+    <div>
+      <label for="pathInput">server path</label>
+      <input id="pathInput" type="text" placeholder="test_run.log/DILI.jsonl or /data2/.../reasoning-trajectory/test_run.log/DILI.jsonl">
+      <button id="loadPathBtn">Load</button>
+    </div>
+    <div class="stats">
+      <span class="pill" id="totalPill">records: 0</span>
+      <span class="pill" id="taskPill">tasks: 0</span>
+      <span class="pill" id="accPill">accuracy: n/a</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="layout">
+    <aside class="panel">
+      <div class="panel-title">
+        <span>Samples</span>
+        <span id="visibleCount" class="small-tag">0 shown</span>
+      </div>
+      <div class="panel-body">
+        <div class="list-tools">
+          <input id="searchInput" type="text" placeholder="Search task, SMILES, response, message">
+          <select id="taskFilter">
+            <option value="">All tasks</option>
+          </select>
+          <select id="resultFilter">
+            <option value="">All results</option>
+            <option value="correct">Correct only</option>
+            <option value="wrong">Wrong only</option>
+            <option value="failed">Parse failed only</option>
+            <option value="tools">Has tool calls</option>
+          </select>
+        </div>
+        <div id="sampleList" class="sample-list"></div>
+      </div>
+    </aside>
+
+    <section>
+      <div id="detail"></div>
+    </section>
+  </div>
+</main>
+
+<script>
+const state = {
+  records: [],
+  filtered: [],
+  selected: -1,
+  traceFiles: [],
+};
+
+const els = {
+  serverRunSelect: document.getElementById("serverRunSelect"),
+  serverTaskSelect: document.getElementById("serverTaskSelect"),
+  loadSelectedBtn: document.getElementById("loadSelectedBtn"),
+  refreshFilesBtn: document.getElementById("refreshFilesBtn"),
+  fileInput: document.getElementById("fileInput"),
+  pathInput: document.getElementById("pathInput"),
+  loadPathBtn: document.getElementById("loadPathBtn"),
+  searchInput: document.getElementById("searchInput"),
+  taskFilter: document.getElementById("taskFilter"),
+  resultFilter: document.getElementById("resultFilter"),
+  sampleList: document.getElementById("sampleList"),
+  detail: document.getElementById("detail"),
+  totalPill: document.getElementById("totalPill"),
+  taskPill: document.getElementById("taskPill"),
+  accPill: document.getElementById("accPill"),
+  visibleCount: document.getElementById("visibleCount"),
+};
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function stringify(value) {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+function parseJsonl(text, sourceName) {
+  const records = [];
+  const lines = text.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    try {
+      const record = JSON.parse(line);
+      record.__source = sourceName;
+      records.push(record);
+    } catch (err) {
+      console.warn(`Skipping invalid JSON at ${sourceName}:${i + 1}`, err);
+    }
+  }
+  return records;
+}
+
+async function refreshServerFiles({silent = false} = {}) {
+  els.serverRunSelect.innerHTML = '<option value="">Scanning...</option>';
+  els.serverTaskSelect.innerHTML = '<option value="">Select a run first</option>';
+  try {
+    state.traceFiles = await discoverTraceFiles();
+    renderServerFileSelectors();
+  } catch (err) {
+    state.traceFiles = [];
+    renderServerFileSelectors();
+    console.warn("Could not scan server files", err);
+    if (!silent) alert(`Could not scan server files: ${err.message}`);
+  }
+}
+
+async function discoverTraceFiles() {
+  const rootEntries = await readDirectory("./");
+  const files = [];
+
+  for (const entry of rootEntries) {
+    if (entry.kind === "file" && entry.path.endsWith(".jsonl")) {
+      files.push({run: "(root)", task: entry.name.replace(/\.jsonl$/, ""), path: entry.path});
+    }
+  }
+
+  const runDirs = rootEntries
+    .filter(entry => entry.kind === "dir" && !entry.name.startsWith("."))
+    .sort((a, b) => b.name.localeCompare(a.name));
+
+  for (const dir of runDirs) {
+    try {
+      const entries = await readDirectory(dir.path);
+      for (const entry of entries) {
+        if (entry.kind === "file" && entry.path.endsWith(".jsonl")) {
+          files.push({
+            run: dir.name.replace(/\/$/, ""),
+            task: entry.name.replace(/\.jsonl$/, ""),
+            path: entry.path,
+          });
+        }
+      }
+    } catch (err) {
+      console.warn(`Skipping directory ${dir.path}`, err);
+    }
+  }
+
+  return files.sort((a, b) => (
+    b.run.localeCompare(a.run) ||
+    a.task.localeCompare(b.task) ||
+    a.path.localeCompare(b.path)
+  ));
+}
+
+async function readDirectory(path) {
+  const response = await fetch(path);
+  if (!response.ok) throw new Error(`HTTP ${response.status}: ${path}`);
+  const html = await response.text();
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const entries = [];
+
+  for (const anchor of doc.querySelectorAll("a[href]")) {
+    const href = anchor.getAttribute("href");
+    if (!href || href === "../" || href.startsWith("?")) continue;
+    const relativePath = hrefToRootRelativePath(href, path);
+    if (!relativePath) continue;
+    const name = decodeURIComponent(relativePath.replace(/\/$/, "").split("/").pop() || "");
+    if (!name || name === "viewer.html" || name === "start_viewer.sh") continue;
+    entries.push({
+      name,
+      path: relativePath,
+      kind: relativePath.endsWith("/") ? "dir" : "file",
+    });
+  }
+
+  return entries;
+}
+
+function hrefToRootRelativePath(href, basePath) {
+  const rootUrl = new URL("./", location.href);
+  const baseUrl = new URL(basePath || "./", rootUrl);
+  const url = new URL(href, baseUrl);
+  if (url.origin !== location.origin) return null;
+  const rootPath = decodeURIComponent(rootUrl.pathname);
+  const itemPath = decodeURIComponent(url.pathname);
+  if (!itemPath.startsWith(rootPath)) return null;
+  return itemPath.slice(rootPath.length);
+}
+
+function renderServerFileSelectors() {
+  const runs = [...new Set(state.traceFiles.map(file => file.run))];
+  if (!runs.length) {
+    els.serverRunSelect.innerHTML = '<option value="">No JSONL files found</option>';
+    els.serverTaskSelect.innerHTML = '<option value="">No task files found</option>';
+    els.loadSelectedBtn.disabled = true;
+    return;
+  }
+
+  const previousRun = els.serverRunSelect.value;
+  els.serverRunSelect.innerHTML = runs
+    .map(run => `<option value="${escapeHtml(run)}">${escapeHtml(run)}</option>`)
+    .join("");
+  els.serverRunSelect.value = runs.includes(previousRun) ? previousRun : runs[0];
+  renderTaskFileSelector();
+  els.loadSelectedBtn.disabled = false;
+}
+
+function renderTaskFileSelector() {
+  const selectedRun = els.serverRunSelect.value;
+  const files = state.traceFiles.filter(file => file.run === selectedRun);
+  const previousPath = els.serverTaskSelect.value;
+  els.serverTaskSelect.innerHTML = files
+    .map(file => `<option value="${escapeHtml(file.path)}">${escapeHtml(file.task)}</option>`)
+    .join("");
+  if (files.some(file => file.path === previousPath)) {
+    els.serverTaskSelect.value = previousPath;
+  }
+}
+
+async function loadSelectedServerFile() {
+  const path = els.serverTaskSelect.value;
+  if (!path) return;
+  await loadPath(path);
+}
+
+async function loadFiles(files) {
+  const all = [];
+  for (const file of files) {
+    const text = await file.text();
+    all.push(...parseJsonl(text, file.webkitRelativePath || file.name));
+  }
+  addRecords(all);
+}
+
+async function loadPath(path) {
+  const cleanPath = normalizeServerPath(path);
+  if (!cleanPath) return;
+  const response = await fetch(cleanPath);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${cleanPath}`);
+  }
+  addRecords(parseJsonl(await response.text(), cleanPath));
+}
+
+function normalizeServerPath(path) {
+  let cleanPath = path.trim();
+  cleanPath = cleanPath.replace(/^https?:\/\/[^/]+\//, "");
+  cleanPath = cleanPath.replace(/^\/+/, "");
+  const marker = "reasoning-trajectory/";
+  const markerIndex = cleanPath.indexOf(marker);
+  if (markerIndex >= 0) {
+    cleanPath = cleanPath.slice(markerIndex + marker.length);
+  }
+  return cleanPath;
+}
+
+function addRecords(records) {
+  state.records = records.map((record, offset) => ({
+    ...record,
+    __id: `${record.__source || "trace"}:${record.task || "task"}:${record.index ?? offset}:${record.sample_id ?? 0}:${offset}`,
+  }));
+  state.selected = state.records.length ? 0 : -1;
+  refreshTaskFilter();
+  applyFilters();
+}
+
+function refreshTaskFilter() {
+  const current = els.taskFilter.value;
+  const tasks = [...new Set(state.records.map(r => r.task).filter(Boolean))].sort();
+  els.taskFilter.innerHTML = '<option value="">All tasks</option>' +
+    tasks.map(task => `<option value="${escapeHtml(task)}">${escapeHtml(task)}</option>`).join("");
+  if (tasks.includes(current)) els.taskFilter.value = current;
+}
+
+function correctness(record) {
+  if (record.prediction === null || record.prediction === undefined) return "failed";
+  if (record.label === null || record.label === undefined) return "unknown";
+  return Number(record.prediction) === Number(record.label) ? "correct" : "wrong";
+}
+
+function recordText(record) {
+  return [
+    record.task,
+    record.smiles,
+    record.response_text,
+    stringify(record.messages),
+  ].join("\n").toLowerCase();
+}
+
+function applyFilters() {
+  const query = els.searchInput.value.trim().toLowerCase();
+  const task = els.taskFilter.value;
+  const result = els.resultFilter.value;
+
+  state.filtered = state.records.filter(record => {
+    if (task && record.task !== task) return false;
+    if (query && !recordText(record).includes(query)) return false;
+    if (result === "correct" && correctness(record) !== "correct") return false;
+    if (result === "wrong" && correctness(record) !== "wrong") return false;
+    if (result === "failed" && correctness(record) !== "failed") return false;
+    if (result === "tools" && Number(record.tool_count || 0) <= 0 && !messagesHaveTools(record.messages)) return false;
+    return true;
+  });
+
+  if (!state.filtered.some(record => record.__id === state.records[state.selected]?.__id)) {
+    const next = state.filtered[0];
+    state.selected = next ? state.records.findIndex(record => record.__id === next.__id) : -1;
+  }
+  renderStats();
+  renderList();
+  renderDetail();
+}
+
+function messagesHaveTools(messages) {
+  return Array.isArray(messages) && messages.some(message =>
+    message.role === "tool" ||
+    message.type === "function_call" ||
+    message.type === "function_call_output" ||
+    (Array.isArray(message.tool_calls) && message.tool_calls.length > 0)
+  );
+}
+
+function renderStats() {
+  const tasks = new Set(state.records.map(r => r.task).filter(Boolean));
+  const scored = state.records.filter(r => correctness(r) === "correct" || correctness(r) === "wrong");
+  const correct = scored.filter(r => correctness(r) === "correct").length;
+  els.totalPill.textContent = `records: ${state.records.length}`;
+  els.taskPill.textContent = `tasks: ${tasks.size}`;
+  els.accPill.textContent = scored.length ? `accuracy: ${(correct / scored.length * 100).toFixed(1)}%` : "accuracy: n/a";
+  els.visibleCount.textContent = `${state.filtered.length} shown`;
+}
+
+function renderList() {
+  if (!state.filtered.length) {
+    els.sampleList.innerHTML = '<div class="empty">No records loaded.</div>';
+    return;
+  }
+  els.sampleList.innerHTML = state.filtered.map(record => {
+    const active = state.records[state.selected]?.__id === record.__id ? " active" : "";
+    const status = correctness(record);
+    const statusClass = status === "correct" ? "ok" : status === "wrong" ? "bad" : "unknown";
+    return `
+      <button class="sample-item${active}" data-id="${escapeHtml(record.__id)}">
+        <div class="sample-title">
+          <span>${escapeHtml(record.task || "unknown")} #${escapeHtml(record.index ?? "")}.${escapeHtml(record.sample_id ?? 0)}</span>
+          <span class="${statusClass}">${escapeHtml(status)}</span>
+        </div>
+        <div class="sample-sub">GT ${escapeHtml(record.label)} -> Pred ${escapeHtml(record.prediction)}</div>
+        <div class="sample-sub">${escapeHtml(record.smiles || "")}</div>
+      </button>
+    `;
+  }).join("");
+  els.sampleList.querySelectorAll(".sample-item").forEach(button => {
+    button.addEventListener("click", () => {
+      state.selected = state.records.findIndex(record => record.__id === button.dataset.id);
+      renderList();
+      renderDetail();
+    });
+  });
+}
+
+function renderDetail() {
+  const record = state.records[state.selected];
+  if (!record) {
+    els.detail.innerHTML = '<div class="panel"><div class="empty">Load one or more JSONL trace files to begin.</div></div>';
+    return;
+  }
+  const status = correctness(record);
+  const statusClass = status === "correct" ? "ok" : status === "wrong" ? "bad" : "unknown";
+  els.detail.innerHTML = `
+    <div class="panel">
+      <div class="panel-title">
+        <span>${escapeHtml(record.task || "unknown")} sample ${escapeHtml(record.index)} / ${escapeHtml(record.sample_id ?? 0)}</span>
+        <span class="${statusClass}">${escapeHtml(status)}</span>
+      </div>
+      <div class="panel-body">
+        <div class="meta-grid">
+          ${metaField("SMILES", record.smiles)}
+          ${metaField("GT label", record.label)}
+          ${metaField("Pred label", record.prediction)}
+          ${metaField("Attempt", record.attempt)}
+          ${metaField("Tool calls", record.tool_count)}
+          ${metaField("Source", record.__source)}
+          ${metaField("Usage", formatUsage(record.usage))}
+          ${metaField("Response", record.response_text)}
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">
+        <span>Messages</span>
+        <span class="small-tag">${Array.isArray(record.messages) ? record.messages.length : 0} items</span>
+      </div>
+      <div class="panel-body">
+        <div class="trace">${renderMessages(record.messages)}</div>
+      </div>
+    </div>
+  `;
+}
+
+function metaField(key, value) {
+  return `
+    <div class="field">
+      <div class="k">${escapeHtml(key)}</div>
+      <div class="v">${escapeHtml(stringify(value))}</div>
+    </div>
+  `;
+}
+
+function formatUsage(usage) {
+  if (!usage) return "";
+  const parts = [];
+  for (const key of ["prompt_tokens", "completion_tokens", "reasoning_tokens", "total_tokens", "cost_usd"]) {
+    if (usage[key] !== undefined && usage[key] !== null) parts.push(`${key}=${usage[key]}`);
+  }
+  return parts.join(", ");
+}
+
+function renderMessages(messages) {
+  if (!Array.isArray(messages) || !messages.length) {
+    return '<div class="empty">No messages recorded.</div>';
+  }
+  return messages.map((message, index) => renderMessage(message, index)).join("");
+}
+
+function renderMessage(message, index) {
+  const role = message.role || message.type || "item";
+  const name = message.name || message.function?.name || message.call_id || "";
+  const isToolResult = message.role === "tool" || message.type === "function_call_output";
+  const blocks = [];
+
+  if (message.reasoning) {
+    blocks.push(renderBlock("Reasoning", message.reasoning, "reasoning"));
+  }
+  if (!isToolResult && message.content) {
+    blocks.push(renderBlock("Content", message.content, ""));
+  }
+  if (Array.isArray(message.tool_calls) && message.tool_calls.length) {
+    message.tool_calls.forEach((toolCall, toolIndex) => {
+      blocks.push(renderBlock(`Tool call ${toolIndex + 1}: ${toolName(toolCall)}`, toolCall, "tool-call"));
+    });
+  }
+  if (message.type === "function_call") {
+    blocks.push(renderBlock(`Tool call: ${message.name || "function_call"}`, message, "tool-call"));
+  }
+  if (isToolResult) {
+    blocks.push(renderBlock("Tool result", message.content || message.output || message, "tool-result"));
+  }
+  if (!blocks.length) {
+    blocks.push(renderBlock("Raw item", message, ""));
+  }
+
+  return `
+    <article class="message">
+      <div class="message-head">
+        <span class="role role-${escapeHtml(role)}">${escapeHtml(role)}</span>
+        <span class="small-tag">#${index + 1}</span>
+        ${name ? `<span class="small-tag">${escapeHtml(name)}</span>` : ""}
+      </div>
+      ${blocks.join("")}
+      <div class="block">
+        <details class="raw">
+          <summary>Raw JSON</summary>
+          <pre>${escapeHtml(JSON.stringify(message, null, 2))}</pre>
+        </details>
+      </div>
+    </article>
+  `;
+}
+
+function renderBlock(title, value, className) {
+  return `
+    <div class="block ${className}">
+      <div class="block-title">${escapeHtml(title)}</div>
+      <pre>${escapeHtml(stringify(value))}</pre>
+    </div>
+  `;
+}
+
+function toolName(toolCall) {
+  return toolCall?.function?.name || toolCall?.name || toolCall?.id || "unknown_tool";
+}
+
+els.fileInput.addEventListener("change", event => {
+  loadFiles(event.target.files).catch(err => alert(err.message));
+});
+els.serverRunSelect.addEventListener("change", renderTaskFileSelector);
+els.loadSelectedBtn.addEventListener("click", () => {
+  loadSelectedServerFile().catch(err => alert(err.message));
+});
+els.refreshFilesBtn.addEventListener("click", () => {
+  refreshServerFiles().catch(err => alert(err.message));
+});
+els.loadPathBtn.addEventListener("click", () => {
+  loadPath(els.pathInput.value).catch(err => alert(err.message));
+});
+els.pathInput.addEventListener("keydown", event => {
+  if (event.key === "Enter") loadPath(els.pathInput.value).catch(err => alert(err.message));
+});
+els.searchInput.addEventListener("input", applyFilters);
+els.taskFilter.addEventListener("change", applyFilters);
+els.resultFilter.addEventListener("change", applyFilters);
+
+renderStats();
+renderDetail();
+refreshServerFiles({silent: true});
+</script>
+</body>
+</html>
