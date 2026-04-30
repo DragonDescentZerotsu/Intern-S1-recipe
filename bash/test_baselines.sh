@@ -6,16 +6,18 @@ cd "${ROOT_DIR}"
 
 SESSION="gpt20b"
 BASE_PORT="${VLLM_BASE_PORT:-8001}"
-NUM_SERVERS="${VLLM_NUM_SERVERS:-4}"
+NUM_SERVERS="${VLLM_NUM_SERVERS:-8}"
 API_KEY="${VLLM_API_KEY:-EMPTY}"
 API_BASE="${TEST_API_BASE:-http://127.0.0.1:9002/v1}"
 WAIT_TIMEOUT_SECONDS="${VLLM_WAIT_TIMEOUT_SECONDS:-3600}"
 WAIT_INTERVAL_SECONDS="${VLLM_WAIT_INTERVAL_SECONDS:-10}"
-GPU_IDS="${VLLM_GPU_IDS:-0,1,2,3}"
+GPU_IDS="${VLLM_GPU_IDS:-0,1,2,3,4,5,6,7}"
 GPU_WAIT_TIMEOUT_SECONDS="${VLLM_GPU_WAIT_TIMEOUT_SECONDS:-1800}"
 GPU_WAIT_INTERVAL_SECONDS="${VLLM_GPU_WAIT_INTERVAL_SECONDS:-5}"
-VLLM_CONDA_ENV="${VLLM_CONDA_ENV:-reasonv}"
-EVAL_CONDA_ENV="${EVAL_CONDA_ENV:-reasonv}"
+VLLM_CONDA_ENV="${VLLM_CONDA_ENV:-vllm}"
+EVAL_CONDA_ENV="${EVAL_CONDA_ENV:-vllm}"
+EVAL_PROCESSES_PER_GPU="${EVAL_PROCESSES_PER_GPU:-16}"
+EVAL_NUM_PROCESSES="${EVAL_NUM_PROCESSES:-$((NUM_SERVERS * EVAL_PROCESSES_PER_GPU))}"
 VLLM_SESSION_ACTIVE=0
 
 if [[ -n "${CONDA_EXE:-}" ]]; then
@@ -71,6 +73,8 @@ run_eval() {
 
   conda activate "${EVAL_CONDA_ENV}"
 
+  echo "Running eval with ${EVAL_NUM_PROCESSES} worker process(es)."
+
   python test/test_tdc_via_api_F1_TRIM.py \
     --provider local \
     --api-base "${API_BASE}" \
@@ -80,7 +84,7 @@ run_eval() {
     --tool-mode similar \
     --max-tokens 20480 \
     --chat-template-kwargs-json '{"enable_thinking": true}' \
-    --num-processes 64 \
+    --num-processes "${EVAL_NUM_PROCESSES}" \
     --log-file \
     --log-file-name "${log_file_name}" \
     --save-reasoning-trajectories \
@@ -108,7 +112,7 @@ run_model() {
 trap cleanup_vllm EXIT
 
 # run_model ./bash/vllm_starters/vllm_starter_gpt-20b-RL-baseline.sh gpt-oss-20b-RL-baseline
-run_model ./bash/vllm_starters/vllm_starter_gpt-20b-SFT.sh gpt-oss-20b-SFT
+# run_model ./bash/vllm_starters/vllm_starter_gpt-20b-SFT.sh gpt-oss-20b-SFT
 run_model ./bash/vllm_starters/vllm_starter_gpt-20b-SFT+RL.sh gpt-oss-20b-SFT+RL
 
 trap - EXIT
