@@ -20,10 +20,6 @@ from rdkit.Chem.MolStandardize import rdMolStandardize
 rdBase.DisableLog('rdApp.error')
 os.environ["RDKIT_MAX_THREADS"] = "1"
 
-# TDC imports
-from tdc.single_pred import ADME, HTS, Tox
-from tdc.utils import retrieve_label_name_list
-
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -37,11 +33,15 @@ def expand_task(task_name, group_name):
     task instances expected by the binary similarity pipeline.
     """
     if group_name == "Tox" and task_name == "Tox21":
+        from tdc.utils import retrieve_label_name_list
+
         return [(f"Tox21_{label}", "Tox") for label in retrieve_label_name_list("Tox21")]
     return [(task_name, group_name)]
 
 
 def load_tdc_task(task_name, group_name):
+    from tdc.single_pred import ADME, HTS, Tox
+
     if group_name == 'Tox':
         if task_name.startswith("Tox21_"):
             label_name = task_name.split("Tox21_", 1)[1].replace("_", "-")

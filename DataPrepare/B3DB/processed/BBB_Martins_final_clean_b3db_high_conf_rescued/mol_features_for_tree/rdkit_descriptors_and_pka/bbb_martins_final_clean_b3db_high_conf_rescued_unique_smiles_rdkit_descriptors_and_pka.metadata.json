@@ -1,0 +1,2451 @@
+{
+  "input_dir": "/data1/tianang/Projects/Intern-S1/DataPrepare/B3DB/processed/BBB_Martins_final_clean_b3db_high_conf_rescued/drug_b3db_smiles",
+  "smiles_json_path": null,
+  "unique_smiles": 1779,
+  "smiles_limit": null,
+  "logd_ph": 7.4,
+  "num_workers": 1,
+  "rdkit_descriptor_count": 217,
+  "rdkit_descriptor_names": [
+    "MaxAbsEStateIndex",
+    "MaxEStateIndex",
+    "MinAbsEStateIndex",
+    "MinEStateIndex",
+    "qed",
+    "SPS",
+    "MolWt",
+    "HeavyAtomMolWt",
+    "ExactMolWt",
+    "NumValenceElectrons",
+    "NumRadicalElectrons",
+    "MaxPartialCharge",
+    "MinPartialCharge",
+    "MaxAbsPartialCharge",
+    "MinAbsPartialCharge",
+    "FpDensityMorgan1",
+    "FpDensityMorgan2",
+    "FpDensityMorgan3",
+    "BCUT2D_MWHI",
+    "BCUT2D_MWLOW",
+    "BCUT2D_CHGHI",
+    "BCUT2D_CHGLO",
+    "BCUT2D_LOGPHI",
+    "BCUT2D_LOGPLOW",
+    "BCUT2D_MRHI",
+    "BCUT2D_MRLOW",
+    "AvgIpc",
+    "BalabanJ",
+    "BertzCT",
+    "Chi0",
+    "Chi0n",
+    "Chi0v",
+    "Chi1",
+    "Chi1n",
+    "Chi1v",
+    "Chi2n",
+    "Chi2v",
+    "Chi3n",
+    "Chi3v",
+    "Chi4n",
+    "Chi4v",
+    "HallKierAlpha",
+    "Ipc",
+    "Kappa1",
+    "Kappa2",
+    "Kappa3",
+    "LabuteASA",
+    "PEOE_VSA1",
+    "PEOE_VSA10",
+    "PEOE_VSA11",
+    "PEOE_VSA12",
+    "PEOE_VSA13",
+    "PEOE_VSA14",
+    "PEOE_VSA2",
+    "PEOE_VSA3",
+    "PEOE_VSA4",
+    "PEOE_VSA5",
+    "PEOE_VSA6",
+    "PEOE_VSA7",
+    "PEOE_VSA8",
+    "PEOE_VSA9",
+    "SMR_VSA1",
+    "SMR_VSA10",
+    "SMR_VSA2",
+    "SMR_VSA3",
+    "SMR_VSA4",
+    "SMR_VSA5",
+    "SMR_VSA6",
+    "SMR_VSA7",
+    "SMR_VSA8",
+    "SMR_VSA9",
+    "SlogP_VSA1",
+    "SlogP_VSA10",
+    "SlogP_VSA11",
+    "SlogP_VSA12",
+    "SlogP_VSA2",
+    "SlogP_VSA3",
+    "SlogP_VSA4",
+    "SlogP_VSA5",
+    "SlogP_VSA6",
+    "SlogP_VSA7",
+    "SlogP_VSA8",
+    "SlogP_VSA9",
+    "TPSA",
+    "EState_VSA1",
+    "EState_VSA10",
+    "EState_VSA11",
+    "EState_VSA2",
+    "EState_VSA3",
+    "EState_VSA4",
+    "EState_VSA5",
+    "EState_VSA6",
+    "EState_VSA7",
+    "EState_VSA8",
+    "EState_VSA9",
+    "VSA_EState1",
+    "VSA_EState10",
+    "VSA_EState2",
+    "VSA_EState3",
+    "VSA_EState4",
+    "VSA_EState5",
+    "VSA_EState6",
+    "VSA_EState7",
+    "VSA_EState8",
+    "VSA_EState9",
+    "FractionCSP3",
+    "HeavyAtomCount",
+    "NHOHCount",
+    "NOCount",
+    "NumAliphaticCarbocycles",
+    "NumAliphaticHeterocycles",
+    "NumAliphaticRings",
+    "NumAmideBonds",
+    "NumAromaticCarbocycles",
+    "NumAromaticHeterocycles",
+    "NumAromaticRings",
+    "NumAtomStereoCenters",
+    "NumBridgeheadAtoms",
+    "NumHAcceptors",
+    "NumHDonors",
+    "NumHeteroatoms",
+    "NumHeterocycles",
+    "NumRotatableBonds",
+    "NumSaturatedCarbocycles",
+    "NumSaturatedHeterocycles",
+    "NumSaturatedRings",
+    "NumSpiroAtoms",
+    "NumUnspecifiedAtomStereoCenters",
+    "Phi",
+    "RingCount",
+    "MolLogP",
+    "MolMR",
+    "fr_Al_COO",
+    "fr_Al_OH",
+    "fr_Al_OH_noTert",
+    "fr_ArN",
+    "fr_Ar_COO",
+    "fr_Ar_N",
+    "fr_Ar_NH",
+    "fr_Ar_OH",
+    "fr_COO",
+    "fr_COO2",
+    "fr_C_O",
+    "fr_C_O_noCOO",
+    "fr_C_S",
+    "fr_HOCCN",
+    "fr_Imine",
+    "fr_NH0",
+    "fr_NH1",
+    "fr_NH2",
+    "fr_N_O",
+    "fr_Ndealkylation1",
+    "fr_Ndealkylation2",
+    "fr_Nhpyrrole",
+    "fr_SH",
+    "fr_aldehyde",
+    "fr_alkyl_carbamate",
+    "fr_alkyl_halide",
+    "fr_allylic_oxid",
+    "fr_amide",
+    "fr_amidine",
+    "fr_aniline",
+    "fr_aryl_methyl",
+    "fr_azide",
+    "fr_azo",
+    "fr_barbitur",
+    "fr_benzene",
+    "fr_benzodiazepine",
+    "fr_bicyclic",
+    "fr_diazo",
+    "fr_dihydropyridine",
+    "fr_epoxide",
+    "fr_ester",
+    "fr_ether",
+    "fr_furan",
+    "fr_guanido",
+    "fr_halogen",
+    "fr_hdrzine",
+    "fr_hdrzone",
+    "fr_imidazole",
+    "fr_imide",
+    "fr_isocyan",
+    "fr_isothiocyan",
+    "fr_ketone",
+    "fr_ketone_Topliss",
+    "fr_lactam",
+    "fr_lactone",
+    "fr_methoxy",
+    "fr_morpholine",
+    "fr_nitrile",
+    "fr_nitro",
+    "fr_nitro_arom",
+    "fr_nitro_arom_nonortho",
+    "fr_nitroso",
+    "fr_oxazole",
+    "fr_oxime",
+    "fr_para_hydroxylation",
+    "fr_phenol",
+    "fr_phenol_noOrthoHbond",
+    "fr_phos_acid",
+    "fr_phos_ester",
+    "fr_piperdine",
+    "fr_piperzine",
+    "fr_priamide",
+    "fr_prisulfonamd",
+    "fr_pyridine",
+    "fr_quatN",
+    "fr_sulfide",
+    "fr_sulfonamd",
+    "fr_sulfone",
+    "fr_term_acetylene",
+    "fr_tetrazole",
+    "fr_thiazole",
+    "fr_thiocyan",
+    "fr_thiophene",
+    "fr_unbrch_alkane",
+    "fr_urea"
+  ],
+  "max_basic_sites": 7,
+  "max_acidic_sites": 23,
+  "feature_column_count": 277,
+  "feature_semantics": {
+    "rdkit__MaxAbsEStateIndex": {
+      "feature_name": "rdkit__MaxAbsEStateIndex",
+      "display_name": "MaxAbsEStateIndex",
+      "description": "model feature: MaxAbsEStateIndex",
+      "source_family": "generic",
+      "raw_name": "MaxAbsEStateIndex",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__MaxEStateIndex": {
+      "feature_name": "rdkit__MaxEStateIndex",
+      "display_name": "MaxEStateIndex",
+      "description": "model feature: MaxEStateIndex",
+      "source_family": "generic",
+      "raw_name": "MaxEStateIndex",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__MinAbsEStateIndex": {
+      "feature_name": "rdkit__MinAbsEStateIndex",
+      "display_name": "MinAbsEStateIndex",
+      "description": "model feature: MinAbsEStateIndex",
+      "source_family": "generic",
+      "raw_name": "MinAbsEStateIndex",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__MinEStateIndex": {
+      "feature_name": "rdkit__MinEStateIndex",
+      "display_name": "MinEStateIndex",
+      "description": "model feature: MinEStateIndex",
+      "source_family": "generic",
+      "raw_name": "MinEStateIndex",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__qed": {
+      "feature_name": "rdkit__qed",
+      "display_name": "qed",
+      "description": "model feature: qed",
+      "source_family": "generic",
+      "raw_name": "qed",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SPS": {
+      "feature_name": "rdkit__SPS",
+      "display_name": "SPS",
+      "description": "model feature: SPS",
+      "source_family": "generic",
+      "raw_name": "SPS",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__MolWt": {
+      "feature_name": "rdkit__MolWt",
+      "display_name": "MolWt",
+      "description": "model feature: MolWt",
+      "source_family": "generic",
+      "raw_name": "MolWt",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__HeavyAtomMolWt": {
+      "feature_name": "rdkit__HeavyAtomMolWt",
+      "display_name": "HeavyAtomMolWt",
+      "description": "model feature: HeavyAtomMolWt",
+      "source_family": "generic",
+      "raw_name": "HeavyAtomMolWt",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__ExactMolWt": {
+      "feature_name": "rdkit__ExactMolWt",
+      "display_name": "ExactMolWt",
+      "description": "model feature: ExactMolWt",
+      "source_family": "generic",
+      "raw_name": "ExactMolWt",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NumValenceElectrons": {
+      "feature_name": "rdkit__NumValenceElectrons",
+      "display_name": "NumValenceElectrons",
+      "description": "model feature: NumValenceElectrons",
+      "source_family": "generic",
+      "raw_name": "NumValenceElectrons",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NumRadicalElectrons": {
+      "feature_name": "rdkit__NumRadicalElectrons",
+      "display_name": "NumRadicalElectrons",
+      "description": "model feature: NumRadicalElectrons",
+      "source_family": "generic",
+      "raw_name": "NumRadicalElectrons",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__MaxPartialCharge": {
+      "feature_name": "rdkit__MaxPartialCharge",
+      "display_name": "MaxPartialCharge",
+      "description": "model feature: MaxPartialCharge",
+      "source_family": "generic",
+      "raw_name": "MaxPartialCharge",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__MinPartialCharge": {
+      "feature_name": "rdkit__MinPartialCharge",
+      "display_name": "MinPartialCharge",
+      "description": "model feature: MinPartialCharge",
+      "source_family": "generic",
+      "raw_name": "MinPartialCharge",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__MaxAbsPartialCharge": {
+      "feature_name": "rdkit__MaxAbsPartialCharge",
+      "display_name": "MaxAbsPartialCharge",
+      "description": "model feature: MaxAbsPartialCharge",
+      "source_family": "generic",
+      "raw_name": "MaxAbsPartialCharge",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__MinAbsPartialCharge": {
+      "feature_name": "rdkit__MinAbsPartialCharge",
+      "display_name": "MinAbsPartialCharge",
+      "description": "model feature: MinAbsPartialCharge",
+      "source_family": "generic",
+      "raw_name": "MinAbsPartialCharge",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__FpDensityMorgan1": {
+      "feature_name": "rdkit__FpDensityMorgan1",
+      "display_name": "FpDensityMorgan1",
+      "description": "model feature: FpDensityMorgan1",
+      "source_family": "generic",
+      "raw_name": "FpDensityMorgan1",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__FpDensityMorgan2": {
+      "feature_name": "rdkit__FpDensityMorgan2",
+      "display_name": "FpDensityMorgan2",
+      "description": "model feature: FpDensityMorgan2",
+      "source_family": "generic",
+      "raw_name": "FpDensityMorgan2",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__FpDensityMorgan3": {
+      "feature_name": "rdkit__FpDensityMorgan3",
+      "display_name": "FpDensityMorgan3",
+      "description": "model feature: FpDensityMorgan3",
+      "source_family": "generic",
+      "raw_name": "FpDensityMorgan3",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__BCUT2D_MWHI": {
+      "feature_name": "rdkit__BCUT2D_MWHI",
+      "display_name": "BCUT2D MWHI",
+      "description": "model feature: BCUT2D_MWHI",
+      "source_family": "generic",
+      "raw_name": "BCUT2D_MWHI",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__BCUT2D_MWLOW": {
+      "feature_name": "rdkit__BCUT2D_MWLOW",
+      "display_name": "BCUT2D MWLOW",
+      "description": "model feature: BCUT2D_MWLOW",
+      "source_family": "generic",
+      "raw_name": "BCUT2D_MWLOW",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__BCUT2D_CHGHI": {
+      "feature_name": "rdkit__BCUT2D_CHGHI",
+      "display_name": "BCUT2D CHGHI",
+      "description": "model feature: BCUT2D_CHGHI",
+      "source_family": "generic",
+      "raw_name": "BCUT2D_CHGHI",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__BCUT2D_CHGLO": {
+      "feature_name": "rdkit__BCUT2D_CHGLO",
+      "display_name": "BCUT2D CHGLO",
+      "description": "model feature: BCUT2D_CHGLO",
+      "source_family": "generic",
+      "raw_name": "BCUT2D_CHGLO",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__BCUT2D_LOGPHI": {
+      "feature_name": "rdkit__BCUT2D_LOGPHI",
+      "display_name": "BCUT2D LOGPHI",
+      "description": "model feature: BCUT2D_LOGPHI",
+      "source_family": "generic",
+      "raw_name": "BCUT2D_LOGPHI",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__BCUT2D_LOGPLOW": {
+      "feature_name": "rdkit__BCUT2D_LOGPLOW",
+      "display_name": "BCUT2D LOGPLOW",
+      "description": "model feature: BCUT2D_LOGPLOW",
+      "source_family": "generic",
+      "raw_name": "BCUT2D_LOGPLOW",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__BCUT2D_MRHI": {
+      "feature_name": "rdkit__BCUT2D_MRHI",
+      "display_name": "BCUT2D MRHI",
+      "description": "model feature: BCUT2D_MRHI",
+      "source_family": "generic",
+      "raw_name": "BCUT2D_MRHI",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__BCUT2D_MRLOW": {
+      "feature_name": "rdkit__BCUT2D_MRLOW",
+      "display_name": "BCUT2D MRLOW",
+      "description": "model feature: BCUT2D_MRLOW",
+      "source_family": "generic",
+      "raw_name": "BCUT2D_MRLOW",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__AvgIpc": {
+      "feature_name": "rdkit__AvgIpc",
+      "display_name": "AvgIpc",
+      "description": "model feature: AvgIpc",
+      "source_family": "generic",
+      "raw_name": "AvgIpc",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__BalabanJ": {
+      "feature_name": "rdkit__BalabanJ",
+      "display_name": "BalabanJ",
+      "description": "model feature: BalabanJ",
+      "source_family": "generic",
+      "raw_name": "BalabanJ",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__BertzCT": {
+      "feature_name": "rdkit__BertzCT",
+      "display_name": "BertzCT",
+      "description": "model feature: BertzCT",
+      "source_family": "generic",
+      "raw_name": "BertzCT",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__Chi0": {
+      "feature_name": "rdkit__Chi0",
+      "display_name": "Chi0",
+      "description": "model feature: Chi0",
+      "source_family": "generic",
+      "raw_name": "Chi0",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__Chi0n": {
+      "feature_name": "rdkit__Chi0n",
+      "display_name": "Chi0n",
+      "description": "model feature: Chi0n",
+      "source_family": "generic",
+      "raw_name": "Chi0n",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__Chi0v": {
+      "feature_name": "rdkit__Chi0v",
+      "display_name": "Chi0v",
+      "description": "model feature: Chi0v",
+      "source_family": "generic",
+      "raw_name": "Chi0v",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__Chi1": {
+      "feature_name": "rdkit__Chi1",
+      "display_name": "Chi1",
+      "description": "model feature: Chi1",
+      "source_family": "generic",
+      "raw_name": "Chi1",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__Chi1n": {
+      "feature_name": "rdkit__Chi1n",
+      "display_name": "Chi1n",
+      "description": "model feature: Chi1n",
+      "source_family": "generic",
+      "raw_name": "Chi1n",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__Chi1v": {
+      "feature_name": "rdkit__Chi1v",
+      "display_name": "Chi1v",
+      "description": "model feature: Chi1v",
+      "source_family": "generic",
+      "raw_name": "Chi1v",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__Chi2n": {
+      "feature_name": "rdkit__Chi2n",
+      "display_name": "Chi2n",
+      "description": "model feature: Chi2n",
+      "source_family": "generic",
+      "raw_name": "Chi2n",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__Chi2v": {
+      "feature_name": "rdkit__Chi2v",
+      "display_name": "Chi2v",
+      "description": "model feature: Chi2v",
+      "source_family": "generic",
+      "raw_name": "Chi2v",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__Chi3n": {
+      "feature_name": "rdkit__Chi3n",
+      "display_name": "Chi3n",
+      "description": "model feature: Chi3n",
+      "source_family": "generic",
+      "raw_name": "Chi3n",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__Chi3v": {
+      "feature_name": "rdkit__Chi3v",
+      "display_name": "Chi3v",
+      "description": "model feature: Chi3v",
+      "source_family": "generic",
+      "raw_name": "Chi3v",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__Chi4n": {
+      "feature_name": "rdkit__Chi4n",
+      "display_name": "Chi4n",
+      "description": "model feature: Chi4n",
+      "source_family": "generic",
+      "raw_name": "Chi4n",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__Chi4v": {
+      "feature_name": "rdkit__Chi4v",
+      "display_name": "Chi4v",
+      "description": "model feature: Chi4v",
+      "source_family": "generic",
+      "raw_name": "Chi4v",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__HallKierAlpha": {
+      "feature_name": "rdkit__HallKierAlpha",
+      "display_name": "HallKierAlpha",
+      "description": "model feature: HallKierAlpha",
+      "source_family": "generic",
+      "raw_name": "HallKierAlpha",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__Ipc": {
+      "feature_name": "rdkit__Ipc",
+      "display_name": "Ipc",
+      "description": "model feature: Ipc",
+      "source_family": "generic",
+      "raw_name": "Ipc",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__Kappa1": {
+      "feature_name": "rdkit__Kappa1",
+      "display_name": "Kappa1",
+      "description": "model feature: Kappa1",
+      "source_family": "generic",
+      "raw_name": "Kappa1",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__Kappa2": {
+      "feature_name": "rdkit__Kappa2",
+      "display_name": "Kappa2",
+      "description": "model feature: Kappa2",
+      "source_family": "generic",
+      "raw_name": "Kappa2",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__Kappa3": {
+      "feature_name": "rdkit__Kappa3",
+      "display_name": "Kappa3",
+      "description": "model feature: Kappa3",
+      "source_family": "generic",
+      "raw_name": "Kappa3",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__LabuteASA": {
+      "feature_name": "rdkit__LabuteASA",
+      "display_name": "LabuteASA",
+      "description": "model feature: LabuteASA",
+      "source_family": "generic",
+      "raw_name": "LabuteASA",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__PEOE_VSA1": {
+      "feature_name": "rdkit__PEOE_VSA1",
+      "display_name": "PEOE VSA1",
+      "description": "model feature: PEOE_VSA1",
+      "source_family": "generic",
+      "raw_name": "PEOE_VSA1",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__PEOE_VSA10": {
+      "feature_name": "rdkit__PEOE_VSA10",
+      "display_name": "PEOE VSA10",
+      "description": "model feature: PEOE_VSA10",
+      "source_family": "generic",
+      "raw_name": "PEOE_VSA10",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__PEOE_VSA11": {
+      "feature_name": "rdkit__PEOE_VSA11",
+      "display_name": "PEOE VSA11",
+      "description": "model feature: PEOE_VSA11",
+      "source_family": "generic",
+      "raw_name": "PEOE_VSA11",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__PEOE_VSA12": {
+      "feature_name": "rdkit__PEOE_VSA12",
+      "display_name": "PEOE VSA12",
+      "description": "model feature: PEOE_VSA12",
+      "source_family": "generic",
+      "raw_name": "PEOE_VSA12",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__PEOE_VSA13": {
+      "feature_name": "rdkit__PEOE_VSA13",
+      "display_name": "PEOE VSA13",
+      "description": "model feature: PEOE_VSA13",
+      "source_family": "generic",
+      "raw_name": "PEOE_VSA13",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__PEOE_VSA14": {
+      "feature_name": "rdkit__PEOE_VSA14",
+      "display_name": "PEOE VSA14",
+      "description": "model feature: PEOE_VSA14",
+      "source_family": "generic",
+      "raw_name": "PEOE_VSA14",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__PEOE_VSA2": {
+      "feature_name": "rdkit__PEOE_VSA2",
+      "display_name": "PEOE VSA2",
+      "description": "model feature: PEOE_VSA2",
+      "source_family": "generic",
+      "raw_name": "PEOE_VSA2",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__PEOE_VSA3": {
+      "feature_name": "rdkit__PEOE_VSA3",
+      "display_name": "PEOE VSA3",
+      "description": "model feature: PEOE_VSA3",
+      "source_family": "generic",
+      "raw_name": "PEOE_VSA3",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__PEOE_VSA4": {
+      "feature_name": "rdkit__PEOE_VSA4",
+      "display_name": "PEOE VSA4",
+      "description": "model feature: PEOE_VSA4",
+      "source_family": "generic",
+      "raw_name": "PEOE_VSA4",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__PEOE_VSA5": {
+      "feature_name": "rdkit__PEOE_VSA5",
+      "display_name": "PEOE VSA5",
+      "description": "model feature: PEOE_VSA5",
+      "source_family": "generic",
+      "raw_name": "PEOE_VSA5",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__PEOE_VSA6": {
+      "feature_name": "rdkit__PEOE_VSA6",
+      "display_name": "PEOE VSA6",
+      "description": "model feature: PEOE_VSA6",
+      "source_family": "generic",
+      "raw_name": "PEOE_VSA6",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__PEOE_VSA7": {
+      "feature_name": "rdkit__PEOE_VSA7",
+      "display_name": "PEOE VSA7",
+      "description": "model feature: PEOE_VSA7",
+      "source_family": "generic",
+      "raw_name": "PEOE_VSA7",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__PEOE_VSA8": {
+      "feature_name": "rdkit__PEOE_VSA8",
+      "display_name": "PEOE VSA8",
+      "description": "model feature: PEOE_VSA8",
+      "source_family": "generic",
+      "raw_name": "PEOE_VSA8",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__PEOE_VSA9": {
+      "feature_name": "rdkit__PEOE_VSA9",
+      "display_name": "PEOE VSA9",
+      "description": "model feature: PEOE_VSA9",
+      "source_family": "generic",
+      "raw_name": "PEOE_VSA9",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SMR_VSA1": {
+      "feature_name": "rdkit__SMR_VSA1",
+      "display_name": "SMR VSA1",
+      "description": "model feature: SMR_VSA1",
+      "source_family": "generic",
+      "raw_name": "SMR_VSA1",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SMR_VSA10": {
+      "feature_name": "rdkit__SMR_VSA10",
+      "display_name": "SMR VSA10",
+      "description": "model feature: SMR_VSA10",
+      "source_family": "generic",
+      "raw_name": "SMR_VSA10",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SMR_VSA2": {
+      "feature_name": "rdkit__SMR_VSA2",
+      "display_name": "SMR VSA2",
+      "description": "model feature: SMR_VSA2",
+      "source_family": "generic",
+      "raw_name": "SMR_VSA2",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SMR_VSA3": {
+      "feature_name": "rdkit__SMR_VSA3",
+      "display_name": "SMR VSA3",
+      "description": "model feature: SMR_VSA3",
+      "source_family": "generic",
+      "raw_name": "SMR_VSA3",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SMR_VSA4": {
+      "feature_name": "rdkit__SMR_VSA4",
+      "display_name": "SMR VSA4",
+      "description": "model feature: SMR_VSA4",
+      "source_family": "generic",
+      "raw_name": "SMR_VSA4",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SMR_VSA5": {
+      "feature_name": "rdkit__SMR_VSA5",
+      "display_name": "SMR VSA5",
+      "description": "model feature: SMR_VSA5",
+      "source_family": "generic",
+      "raw_name": "SMR_VSA5",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SMR_VSA6": {
+      "feature_name": "rdkit__SMR_VSA6",
+      "display_name": "SMR VSA6",
+      "description": "model feature: SMR_VSA6",
+      "source_family": "generic",
+      "raw_name": "SMR_VSA6",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SMR_VSA7": {
+      "feature_name": "rdkit__SMR_VSA7",
+      "display_name": "SMR VSA7",
+      "description": "model feature: SMR_VSA7",
+      "source_family": "generic",
+      "raw_name": "SMR_VSA7",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SMR_VSA8": {
+      "feature_name": "rdkit__SMR_VSA8",
+      "display_name": "SMR VSA8",
+      "description": "model feature: SMR_VSA8",
+      "source_family": "generic",
+      "raw_name": "SMR_VSA8",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SMR_VSA9": {
+      "feature_name": "rdkit__SMR_VSA9",
+      "display_name": "SMR VSA9",
+      "description": "model feature: SMR_VSA9",
+      "source_family": "generic",
+      "raw_name": "SMR_VSA9",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SlogP_VSA1": {
+      "feature_name": "rdkit__SlogP_VSA1",
+      "display_name": "SlogP VSA1",
+      "description": "model feature: SlogP_VSA1",
+      "source_family": "generic",
+      "raw_name": "SlogP_VSA1",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SlogP_VSA10": {
+      "feature_name": "rdkit__SlogP_VSA10",
+      "display_name": "SlogP VSA10",
+      "description": "model feature: SlogP_VSA10",
+      "source_family": "generic",
+      "raw_name": "SlogP_VSA10",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SlogP_VSA11": {
+      "feature_name": "rdkit__SlogP_VSA11",
+      "display_name": "SlogP VSA11",
+      "description": "model feature: SlogP_VSA11",
+      "source_family": "generic",
+      "raw_name": "SlogP_VSA11",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SlogP_VSA12": {
+      "feature_name": "rdkit__SlogP_VSA12",
+      "display_name": "SlogP VSA12",
+      "description": "model feature: SlogP_VSA12",
+      "source_family": "generic",
+      "raw_name": "SlogP_VSA12",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SlogP_VSA2": {
+      "feature_name": "rdkit__SlogP_VSA2",
+      "display_name": "SlogP VSA2",
+      "description": "model feature: SlogP_VSA2",
+      "source_family": "generic",
+      "raw_name": "SlogP_VSA2",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SlogP_VSA3": {
+      "feature_name": "rdkit__SlogP_VSA3",
+      "display_name": "SlogP VSA3",
+      "description": "model feature: SlogP_VSA3",
+      "source_family": "generic",
+      "raw_name": "SlogP_VSA3",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SlogP_VSA4": {
+      "feature_name": "rdkit__SlogP_VSA4",
+      "display_name": "SlogP VSA4",
+      "description": "model feature: SlogP_VSA4",
+      "source_family": "generic",
+      "raw_name": "SlogP_VSA4",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SlogP_VSA5": {
+      "feature_name": "rdkit__SlogP_VSA5",
+      "display_name": "SlogP VSA5",
+      "description": "model feature: SlogP_VSA5",
+      "source_family": "generic",
+      "raw_name": "SlogP_VSA5",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SlogP_VSA6": {
+      "feature_name": "rdkit__SlogP_VSA6",
+      "display_name": "SlogP VSA6",
+      "description": "model feature: SlogP_VSA6",
+      "source_family": "generic",
+      "raw_name": "SlogP_VSA6",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SlogP_VSA7": {
+      "feature_name": "rdkit__SlogP_VSA7",
+      "display_name": "SlogP VSA7",
+      "description": "model feature: SlogP_VSA7",
+      "source_family": "generic",
+      "raw_name": "SlogP_VSA7",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SlogP_VSA8": {
+      "feature_name": "rdkit__SlogP_VSA8",
+      "display_name": "SlogP VSA8",
+      "description": "model feature: SlogP_VSA8",
+      "source_family": "generic",
+      "raw_name": "SlogP_VSA8",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__SlogP_VSA9": {
+      "feature_name": "rdkit__SlogP_VSA9",
+      "display_name": "SlogP VSA9",
+      "description": "model feature: SlogP_VSA9",
+      "source_family": "generic",
+      "raw_name": "SlogP_VSA9",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__TPSA": {
+      "feature_name": "rdkit__TPSA",
+      "display_name": "TPSA",
+      "description": "model feature: TPSA",
+      "source_family": "generic",
+      "raw_name": "TPSA",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__EState_VSA1": {
+      "feature_name": "rdkit__EState_VSA1",
+      "display_name": "EState VSA1",
+      "description": "model feature: EState_VSA1",
+      "source_family": "generic",
+      "raw_name": "EState_VSA1",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__EState_VSA10": {
+      "feature_name": "rdkit__EState_VSA10",
+      "display_name": "EState VSA10",
+      "description": "model feature: EState_VSA10",
+      "source_family": "generic",
+      "raw_name": "EState_VSA10",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__EState_VSA11": {
+      "feature_name": "rdkit__EState_VSA11",
+      "display_name": "EState VSA11",
+      "description": "model feature: EState_VSA11",
+      "source_family": "generic",
+      "raw_name": "EState_VSA11",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__EState_VSA2": {
+      "feature_name": "rdkit__EState_VSA2",
+      "display_name": "EState VSA2",
+      "description": "model feature: EState_VSA2",
+      "source_family": "generic",
+      "raw_name": "EState_VSA2",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__EState_VSA3": {
+      "feature_name": "rdkit__EState_VSA3",
+      "display_name": "EState VSA3",
+      "description": "model feature: EState_VSA3",
+      "source_family": "generic",
+      "raw_name": "EState_VSA3",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__EState_VSA4": {
+      "feature_name": "rdkit__EState_VSA4",
+      "display_name": "EState VSA4",
+      "description": "model feature: EState_VSA4",
+      "source_family": "generic",
+      "raw_name": "EState_VSA4",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__EState_VSA5": {
+      "feature_name": "rdkit__EState_VSA5",
+      "display_name": "EState VSA5",
+      "description": "model feature: EState_VSA5",
+      "source_family": "generic",
+      "raw_name": "EState_VSA5",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__EState_VSA6": {
+      "feature_name": "rdkit__EState_VSA6",
+      "display_name": "EState VSA6",
+      "description": "model feature: EState_VSA6",
+      "source_family": "generic",
+      "raw_name": "EState_VSA6",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__EState_VSA7": {
+      "feature_name": "rdkit__EState_VSA7",
+      "display_name": "EState VSA7",
+      "description": "model feature: EState_VSA7",
+      "source_family": "generic",
+      "raw_name": "EState_VSA7",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__EState_VSA8": {
+      "feature_name": "rdkit__EState_VSA8",
+      "display_name": "EState VSA8",
+      "description": "model feature: EState_VSA8",
+      "source_family": "generic",
+      "raw_name": "EState_VSA8",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__EState_VSA9": {
+      "feature_name": "rdkit__EState_VSA9",
+      "display_name": "EState VSA9",
+      "description": "model feature: EState_VSA9",
+      "source_family": "generic",
+      "raw_name": "EState_VSA9",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__VSA_EState1": {
+      "feature_name": "rdkit__VSA_EState1",
+      "display_name": "VSA EState1",
+      "description": "model feature: VSA_EState1",
+      "source_family": "generic",
+      "raw_name": "VSA_EState1",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__VSA_EState10": {
+      "feature_name": "rdkit__VSA_EState10",
+      "display_name": "VSA EState10",
+      "description": "model feature: VSA_EState10",
+      "source_family": "generic",
+      "raw_name": "VSA_EState10",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__VSA_EState2": {
+      "feature_name": "rdkit__VSA_EState2",
+      "display_name": "VSA EState2",
+      "description": "model feature: VSA_EState2",
+      "source_family": "generic",
+      "raw_name": "VSA_EState2",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__VSA_EState3": {
+      "feature_name": "rdkit__VSA_EState3",
+      "display_name": "VSA EState3",
+      "description": "model feature: VSA_EState3",
+      "source_family": "generic",
+      "raw_name": "VSA_EState3",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__VSA_EState4": {
+      "feature_name": "rdkit__VSA_EState4",
+      "display_name": "VSA EState4",
+      "description": "model feature: VSA_EState4",
+      "source_family": "generic",
+      "raw_name": "VSA_EState4",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__VSA_EState5": {
+      "feature_name": "rdkit__VSA_EState5",
+      "display_name": "VSA EState5",
+      "description": "model feature: VSA_EState5",
+      "source_family": "generic",
+      "raw_name": "VSA_EState5",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__VSA_EState6": {
+      "feature_name": "rdkit__VSA_EState6",
+      "display_name": "VSA EState6",
+      "description": "model feature: VSA_EState6",
+      "source_family": "generic",
+      "raw_name": "VSA_EState6",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__VSA_EState7": {
+      "feature_name": "rdkit__VSA_EState7",
+      "display_name": "VSA EState7",
+      "description": "model feature: VSA_EState7",
+      "source_family": "generic",
+      "raw_name": "VSA_EState7",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__VSA_EState8": {
+      "feature_name": "rdkit__VSA_EState8",
+      "display_name": "VSA EState8",
+      "description": "model feature: VSA_EState8",
+      "source_family": "generic",
+      "raw_name": "VSA_EState8",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__VSA_EState9": {
+      "feature_name": "rdkit__VSA_EState9",
+      "display_name": "VSA EState9",
+      "description": "model feature: VSA_EState9",
+      "source_family": "generic",
+      "raw_name": "VSA_EState9",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__FractionCSP3": {
+      "feature_name": "rdkit__FractionCSP3",
+      "display_name": "FractionCSP3",
+      "description": "model feature: FractionCSP3",
+      "source_family": "generic",
+      "raw_name": "FractionCSP3",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__HeavyAtomCount": {
+      "feature_name": "rdkit__HeavyAtomCount",
+      "display_name": "HeavyAtomCount",
+      "description": "model feature: HeavyAtomCount",
+      "source_family": "generic",
+      "raw_name": "HeavyAtomCount",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NHOHCount": {
+      "feature_name": "rdkit__NHOHCount",
+      "display_name": "NHOHCount",
+      "description": "model feature: NHOHCount",
+      "source_family": "generic",
+      "raw_name": "NHOHCount",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NOCount": {
+      "feature_name": "rdkit__NOCount",
+      "display_name": "NOCount",
+      "description": "model feature: NOCount",
+      "source_family": "generic",
+      "raw_name": "NOCount",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NumAliphaticCarbocycles": {
+      "feature_name": "rdkit__NumAliphaticCarbocycles",
+      "display_name": "NumAliphaticCarbocycles",
+      "description": "model feature: NumAliphaticCarbocycles",
+      "source_family": "generic",
+      "raw_name": "NumAliphaticCarbocycles",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NumAliphaticHeterocycles": {
+      "feature_name": "rdkit__NumAliphaticHeterocycles",
+      "display_name": "NumAliphaticHeterocycles",
+      "description": "model feature: NumAliphaticHeterocycles",
+      "source_family": "generic",
+      "raw_name": "NumAliphaticHeterocycles",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NumAliphaticRings": {
+      "feature_name": "rdkit__NumAliphaticRings",
+      "display_name": "NumAliphaticRings",
+      "description": "model feature: NumAliphaticRings",
+      "source_family": "generic",
+      "raw_name": "NumAliphaticRings",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NumAmideBonds": {
+      "feature_name": "rdkit__NumAmideBonds",
+      "display_name": "NumAmideBonds",
+      "description": "model feature: NumAmideBonds",
+      "source_family": "generic",
+      "raw_name": "NumAmideBonds",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NumAromaticCarbocycles": {
+      "feature_name": "rdkit__NumAromaticCarbocycles",
+      "display_name": "NumAromaticCarbocycles",
+      "description": "model feature: NumAromaticCarbocycles",
+      "source_family": "generic",
+      "raw_name": "NumAromaticCarbocycles",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NumAromaticHeterocycles": {
+      "feature_name": "rdkit__NumAromaticHeterocycles",
+      "display_name": "NumAromaticHeterocycles",
+      "description": "model feature: NumAromaticHeterocycles",
+      "source_family": "generic",
+      "raw_name": "NumAromaticHeterocycles",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NumAromaticRings": {
+      "feature_name": "rdkit__NumAromaticRings",
+      "display_name": "NumAromaticRings",
+      "description": "model feature: NumAromaticRings",
+      "source_family": "generic",
+      "raw_name": "NumAromaticRings",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NumAtomStereoCenters": {
+      "feature_name": "rdkit__NumAtomStereoCenters",
+      "display_name": "NumAtomStereoCenters",
+      "description": "model feature: NumAtomStereoCenters",
+      "source_family": "generic",
+      "raw_name": "NumAtomStereoCenters",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NumBridgeheadAtoms": {
+      "feature_name": "rdkit__NumBridgeheadAtoms",
+      "display_name": "NumBridgeheadAtoms",
+      "description": "model feature: NumBridgeheadAtoms",
+      "source_family": "generic",
+      "raw_name": "NumBridgeheadAtoms",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NumHAcceptors": {
+      "feature_name": "rdkit__NumHAcceptors",
+      "display_name": "NumHAcceptors",
+      "description": "model feature: NumHAcceptors",
+      "source_family": "generic",
+      "raw_name": "NumHAcceptors",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NumHDonors": {
+      "feature_name": "rdkit__NumHDonors",
+      "display_name": "NumHDonors",
+      "description": "model feature: NumHDonors",
+      "source_family": "generic",
+      "raw_name": "NumHDonors",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NumHeteroatoms": {
+      "feature_name": "rdkit__NumHeteroatoms",
+      "display_name": "NumHeteroatoms",
+      "description": "model feature: NumHeteroatoms",
+      "source_family": "generic",
+      "raw_name": "NumHeteroatoms",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NumHeterocycles": {
+      "feature_name": "rdkit__NumHeterocycles",
+      "display_name": "NumHeterocycles",
+      "description": "model feature: NumHeterocycles",
+      "source_family": "generic",
+      "raw_name": "NumHeterocycles",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NumRotatableBonds": {
+      "feature_name": "rdkit__NumRotatableBonds",
+      "display_name": "NumRotatableBonds",
+      "description": "model feature: NumRotatableBonds",
+      "source_family": "generic",
+      "raw_name": "NumRotatableBonds",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NumSaturatedCarbocycles": {
+      "feature_name": "rdkit__NumSaturatedCarbocycles",
+      "display_name": "NumSaturatedCarbocycles",
+      "description": "model feature: NumSaturatedCarbocycles",
+      "source_family": "generic",
+      "raw_name": "NumSaturatedCarbocycles",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NumSaturatedHeterocycles": {
+      "feature_name": "rdkit__NumSaturatedHeterocycles",
+      "display_name": "NumSaturatedHeterocycles",
+      "description": "model feature: NumSaturatedHeterocycles",
+      "source_family": "generic",
+      "raw_name": "NumSaturatedHeterocycles",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NumSaturatedRings": {
+      "feature_name": "rdkit__NumSaturatedRings",
+      "display_name": "NumSaturatedRings",
+      "description": "model feature: NumSaturatedRings",
+      "source_family": "generic",
+      "raw_name": "NumSaturatedRings",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NumSpiroAtoms": {
+      "feature_name": "rdkit__NumSpiroAtoms",
+      "display_name": "NumSpiroAtoms",
+      "description": "model feature: NumSpiroAtoms",
+      "source_family": "generic",
+      "raw_name": "NumSpiroAtoms",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__NumUnspecifiedAtomStereoCenters": {
+      "feature_name": "rdkit__NumUnspecifiedAtomStereoCenters",
+      "display_name": "NumUnspecifiedAtomStereoCenters",
+      "description": "model feature: NumUnspecifiedAtomStereoCenters",
+      "source_family": "generic",
+      "raw_name": "NumUnspecifiedAtomStereoCenters",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__Phi": {
+      "feature_name": "rdkit__Phi",
+      "display_name": "Phi",
+      "description": "model feature: Phi",
+      "source_family": "generic",
+      "raw_name": "Phi",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__RingCount": {
+      "feature_name": "rdkit__RingCount",
+      "display_name": "RingCount",
+      "description": "model feature: RingCount",
+      "source_family": "generic",
+      "raw_name": "RingCount",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__MolLogP": {
+      "feature_name": "rdkit__MolLogP",
+      "display_name": "MolLogP",
+      "description": "model feature: MolLogP",
+      "source_family": "generic",
+      "raw_name": "MolLogP",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__MolMR": {
+      "feature_name": "rdkit__MolMR",
+      "display_name": "MolMR",
+      "description": "model feature: MolMR",
+      "source_family": "generic",
+      "raw_name": "MolMR",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_Al_COO": {
+      "feature_name": "rdkit__fr_Al_COO",
+      "display_name": "fr Al COO",
+      "description": "model feature: fr_Al_COO",
+      "source_family": "generic",
+      "raw_name": "fr_Al_COO",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_Al_OH": {
+      "feature_name": "rdkit__fr_Al_OH",
+      "display_name": "fr Al OH",
+      "description": "model feature: fr_Al_OH",
+      "source_family": "generic",
+      "raw_name": "fr_Al_OH",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_Al_OH_noTert": {
+      "feature_name": "rdkit__fr_Al_OH_noTert",
+      "display_name": "fr Al OH noTert",
+      "description": "model feature: fr_Al_OH_noTert",
+      "source_family": "generic",
+      "raw_name": "fr_Al_OH_noTert",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_ArN": {
+      "feature_name": "rdkit__fr_ArN",
+      "display_name": "fr ArN",
+      "description": "model feature: fr_ArN",
+      "source_family": "generic",
+      "raw_name": "fr_ArN",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_Ar_COO": {
+      "feature_name": "rdkit__fr_Ar_COO",
+      "display_name": "fr Ar COO",
+      "description": "model feature: fr_Ar_COO",
+      "source_family": "generic",
+      "raw_name": "fr_Ar_COO",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_Ar_N": {
+      "feature_name": "rdkit__fr_Ar_N",
+      "display_name": "fr Ar N",
+      "description": "model feature: fr_Ar_N",
+      "source_family": "generic",
+      "raw_name": "fr_Ar_N",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_Ar_NH": {
+      "feature_name": "rdkit__fr_Ar_NH",
+      "display_name": "fr Ar NH",
+      "description": "model feature: fr_Ar_NH",
+      "source_family": "generic",
+      "raw_name": "fr_Ar_NH",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_Ar_OH": {
+      "feature_name": "rdkit__fr_Ar_OH",
+      "display_name": "fr Ar OH",
+      "description": "model feature: fr_Ar_OH",
+      "source_family": "generic",
+      "raw_name": "fr_Ar_OH",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_COO": {
+      "feature_name": "rdkit__fr_COO",
+      "display_name": "fr COO",
+      "description": "model feature: fr_COO",
+      "source_family": "generic",
+      "raw_name": "fr_COO",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_COO2": {
+      "feature_name": "rdkit__fr_COO2",
+      "display_name": "fr COO2",
+      "description": "model feature: fr_COO2",
+      "source_family": "generic",
+      "raw_name": "fr_COO2",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_C_O": {
+      "feature_name": "rdkit__fr_C_O",
+      "display_name": "fr C O",
+      "description": "model feature: fr_C_O",
+      "source_family": "generic",
+      "raw_name": "fr_C_O",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_C_O_noCOO": {
+      "feature_name": "rdkit__fr_C_O_noCOO",
+      "display_name": "fr C O noCOO",
+      "description": "model feature: fr_C_O_noCOO",
+      "source_family": "generic",
+      "raw_name": "fr_C_O_noCOO",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_C_S": {
+      "feature_name": "rdkit__fr_C_S",
+      "display_name": "fr C S",
+      "description": "model feature: fr_C_S",
+      "source_family": "generic",
+      "raw_name": "fr_C_S",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_HOCCN": {
+      "feature_name": "rdkit__fr_HOCCN",
+      "display_name": "fr HOCCN",
+      "description": "model feature: fr_HOCCN",
+      "source_family": "generic",
+      "raw_name": "fr_HOCCN",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_Imine": {
+      "feature_name": "rdkit__fr_Imine",
+      "display_name": "fr Imine",
+      "description": "model feature: fr_Imine",
+      "source_family": "generic",
+      "raw_name": "fr_Imine",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_NH0": {
+      "feature_name": "rdkit__fr_NH0",
+      "display_name": "fr NH0",
+      "description": "model feature: fr_NH0",
+      "source_family": "generic",
+      "raw_name": "fr_NH0",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_NH1": {
+      "feature_name": "rdkit__fr_NH1",
+      "display_name": "fr NH1",
+      "description": "model feature: fr_NH1",
+      "source_family": "generic",
+      "raw_name": "fr_NH1",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_NH2": {
+      "feature_name": "rdkit__fr_NH2",
+      "display_name": "fr NH2",
+      "description": "model feature: fr_NH2",
+      "source_family": "generic",
+      "raw_name": "fr_NH2",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_N_O": {
+      "feature_name": "rdkit__fr_N_O",
+      "display_name": "fr N O",
+      "description": "model feature: fr_N_O",
+      "source_family": "generic",
+      "raw_name": "fr_N_O",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_Ndealkylation1": {
+      "feature_name": "rdkit__fr_Ndealkylation1",
+      "display_name": "fr Ndealkylation1",
+      "description": "model feature: fr_Ndealkylation1",
+      "source_family": "generic",
+      "raw_name": "fr_Ndealkylation1",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_Ndealkylation2": {
+      "feature_name": "rdkit__fr_Ndealkylation2",
+      "display_name": "fr Ndealkylation2",
+      "description": "model feature: fr_Ndealkylation2",
+      "source_family": "generic",
+      "raw_name": "fr_Ndealkylation2",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_Nhpyrrole": {
+      "feature_name": "rdkit__fr_Nhpyrrole",
+      "display_name": "fr Nhpyrrole",
+      "description": "model feature: fr_Nhpyrrole",
+      "source_family": "generic",
+      "raw_name": "fr_Nhpyrrole",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_SH": {
+      "feature_name": "rdkit__fr_SH",
+      "display_name": "fr SH",
+      "description": "model feature: fr_SH",
+      "source_family": "generic",
+      "raw_name": "fr_SH",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_aldehyde": {
+      "feature_name": "rdkit__fr_aldehyde",
+      "display_name": "fr aldehyde",
+      "description": "model feature: fr_aldehyde",
+      "source_family": "generic",
+      "raw_name": "fr_aldehyde",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_alkyl_carbamate": {
+      "feature_name": "rdkit__fr_alkyl_carbamate",
+      "display_name": "fr alkyl carbamate",
+      "description": "model feature: fr_alkyl_carbamate",
+      "source_family": "generic",
+      "raw_name": "fr_alkyl_carbamate",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_alkyl_halide": {
+      "feature_name": "rdkit__fr_alkyl_halide",
+      "display_name": "fr alkyl halide",
+      "description": "model feature: fr_alkyl_halide",
+      "source_family": "generic",
+      "raw_name": "fr_alkyl_halide",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_allylic_oxid": {
+      "feature_name": "rdkit__fr_allylic_oxid",
+      "display_name": "fr allylic oxid",
+      "description": "model feature: fr_allylic_oxid",
+      "source_family": "generic",
+      "raw_name": "fr_allylic_oxid",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_amide": {
+      "feature_name": "rdkit__fr_amide",
+      "display_name": "fr amide",
+      "description": "model feature: fr_amide",
+      "source_family": "generic",
+      "raw_name": "fr_amide",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_amidine": {
+      "feature_name": "rdkit__fr_amidine",
+      "display_name": "fr amidine",
+      "description": "model feature: fr_amidine",
+      "source_family": "generic",
+      "raw_name": "fr_amidine",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_aniline": {
+      "feature_name": "rdkit__fr_aniline",
+      "display_name": "fr aniline",
+      "description": "model feature: fr_aniline",
+      "source_family": "generic",
+      "raw_name": "fr_aniline",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_aryl_methyl": {
+      "feature_name": "rdkit__fr_aryl_methyl",
+      "display_name": "fr aryl methyl",
+      "description": "model feature: fr_aryl_methyl",
+      "source_family": "generic",
+      "raw_name": "fr_aryl_methyl",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_azide": {
+      "feature_name": "rdkit__fr_azide",
+      "display_name": "fr azide",
+      "description": "model feature: fr_azide",
+      "source_family": "generic",
+      "raw_name": "fr_azide",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_azo": {
+      "feature_name": "rdkit__fr_azo",
+      "display_name": "fr azo",
+      "description": "model feature: fr_azo",
+      "source_family": "generic",
+      "raw_name": "fr_azo",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_barbitur": {
+      "feature_name": "rdkit__fr_barbitur",
+      "display_name": "fr barbitur",
+      "description": "model feature: fr_barbitur",
+      "source_family": "generic",
+      "raw_name": "fr_barbitur",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_benzene": {
+      "feature_name": "rdkit__fr_benzene",
+      "display_name": "fr benzene",
+      "description": "model feature: fr_benzene",
+      "source_family": "generic",
+      "raw_name": "fr_benzene",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_benzodiazepine": {
+      "feature_name": "rdkit__fr_benzodiazepine",
+      "display_name": "fr benzodiazepine",
+      "description": "model feature: fr_benzodiazepine",
+      "source_family": "generic",
+      "raw_name": "fr_benzodiazepine",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_bicyclic": {
+      "feature_name": "rdkit__fr_bicyclic",
+      "display_name": "fr bicyclic",
+      "description": "model feature: fr_bicyclic",
+      "source_family": "generic",
+      "raw_name": "fr_bicyclic",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_diazo": {
+      "feature_name": "rdkit__fr_diazo",
+      "display_name": "fr diazo",
+      "description": "model feature: fr_diazo",
+      "source_family": "generic",
+      "raw_name": "fr_diazo",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_dihydropyridine": {
+      "feature_name": "rdkit__fr_dihydropyridine",
+      "display_name": "fr dihydropyridine",
+      "description": "model feature: fr_dihydropyridine",
+      "source_family": "generic",
+      "raw_name": "fr_dihydropyridine",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_epoxide": {
+      "feature_name": "rdkit__fr_epoxide",
+      "display_name": "fr epoxide",
+      "description": "model feature: fr_epoxide",
+      "source_family": "generic",
+      "raw_name": "fr_epoxide",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_ester": {
+      "feature_name": "rdkit__fr_ester",
+      "display_name": "fr ester",
+      "description": "model feature: fr_ester",
+      "source_family": "generic",
+      "raw_name": "fr_ester",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_ether": {
+      "feature_name": "rdkit__fr_ether",
+      "display_name": "fr ether",
+      "description": "model feature: fr_ether",
+      "source_family": "generic",
+      "raw_name": "fr_ether",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_furan": {
+      "feature_name": "rdkit__fr_furan",
+      "display_name": "fr furan",
+      "description": "model feature: fr_furan",
+      "source_family": "generic",
+      "raw_name": "fr_furan",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_guanido": {
+      "feature_name": "rdkit__fr_guanido",
+      "display_name": "fr guanido",
+      "description": "model feature: fr_guanido",
+      "source_family": "generic",
+      "raw_name": "fr_guanido",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_halogen": {
+      "feature_name": "rdkit__fr_halogen",
+      "display_name": "fr halogen",
+      "description": "model feature: fr_halogen",
+      "source_family": "generic",
+      "raw_name": "fr_halogen",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_hdrzine": {
+      "feature_name": "rdkit__fr_hdrzine",
+      "display_name": "fr hdrzine",
+      "description": "model feature: fr_hdrzine",
+      "source_family": "generic",
+      "raw_name": "fr_hdrzine",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_hdrzone": {
+      "feature_name": "rdkit__fr_hdrzone",
+      "display_name": "fr hdrzone",
+      "description": "model feature: fr_hdrzone",
+      "source_family": "generic",
+      "raw_name": "fr_hdrzone",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_imidazole": {
+      "feature_name": "rdkit__fr_imidazole",
+      "display_name": "fr imidazole",
+      "description": "model feature: fr_imidazole",
+      "source_family": "generic",
+      "raw_name": "fr_imidazole",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_imide": {
+      "feature_name": "rdkit__fr_imide",
+      "display_name": "fr imide",
+      "description": "model feature: fr_imide",
+      "source_family": "generic",
+      "raw_name": "fr_imide",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_isocyan": {
+      "feature_name": "rdkit__fr_isocyan",
+      "display_name": "fr isocyan",
+      "description": "model feature: fr_isocyan",
+      "source_family": "generic",
+      "raw_name": "fr_isocyan",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_isothiocyan": {
+      "feature_name": "rdkit__fr_isothiocyan",
+      "display_name": "fr isothiocyan",
+      "description": "model feature: fr_isothiocyan",
+      "source_family": "generic",
+      "raw_name": "fr_isothiocyan",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_ketone": {
+      "feature_name": "rdkit__fr_ketone",
+      "display_name": "fr ketone",
+      "description": "model feature: fr_ketone",
+      "source_family": "generic",
+      "raw_name": "fr_ketone",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_ketone_Topliss": {
+      "feature_name": "rdkit__fr_ketone_Topliss",
+      "display_name": "fr ketone Topliss",
+      "description": "model feature: fr_ketone_Topliss",
+      "source_family": "generic",
+      "raw_name": "fr_ketone_Topliss",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_lactam": {
+      "feature_name": "rdkit__fr_lactam",
+      "display_name": "fr lactam",
+      "description": "model feature: fr_lactam",
+      "source_family": "generic",
+      "raw_name": "fr_lactam",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_lactone": {
+      "feature_name": "rdkit__fr_lactone",
+      "display_name": "fr lactone",
+      "description": "model feature: fr_lactone",
+      "source_family": "generic",
+      "raw_name": "fr_lactone",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_methoxy": {
+      "feature_name": "rdkit__fr_methoxy",
+      "display_name": "fr methoxy",
+      "description": "model feature: fr_methoxy",
+      "source_family": "generic",
+      "raw_name": "fr_methoxy",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_morpholine": {
+      "feature_name": "rdkit__fr_morpholine",
+      "display_name": "fr morpholine",
+      "description": "model feature: fr_morpholine",
+      "source_family": "generic",
+      "raw_name": "fr_morpholine",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_nitrile": {
+      "feature_name": "rdkit__fr_nitrile",
+      "display_name": "fr nitrile",
+      "description": "model feature: fr_nitrile",
+      "source_family": "generic",
+      "raw_name": "fr_nitrile",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_nitro": {
+      "feature_name": "rdkit__fr_nitro",
+      "display_name": "fr nitro",
+      "description": "model feature: fr_nitro",
+      "source_family": "generic",
+      "raw_name": "fr_nitro",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_nitro_arom": {
+      "feature_name": "rdkit__fr_nitro_arom",
+      "display_name": "fr nitro arom",
+      "description": "model feature: fr_nitro_arom",
+      "source_family": "generic",
+      "raw_name": "fr_nitro_arom",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_nitro_arom_nonortho": {
+      "feature_name": "rdkit__fr_nitro_arom_nonortho",
+      "display_name": "fr nitro arom nonortho",
+      "description": "model feature: fr_nitro_arom_nonortho",
+      "source_family": "generic",
+      "raw_name": "fr_nitro_arom_nonortho",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_nitroso": {
+      "feature_name": "rdkit__fr_nitroso",
+      "display_name": "fr nitroso",
+      "description": "model feature: fr_nitroso",
+      "source_family": "generic",
+      "raw_name": "fr_nitroso",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_oxazole": {
+      "feature_name": "rdkit__fr_oxazole",
+      "display_name": "fr oxazole",
+      "description": "model feature: fr_oxazole",
+      "source_family": "generic",
+      "raw_name": "fr_oxazole",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_oxime": {
+      "feature_name": "rdkit__fr_oxime",
+      "display_name": "fr oxime",
+      "description": "model feature: fr_oxime",
+      "source_family": "generic",
+      "raw_name": "fr_oxime",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_para_hydroxylation": {
+      "feature_name": "rdkit__fr_para_hydroxylation",
+      "display_name": "fr para hydroxylation",
+      "description": "model feature: fr_para_hydroxylation",
+      "source_family": "generic",
+      "raw_name": "fr_para_hydroxylation",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_phenol": {
+      "feature_name": "rdkit__fr_phenol",
+      "display_name": "fr phenol",
+      "description": "model feature: fr_phenol",
+      "source_family": "generic",
+      "raw_name": "fr_phenol",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_phenol_noOrthoHbond": {
+      "feature_name": "rdkit__fr_phenol_noOrthoHbond",
+      "display_name": "fr phenol noOrthoHbond",
+      "description": "model feature: fr_phenol_noOrthoHbond",
+      "source_family": "generic",
+      "raw_name": "fr_phenol_noOrthoHbond",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_phos_acid": {
+      "feature_name": "rdkit__fr_phos_acid",
+      "display_name": "fr phos acid",
+      "description": "model feature: fr_phos_acid",
+      "source_family": "generic",
+      "raw_name": "fr_phos_acid",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_phos_ester": {
+      "feature_name": "rdkit__fr_phos_ester",
+      "display_name": "fr phos ester",
+      "description": "model feature: fr_phos_ester",
+      "source_family": "generic",
+      "raw_name": "fr_phos_ester",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_piperdine": {
+      "feature_name": "rdkit__fr_piperdine",
+      "display_name": "fr piperdine",
+      "description": "model feature: fr_piperdine",
+      "source_family": "generic",
+      "raw_name": "fr_piperdine",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_piperzine": {
+      "feature_name": "rdkit__fr_piperzine",
+      "display_name": "fr piperzine",
+      "description": "model feature: fr_piperzine",
+      "source_family": "generic",
+      "raw_name": "fr_piperzine",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_priamide": {
+      "feature_name": "rdkit__fr_priamide",
+      "display_name": "fr priamide",
+      "description": "model feature: fr_priamide",
+      "source_family": "generic",
+      "raw_name": "fr_priamide",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_prisulfonamd": {
+      "feature_name": "rdkit__fr_prisulfonamd",
+      "display_name": "fr prisulfonamd",
+      "description": "model feature: fr_prisulfonamd",
+      "source_family": "generic",
+      "raw_name": "fr_prisulfonamd",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_pyridine": {
+      "feature_name": "rdkit__fr_pyridine",
+      "display_name": "fr pyridine",
+      "description": "model feature: fr_pyridine",
+      "source_family": "generic",
+      "raw_name": "fr_pyridine",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_quatN": {
+      "feature_name": "rdkit__fr_quatN",
+      "display_name": "fr quatN",
+      "description": "model feature: fr_quatN",
+      "source_family": "generic",
+      "raw_name": "fr_quatN",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_sulfide": {
+      "feature_name": "rdkit__fr_sulfide",
+      "display_name": "fr sulfide",
+      "description": "model feature: fr_sulfide",
+      "source_family": "generic",
+      "raw_name": "fr_sulfide",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_sulfonamd": {
+      "feature_name": "rdkit__fr_sulfonamd",
+      "display_name": "fr sulfonamd",
+      "description": "model feature: fr_sulfonamd",
+      "source_family": "generic",
+      "raw_name": "fr_sulfonamd",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_sulfone": {
+      "feature_name": "rdkit__fr_sulfone",
+      "display_name": "fr sulfone",
+      "description": "model feature: fr_sulfone",
+      "source_family": "generic",
+      "raw_name": "fr_sulfone",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_term_acetylene": {
+      "feature_name": "rdkit__fr_term_acetylene",
+      "display_name": "fr term acetylene",
+      "description": "model feature: fr_term_acetylene",
+      "source_family": "generic",
+      "raw_name": "fr_term_acetylene",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_tetrazole": {
+      "feature_name": "rdkit__fr_tetrazole",
+      "display_name": "fr tetrazole",
+      "description": "model feature: fr_tetrazole",
+      "source_family": "generic",
+      "raw_name": "fr_tetrazole",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_thiazole": {
+      "feature_name": "rdkit__fr_thiazole",
+      "display_name": "fr thiazole",
+      "description": "model feature: fr_thiazole",
+      "source_family": "generic",
+      "raw_name": "fr_thiazole",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_thiocyan": {
+      "feature_name": "rdkit__fr_thiocyan",
+      "display_name": "fr thiocyan",
+      "description": "model feature: fr_thiocyan",
+      "source_family": "generic",
+      "raw_name": "fr_thiocyan",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_thiophene": {
+      "feature_name": "rdkit__fr_thiophene",
+      "display_name": "fr thiophene",
+      "description": "model feature: fr_thiophene",
+      "source_family": "generic",
+      "raw_name": "fr_thiophene",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_unbrch_alkane": {
+      "feature_name": "rdkit__fr_unbrch_alkane",
+      "display_name": "fr unbrch alkane",
+      "description": "model feature: fr_unbrch_alkane",
+      "source_family": "generic",
+      "raw_name": "fr_unbrch_alkane",
+      "nlp_readiness": "needs_translation"
+    },
+    "rdkit__fr_urea": {
+      "feature_name": "rdkit__fr_urea",
+      "display_name": "fr urea",
+      "description": "model feature: fr_urea",
+      "source_family": "generic",
+      "raw_name": "fr_urea",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__num_basic_sites": {
+      "feature_name": "pka__num_basic_sites",
+      "display_name": "num basic sites",
+      "description": "model feature: num_basic_sites",
+      "source_family": "generic",
+      "raw_name": "num_basic_sites",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__num_acidic_sites": {
+      "feature_name": "pka__num_acidic_sites",
+      "display_name": "num acidic sites",
+      "description": "model feature: num_acidic_sites",
+      "source_family": "generic",
+      "raw_name": "num_acidic_sites",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__num_ionizable_sites": {
+      "feature_name": "pka__num_ionizable_sites",
+      "display_name": "num ionizable sites",
+      "description": "model feature: num_ionizable_sites",
+      "source_family": "generic",
+      "raw_name": "num_ionizable_sites",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__has_basic_site": {
+      "feature_name": "pka__has_basic_site",
+      "display_name": "has basic site",
+      "description": "model feature: has_basic_site",
+      "source_family": "generic",
+      "raw_name": "has_basic_site",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__has_acidic_site": {
+      "feature_name": "pka__has_acidic_site",
+      "display_name": "has acidic site",
+      "description": "model feature: has_acidic_site",
+      "source_family": "generic",
+      "raw_name": "has_acidic_site",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__is_amphoteric": {
+      "feature_name": "pka__is_amphoteric",
+      "display_name": "is amphoteric",
+      "description": "model feature: is_amphoteric",
+      "source_family": "generic",
+      "raw_name": "is_amphoteric",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__most_basic_pka": {
+      "feature_name": "pka__most_basic_pka",
+      "display_name": "most basic pka",
+      "description": "model feature: most_basic_pka",
+      "source_family": "generic",
+      "raw_name": "most_basic_pka",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__most_acidic_pka": {
+      "feature_name": "pka__most_acidic_pka",
+      "display_name": "most acidic pka",
+      "description": "model feature: most_acidic_pka",
+      "source_family": "generic",
+      "raw_name": "most_acidic_pka",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__logd_ph": {
+      "feature_name": "pka__logd_ph",
+      "display_name": "logd ph",
+      "description": "model feature: logd_ph",
+      "source_family": "generic",
+      "raw_name": "logd_ph",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__logp_wildman_crippen": {
+      "feature_name": "pka__logp_wildman_crippen",
+      "display_name": "logp wildman crippen",
+      "description": "model feature: logp_wildman_crippen",
+      "source_family": "generic",
+      "raw_name": "logp_wildman_crippen",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__logd_estimate": {
+      "feature_name": "pka__logd_estimate",
+      "display_name": "logd estimate",
+      "description": "model feature: logd_estimate",
+      "source_family": "generic",
+      "raw_name": "logd_estimate",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__fraction_neutral": {
+      "feature_name": "pka__fraction_neutral",
+      "display_name": "fraction neutral",
+      "description": "model feature: fraction_neutral",
+      "source_family": "generic",
+      "raw_name": "fraction_neutral",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__base_site_pka_min": {
+      "feature_name": "pka__base_site_pka_min",
+      "display_name": "base site pka min",
+      "description": "model feature: base_site_pka_min",
+      "source_family": "generic",
+      "raw_name": "base_site_pka_min",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__base_site_pka_max": {
+      "feature_name": "pka__base_site_pka_max",
+      "display_name": "base site pka max",
+      "description": "model feature: base_site_pka_max",
+      "source_family": "generic",
+      "raw_name": "base_site_pka_max",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__base_site_pka_mean": {
+      "feature_name": "pka__base_site_pka_mean",
+      "display_name": "base site pka mean",
+      "description": "model feature: base_site_pka_mean",
+      "source_family": "generic",
+      "raw_name": "base_site_pka_mean",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__base_site_pka_std": {
+      "feature_name": "pka__base_site_pka_std",
+      "display_name": "base site pka std",
+      "description": "model feature: base_site_pka_std",
+      "source_family": "generic",
+      "raw_name": "base_site_pka_std",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__base_site_pka_sum": {
+      "feature_name": "pka__base_site_pka_sum",
+      "display_name": "base site pka sum",
+      "description": "model feature: base_site_pka_sum",
+      "source_family": "generic",
+      "raw_name": "base_site_pka_sum",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__base_site_pka_range": {
+      "feature_name": "pka__base_site_pka_range",
+      "display_name": "base site pka range",
+      "description": "model feature: base_site_pka_range",
+      "source_family": "generic",
+      "raw_name": "base_site_pka_range",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_min": {
+      "feature_name": "pka__acid_site_pka_min",
+      "display_name": "acid site pka min",
+      "description": "model feature: acid_site_pka_min",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_min",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_max": {
+      "feature_name": "pka__acid_site_pka_max",
+      "display_name": "acid site pka max",
+      "description": "model feature: acid_site_pka_max",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_max",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_mean": {
+      "feature_name": "pka__acid_site_pka_mean",
+      "display_name": "acid site pka mean",
+      "description": "model feature: acid_site_pka_mean",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_mean",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_std": {
+      "feature_name": "pka__acid_site_pka_std",
+      "display_name": "acid site pka std",
+      "description": "model feature: acid_site_pka_std",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_std",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_sum": {
+      "feature_name": "pka__acid_site_pka_sum",
+      "display_name": "acid site pka sum",
+      "description": "model feature: acid_site_pka_sum",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_sum",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_range": {
+      "feature_name": "pka__acid_site_pka_range",
+      "display_name": "acid site pka range",
+      "description": "model feature: acid_site_pka_range",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_range",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__warning_count": {
+      "feature_name": "pka__warning_count",
+      "display_name": "warning count",
+      "description": "model feature: warning_count",
+      "source_family": "generic",
+      "raw_name": "warning_count",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__warning_multiple_basic_sites": {
+      "feature_name": "pka__warning_multiple_basic_sites",
+      "display_name": "warning multiple basic sites",
+      "description": "model feature: warning_multiple_basic_sites",
+      "source_family": "generic",
+      "raw_name": "warning_multiple_basic_sites",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__warning_multiple_acidic_sites": {
+      "feature_name": "pka__warning_multiple_acidic_sites",
+      "display_name": "warning multiple acidic sites",
+      "description": "model feature: warning_multiple_acidic_sites",
+      "source_family": "generic",
+      "raw_name": "warning_multiple_acidic_sites",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__warning_amphoteric": {
+      "feature_name": "pka__warning_amphoteric",
+      "display_name": "warning amphoteric",
+      "description": "model feature: warning_amphoteric",
+      "source_family": "generic",
+      "raw_name": "warning_amphoteric",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__warning_fraction_neutral_clamped": {
+      "feature_name": "pka__warning_fraction_neutral_clamped",
+      "display_name": "warning fraction neutral clamped",
+      "description": "model feature: warning_fraction_neutral_clamped",
+      "source_family": "generic",
+      "raw_name": "warning_fraction_neutral_clamped",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__warning_fraction_neutral_tiny": {
+      "feature_name": "pka__warning_fraction_neutral_tiny",
+      "display_name": "warning fraction neutral tiny",
+      "description": "model feature: warning_fraction_neutral_tiny",
+      "source_family": "generic",
+      "raw_name": "warning_fraction_neutral_tiny",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__base_site_pka_rank_1": {
+      "feature_name": "pka__base_site_pka_rank_1",
+      "display_name": "base site pka rank 1",
+      "description": "model feature: base_site_pka_rank_1",
+      "source_family": "generic",
+      "raw_name": "base_site_pka_rank_1",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__base_site_pka_rank_2": {
+      "feature_name": "pka__base_site_pka_rank_2",
+      "display_name": "base site pka rank 2",
+      "description": "model feature: base_site_pka_rank_2",
+      "source_family": "generic",
+      "raw_name": "base_site_pka_rank_2",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__base_site_pka_rank_3": {
+      "feature_name": "pka__base_site_pka_rank_3",
+      "display_name": "base site pka rank 3",
+      "description": "model feature: base_site_pka_rank_3",
+      "source_family": "generic",
+      "raw_name": "base_site_pka_rank_3",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__base_site_pka_rank_4": {
+      "feature_name": "pka__base_site_pka_rank_4",
+      "display_name": "base site pka rank 4",
+      "description": "model feature: base_site_pka_rank_4",
+      "source_family": "generic",
+      "raw_name": "base_site_pka_rank_4",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__base_site_pka_rank_5": {
+      "feature_name": "pka__base_site_pka_rank_5",
+      "display_name": "base site pka rank 5",
+      "description": "model feature: base_site_pka_rank_5",
+      "source_family": "generic",
+      "raw_name": "base_site_pka_rank_5",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__base_site_pka_rank_6": {
+      "feature_name": "pka__base_site_pka_rank_6",
+      "display_name": "base site pka rank 6",
+      "description": "model feature: base_site_pka_rank_6",
+      "source_family": "generic",
+      "raw_name": "base_site_pka_rank_6",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__base_site_pka_rank_7": {
+      "feature_name": "pka__base_site_pka_rank_7",
+      "display_name": "base site pka rank 7",
+      "description": "model feature: base_site_pka_rank_7",
+      "source_family": "generic",
+      "raw_name": "base_site_pka_rank_7",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_1": {
+      "feature_name": "pka__acid_site_pka_rank_1",
+      "display_name": "acid site pka rank 1",
+      "description": "model feature: acid_site_pka_rank_1",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_1",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_2": {
+      "feature_name": "pka__acid_site_pka_rank_2",
+      "display_name": "acid site pka rank 2",
+      "description": "model feature: acid_site_pka_rank_2",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_2",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_3": {
+      "feature_name": "pka__acid_site_pka_rank_3",
+      "display_name": "acid site pka rank 3",
+      "description": "model feature: acid_site_pka_rank_3",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_3",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_4": {
+      "feature_name": "pka__acid_site_pka_rank_4",
+      "display_name": "acid site pka rank 4",
+      "description": "model feature: acid_site_pka_rank_4",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_4",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_5": {
+      "feature_name": "pka__acid_site_pka_rank_5",
+      "display_name": "acid site pka rank 5",
+      "description": "model feature: acid_site_pka_rank_5",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_5",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_6": {
+      "feature_name": "pka__acid_site_pka_rank_6",
+      "display_name": "acid site pka rank 6",
+      "description": "model feature: acid_site_pka_rank_6",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_6",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_7": {
+      "feature_name": "pka__acid_site_pka_rank_7",
+      "display_name": "acid site pka rank 7",
+      "description": "model feature: acid_site_pka_rank_7",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_7",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_8": {
+      "feature_name": "pka__acid_site_pka_rank_8",
+      "display_name": "acid site pka rank 8",
+      "description": "model feature: acid_site_pka_rank_8",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_8",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_9": {
+      "feature_name": "pka__acid_site_pka_rank_9",
+      "display_name": "acid site pka rank 9",
+      "description": "model feature: acid_site_pka_rank_9",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_9",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_10": {
+      "feature_name": "pka__acid_site_pka_rank_10",
+      "display_name": "acid site pka rank 10",
+      "description": "model feature: acid_site_pka_rank_10",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_10",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_11": {
+      "feature_name": "pka__acid_site_pka_rank_11",
+      "display_name": "acid site pka rank 11",
+      "description": "model feature: acid_site_pka_rank_11",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_11",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_12": {
+      "feature_name": "pka__acid_site_pka_rank_12",
+      "display_name": "acid site pka rank 12",
+      "description": "model feature: acid_site_pka_rank_12",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_12",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_13": {
+      "feature_name": "pka__acid_site_pka_rank_13",
+      "display_name": "acid site pka rank 13",
+      "description": "model feature: acid_site_pka_rank_13",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_13",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_14": {
+      "feature_name": "pka__acid_site_pka_rank_14",
+      "display_name": "acid site pka rank 14",
+      "description": "model feature: acid_site_pka_rank_14",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_14",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_15": {
+      "feature_name": "pka__acid_site_pka_rank_15",
+      "display_name": "acid site pka rank 15",
+      "description": "model feature: acid_site_pka_rank_15",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_15",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_16": {
+      "feature_name": "pka__acid_site_pka_rank_16",
+      "display_name": "acid site pka rank 16",
+      "description": "model feature: acid_site_pka_rank_16",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_16",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_17": {
+      "feature_name": "pka__acid_site_pka_rank_17",
+      "display_name": "acid site pka rank 17",
+      "description": "model feature: acid_site_pka_rank_17",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_17",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_18": {
+      "feature_name": "pka__acid_site_pka_rank_18",
+      "display_name": "acid site pka rank 18",
+      "description": "model feature: acid_site_pka_rank_18",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_18",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_19": {
+      "feature_name": "pka__acid_site_pka_rank_19",
+      "display_name": "acid site pka rank 19",
+      "description": "model feature: acid_site_pka_rank_19",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_19",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_20": {
+      "feature_name": "pka__acid_site_pka_rank_20",
+      "display_name": "acid site pka rank 20",
+      "description": "model feature: acid_site_pka_rank_20",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_20",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_21": {
+      "feature_name": "pka__acid_site_pka_rank_21",
+      "display_name": "acid site pka rank 21",
+      "description": "model feature: acid_site_pka_rank_21",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_21",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_22": {
+      "feature_name": "pka__acid_site_pka_rank_22",
+      "display_name": "acid site pka rank 22",
+      "description": "model feature: acid_site_pka_rank_22",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_22",
+      "nlp_readiness": "needs_translation"
+    },
+    "pka__acid_site_pka_rank_23": {
+      "feature_name": "pka__acid_site_pka_rank_23",
+      "display_name": "acid site pka rank 23",
+      "description": "model feature: acid_site_pka_rank_23",
+      "source_family": "generic",
+      "raw_name": "acid_site_pka_rank_23",
+      "nlp_readiness": "needs_translation"
+    }
+  },
+  "output_path": "/data1/tianang/Projects/Intern-S1/DataPrepare/B3DB/processed/BBB_Martins_final_clean_b3db_high_conf_rescued/mol_features_for_tree/rdkit_descriptors_and_pka/bbb_martins_final_clean_b3db_high_conf_rescued_unique_smiles_rdkit_descriptors_and_pka.csv",
+  "metadata_path": "/data1/tianang/Projects/Intern-S1/DataPrepare/B3DB/processed/BBB_Martins_final_clean_b3db_high_conf_rescued/mol_features_for_tree/rdkit_descriptors_and_pka/bbb_martins_final_clean_b3db_high_conf_rescued_unique_smiles_rdkit_descriptors_and_pka.metadata.json"
+}

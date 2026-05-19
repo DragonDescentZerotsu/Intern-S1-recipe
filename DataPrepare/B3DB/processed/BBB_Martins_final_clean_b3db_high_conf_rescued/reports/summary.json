@@ -1,0 +1,22 @@
+{
+  "original_tdc_bbb_martins_rows": 2030,
+  "final_rows": 1779,
+  "final_split_counts": {
+    "train": 1239,
+    "valid": 178,
+    "test": 362
+  },
+  "lost_vs_original_rows": 251,
+  "loss_fraction_vs_original": 0.12364532019704433,
+  "source_counts": {
+    "strict_b3db_confirmed_clean": 1699,
+    "nonisomeric_exact_high_conf": 60,
+    "nonisomeric_salt_high_conf": 2,
+    "inchikey_exact_high_conf": 18
+  },
+  "duplicate_or_invalid_drops": 5,
+  "high_conf_groups_for_rescues": [
+    "A",
+    "B"
+  ]
+}

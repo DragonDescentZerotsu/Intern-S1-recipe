@@ -1,0 +1,49 @@
+{
+  "generated_at_utc": "2026-05-01T20:21:14.403483+00:00",
+  "b3db_paths": [
+    "DataPrepare/B3DB/raw/B3DB_classification.tsv",
+    "DataPrepare/B3DB/raw/B3DB_classification_external.tsv"
+  ],
+  "b3db_rows": 7982,
+  "b3db_valid_rdkit_rows": 7980,
+  "b3db_invalid_rdkit_rows": 2,
+  "b3db_exact_conflict_keys": 2,
+  "b3db_salt_removed_conflict_keys": 2,
+  "tdc_original_rows": 2030,
+  "tdc_original_split_counts": {
+    "train": 1421,
+    "valid": 203,
+    "test": 406
+  },
+  "tdc_salt_removed_existing_rows": 1956,
+  "tdc_salt_removed_existing_split_counts": {
+    "train": 1369,
+    "valid": 195,
+    "test": 392
+  },
+  "tdc_original_invalid_rdkit_rows": 0,
+  "tdc_exact_label_conflict_rows": 20,
+  "tdc_salt_removed_label_conflict_rows": 22,
+  "tdc_exact_duplicate_same_label_rows": 87,
+  "tdc_salt_removed_duplicate_same_label_rows": 102,
+  "tdc_b3db_exact_label_mismatch_rows": 45,
+  "tdc_b3db_salt_removed_label_mismatch_rows": 46,
+  "tdc_b3db_exact_matched_rows": 1723,
+  "tdc_b3db_salt_removed_only_matched_rows": 79,
+  "tdc_b3db_unmatched_rows": 228,
+  "hard_problem_rows": 61,
+  "filtered_clean_rows": 1917,
+  "filtered_clean_split_counts": {
+    "train": 1339,
+    "valid": 193,
+    "test": 385
+  },
+  "filtered_clean_duplicate_rows_removed": 52,
+  "b3db_confirmed_clean_rows": 1699,
+  "b3db_confirmed_clean_split_counts": {
+    "train": 1184,
+    "valid": 170,
+    "test": 345
+  },
+  "b3db_confirmed_duplicate_rows_removed": 50
+}

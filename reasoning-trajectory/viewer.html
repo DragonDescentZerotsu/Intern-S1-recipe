@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>TDC Reasoning Trace Viewer</title>
 <style>
   * { box-sizing: border-box; }
@@ -272,7 +275,7 @@
 </head>
 <body>
 <header>
-  <h1>TDC Reasoning Trace Viewer</h1>
+  <h1>TDC Reasoning Trace Viewer <span class="small-tag">reasoning_content build</span></h1>
   <div class="bar">
     <div>
       <label for="serverRunSelect">run folder</label>
@@ -389,7 +392,7 @@ function parseJsonl(text, sourceName) {
     const line = lines[i].trim();
     if (!line) continue;
     try {
-      const record = JSON.parse(line);
+      const record = normalizeRecord(JSON.parse(line));
       record.__source = sourceName;
       records.push(record);
     } catch (err) {
@@ -397,6 +400,18 @@ function parseJsonl(text, sourceName) {
     }
   }
   return records;
+}
+
+function normalizeRecord(record) {
+  if (!Array.isArray(record.messages)) return record;
+  record.messages = record.messages.map(message => {
+    if (!message || typeof message !== "object" || Array.isArray(message)) return message;
+    if (message.reasoning === undefined && typeof message.reasoning_content === "string" && message.reasoning_content.trim()) {
+      return {...message, reasoning: message.reasoning_content};
+    }
+    return message;
+  });
+  return record;
 }
 
 async function refreshServerFiles({silent = false} = {}) {
@@ -682,6 +697,7 @@ function renderDetail() {
           ${metaField("Source", record.__source)}
           ${metaField("Usage", formatUsage(record.usage))}
           ${metaField("Response", record.response_text)}
+          ${metaField("Reasoning summaries", formatReasoningSummaries(record))}
         </div>
       </div>
     </div>
@@ -715,6 +731,27 @@ function formatUsage(usage) {
   return parts.join(", ");
 }
 
+function formatReasoningSummaries(record) {
+  const summaries = Array.isArray(record.reasoning_summaries)
+    ? record.reasoning_summaries
+    : extractReasoningSummaries(record.messages);
+  return summaries.length ? summaries.join("\n\n") : "";
+}
+
+function extractReasoningSummaries(messages) {
+  if (!Array.isArray(messages)) return [];
+  const summaries = [];
+  messages.forEach(message => {
+    if (message?.type !== "reasoning" || !Array.isArray(message.summary)) return;
+    message.summary.forEach(item => {
+      if (typeof item?.text === "string" && item.text.trim()) {
+        summaries.push(item.text.trim());
+      }
+    });
+  });
+  return summaries;
+}
+
 function renderMessages(messages) {
   if (!Array.isArray(messages) || !messages.length) {
     return '<div class="empty">No messages recorded.</div>';
@@ -728,8 +765,15 @@ function renderMessage(message, index) {
   const isToolResult = message.role === "tool" || message.type === "function_call_output";
   const blocks = [];
 
-  if (message.reasoning) {
-    blocks.push(renderBlock("Reasoning", message.reasoning, "reasoning"));
+  const reasoning = message.reasoning ?? message.reasoning_content;
+  if (reasoning) {
+    blocks.push(renderBlock("Reasoning", reasoning, "reasoning"));
+  }
+  if (message.type === "reasoning") {
+    const summaries = extractReasoningSummaries([message]);
+    if (summaries.length) {
+      blocks.push(renderBlock("Reasoning summary", summaries.join("\n\n"), "reasoning"));
+    }
   }
   if (!isToolResult && message.content) {
     blocks.push(renderBlock("Content", message.content, ""));

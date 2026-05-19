@@ -1,0 +1,10 @@
+canonical_salt_removed,num_rows,num_unique_input_smiles,labels,splits,row_ids,input_smiles
+Cc1ncc2n1-c1ccc(Cl)cc1C(c1ccccc1F)=NC2,3,2,1,train,train:1218|train:1221|train:1222,Cc1ncc2n1-c1ccc(Cl)cc1C(c1ccccc1F)=NC2 ; Cc1ncc2n1-c1ccc(Cl)cc1C(c1ccccc1F)=NC2.O=C(O)/C=C\C(=O)O
+CC(C)NCC(O)COc1cccc2ccccc12,2,2,0|1,valid,valid:171|valid:173,CC(C)NCC(O)COc1cccc2ccccc12 ; CC(C)NCC(O)COc1cccc2ccccc12.[Cl]
+CC1(C)S[C@@H]2[C@H](NC(=O)[C@H](N)c3ccccc3)C(=O)N2[C@H]1C(=O)O,2,2,0,test|train,train:354|test:178,CC1(C)S[C@@H]2[C@H](NC(=O)[C@H](N)c3ccccc3)C(=O)N2[C@H]1C(=O)O ; CC1(C)S[C@@H]2[C@H](NC(=O)[C@H](N)c3ccccc3)C(=O)N2[C@H]1C(=O)O.CC1(C)[C@H](C(=O)O)N2C(=O)C[C@H]2S1(=O)=O
+CCC(=O)O[C@](Cc1ccccc1)(c1ccccc1)[C@H](C)CN(C)C,2,2,1,train,train:942|train:943,CCC(=O)O[C@](Cc1ccccc1)(c1ccccc1)[C@H](C)CN(C)C ; CCC(=O)O[C@](Cc1ccccc1)(c1ccccc1)[C@H](C)CN(C)C.[Cl-].[H+]
+CCOC(=O)C1(c2ccccc2)CCN(C)CC1,2,2,1,train,train:1023|train:1024,CCOC(=O)C1(c2ccccc2)CCN(C)CC1 ; CCOC(=O)C1(c2ccccc2)CCN(C)CC1.[Cl-].[H+]
+CN(C)CCOC(C)(c1ccccc1)c1ccccn1,2,2,1,train,train:229|train:230,CN(C)CCOC(C)(c1ccccc1)c1ccccn1 ; CN(C)CCOC(C)(c1ccccc1)c1ccccn1.O=C(O)CCC(=O)O
+CN(C)[C@@H]1C(=O)/C(=C(\N)O)C(=O)[C@@]2(O)C(=O)C3=C(O)c4c(O)ccc(Cl)c4[C@@](C)(O)[C@H]3C[C@@H]12,2,2,0,train,train:294|train:298,CN(C)[C@@H]1C(=O)/C(=C(\N)O)C(=O)[C@@]2(O)C(=O)C3=C(O)c4c(O)ccc(Cl)c4[C@@](C)(O)[C@H]3C[C@@H]12 ; CN(C)[C@@H]1C(=O)/C(=C(\N)O)C(=O)[C@@]2(O)C(=O)C3=C(O)c4c(O)ccc(Cl)c4[C@@](C)(O)[C@H]3C[C@@H]12.[Cl-].[H+]
+Cn1c(=O)c2[nH]cnc2n(C)c1=O,2,2,0,train,train:274|train:1282,Cn1c(=O)c2[nH]cnc2n(C)c1=O ; Cn1c(=O)c2[nH]cnc2n(C)c1=O.Cn1c(=O)c2[nH]cnc2n(C)c1=O.NCCN
+NNCCc1ccccc1,2,2,1,train,train:37|train:110,NNCCc1ccccc1.O=S(=O)(O)O ; NNCCc1ccccc1.[Cl]

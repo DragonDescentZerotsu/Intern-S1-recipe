@@ -15,16 +15,19 @@ from sklearn.metrics import classification_report, f1_score
 from tqdm import tqdm
 
 
-load_dotenv()
+load_dotenv(override=True)
 
 current_dir = Path(__file__).parent.resolve()
 project_root = current_dir.parent
 trim_root = Path("/data1/tianang/Projects/TRIM")
 trim_src = trim_root / "src"
+tools_dir = project_root / "tools"
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 if trim_src.exists() and str(trim_src) not in sys.path:
     sys.path.insert(0, str(trim_src))
+if str(tools_dir) not in sys.path:
+    sys.path.insert(0, str(tools_dir))
 
 from utils.TDC_answer_parser import extract_answer, parse_answer
 
@@ -37,10 +40,13 @@ logger = logging.getLogger(__name__)
 
 OPENAI_OFFICIAL_API_BASE = "https://api.openai.com/v1"
 OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
+DEEPSEEK_API_BASE = "https://api.deepseek.com"
 DEFAULT_LOCAL_API_BASE = "http://localhost:8001/v1"
 DEFAULT_API_KEY = "EMPTY"
 OPENAI_REASONING_EFFORTS = ("none", "minimal", "low", "medium", "high", "xhigh")
-TOOL_MODES = ("none", "properties", "similar", "both")
+OPENAI_REASONING_SUMMARIES = ("none", "auto", "concise", "detailed")
+DEEPSEEK_REASONING_EFFORTS = ("high", "max")
+TOOL_MODES = ("none", "properties", "similar", "both", "chembl", "properties_chembl", "both_chembl")
 SIMILAR_TOOL_FEATURE_VIEWS = ("all", "properties", "functional_groups", "neighbors_only")
 SIMILAR_TOOL_PROPERTY_LINE_COUNTS = (9, 18, 27, 36)
 TRIM_TOOL_NAMES_BY_MODE = {
@@ -48,7 +54,16 @@ TRIM_TOOL_NAMES_BY_MODE = {
     "properties": ("get_mol_properties_and_fg",),
     "similar": ("compare_similar_mols",),
     "both": ("get_mol_properties_and_fg", "compare_similar_mols"),
+    "chembl": (),
+    "properties_chembl": ("get_mol_properties_and_fg",),
+    "both_chembl": ("get_mol_properties_and_fg", "compare_similar_mols"),
 }
+CHEMBL_TOOL_MODES = {"chembl", "properties_chembl", "both_chembl"}
+SMILES_IDENTITY_HEURISTIC_GUARD = (
+    "Do not infer the label by recognizing or memorizing the molecule's identity or name from the SMILES string; "
+    "do not compare it against similar molecules you already know from memory; "
+    "base your prediction only on structural decomposition of the molecule and properties obtained from the available tools."
+)
 
 
 _CLIENT = None
@@ -59,6 +74,10 @@ def is_openai_official_model(model_name: str) -> bool:
     return bool(model_name) and (model_name.startswith("gpt-") or model_name.startswith("o"))
 
 
+def is_deepseek_direct_model(model_name: str) -> bool:
+    return bool(model_name) and model_name.startswith("deepseek-v4-")
+
+
 def is_openai_official_api_base(api_base: str) -> bool:
     return api_base.rstrip("/") == OPENAI_OFFICIAL_API_BASE.rstrip("/")
 
@@ -67,14 +86,22 @@ def is_openrouter_api_base(api_base: str) -> bool:
     return api_base.rstrip("/") == OPENROUTER_API_BASE.rstrip("/")
 
 
+def is_deepseek_api_base(api_base: str) -> bool:
+    normalized = api_base.rstrip("/")
+    return normalized == DEEPSEEK_API_BASE.rstrip("/") or normalized.startswith(f"{DEEPSEEK_API_BASE.rstrip('/')}/")
+
+
 def get_args():
     parser = argparse.ArgumentParser(description="Run TRIM TDC F1 eval via OpenAI-compatible APIs.")
 
     parser.add_argument(
         "--provider",
-        choices=["auto", "local", "openai", "openrouter"],
+        choices=["auto", "local", "openai", "openrouter", "deepseek"],
         default="auto",
-        help="API provider. auto infers OpenAI from gpt/o-series model IDs and OpenRouter from model IDs containing '/'.",
+        help=(
+            "API provider. auto infers OpenAI from gpt/o-series model IDs, "
+            "DeepSeek from deepseek-v4-* model IDs, and OpenRouter from model IDs containing '/'."
+        ),
     )
     parser.add_argument("--api-base", type=str, default=DEFAULT_LOCAL_API_BASE, help="API base URL.")
     parser.add_argument("--api-key", type=str, default=DEFAULT_API_KEY, help="API key. Use EMPTY for local serve.")
@@ -91,6 +118,23 @@ def get_args():
         default="medium",
         choices=OPENAI_REASONING_EFFORTS,
         help="Reasoning effort for official OpenAI Chat Completions.",
+    )
+    parser.add_argument(
+        "--openai-reasoning-summary",
+        type=str,
+        default="none",
+        choices=OPENAI_REASONING_SUMMARIES,
+        help=(
+            "Responses API reasoning summary verbosity for official OpenAI reasoning models. "
+            "Use auto, concise, or detailed to save reasoning summary items in trajectories."
+        ),
+    )
+    parser.add_argument(
+        "--deepseek-reasoning-effort",
+        type=str,
+        default="high",
+        choices=DEEPSEEK_REASONING_EFFORTS,
+        help="Reasoning effort for DeepSeek V4 thinking mode.",
     )
     parser.add_argument("--max-tokens", type=int, default=10240, help="Max generated tokens.")
     parser.add_argument(
@@ -130,6 +174,24 @@ def get_args():
         help="Optional explicit task names to run, e.g. DILI BBB_Martins.",
     )
     parser.add_argument(
+        "--prompt-task",
+        type=str,
+        default=None,
+        help=(
+            "Optional TRIM prompt task name to use for all input files. "
+            "Use this when evaluating custom jsonl files that should reuse an existing task prompt, e.g. BBB_Martins."
+        ),
+    )
+    parser.add_argument(
+        "--disallow-smiles-identity-heuristics",
+        action="store_true",
+        default=False,
+        help=(
+            "Append an instruction forbidding predictions based on recognizing the molecule identity/name from SMILES; "
+            "the model should use structural decomposition and tool-derived properties only."
+        ),
+    )
+    parser.add_argument(
         "--data-dir",
         type=Path,
         default=project_root / "DataPrepare/TDC_no_conflict_labels_salt_removed/valid",
@@ -144,7 +206,10 @@ def get_args():
         "--tool-mode",
         choices=TOOL_MODES,
         default="none",
-        help="TRIM tools available to the model: none, properties, similar, or both.",
+        help=(
+            "Tools available to the model: none, properties, similar, both, chembl, "
+            "properties_chembl, or both_chembl."
+        ),
     )
     parser.add_argument(
         "--first-turn-tool-choice",
@@ -153,6 +218,16 @@ def get_args():
         help=(
             "Tool choice for the first Chat Completions turn when tools are enabled. "
             "Use required for smoke tests that must verify the tool round-trip."
+        ),
+    )
+    parser.add_argument(
+        "--chembl-include-activities",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Hidden backend setting for chembl_info. The model still only sees the same "
+            "chembl_info(smiles) schema; use --no-chembl-include-activities for a "
+            "properties-only control."
         ),
     )
     parser.add_argument(
@@ -208,10 +283,14 @@ def infer_provider(args) -> str:
         return args.provider
     if is_openai_official_api_base(args.api_base):
         return "openai"
+    if is_deepseek_api_base(args.api_base):
+        return "deepseek"
     if is_openrouter_api_base(args.api_base):
         return "openrouter"
     if is_openai_official_model(args.model):
         return "openai"
+    if is_deepseek_direct_model(args.model):
+        return "deepseek"
     if "/" in args.model:
         return "openrouter"
     return "local"
@@ -232,6 +311,16 @@ def resolve_api_settings(args):
             api_key = os.getenv("OPENAI_API_KEY")
             if not api_key:
                 raise ValueError("OPENAI_API_KEY is required in .env or environment for --provider openai.")
+            args.api_key = api_key
+    elif provider == "deepseek":
+        if args.api_base == DEFAULT_LOCAL_API_BASE:
+            args.api_base = DEEPSEEK_API_BASE
+        if not args.model:
+            args.model = "deepseek-v4-pro"
+        if args.api_key == DEFAULT_API_KEY:
+            api_key = os.getenv("DEEPSEEK_API_KEY")
+            if not api_key:
+                raise ValueError("DEEPSEEK_API_KEY is required in .env or environment for --provider deepseek.")
             args.api_key = api_key
     elif provider == "openrouter":
         if args.api_base == DEFAULT_LOCAL_API_BASE:
@@ -340,10 +429,26 @@ def normalize_messages_for_trace(messages: list[Any]) -> list[dict[str, Any]]:
     for message in messages:
         item = to_jsonable(message)
         if isinstance(item, Mapping):
-            normalized.append(dict(item))
+            item = dict(item)
+            if "reasoning" not in item and isinstance(item.get("reasoning_content"), str):
+                item["reasoning"] = item["reasoning_content"]
+            normalized.append(item)
         else:
             normalized.append({"value": item})
     return normalized
+
+
+def extract_reasoning_summaries(trace_messages: list[dict[str, Any]]) -> list[str]:
+    summaries: list[str] = []
+    for message in trace_messages:
+        if message.get("type") != "reasoning":
+            continue
+        for item in message.get("summary") or []:
+            if isinstance(item, Mapping):
+                text = item.get("text")
+                if isinstance(text, str) and text.strip():
+                    summaries.append(text.strip())
+    return summaries
 
 
 def to_chat_completion_tool_schema(schema: dict[str, object]) -> dict[str, object]:
@@ -379,17 +484,27 @@ def get_trim_tools_for_mode(tool_mode: str, *, api_style: str = "chat") -> list[
     if tool_mode == "none":
         return None
 
-    from trim.reasoning.agent_tools import build_openai_tool_runtime
-
     global _TOOL_RUNTIME
-    if _TOOL_RUNTIME is None:
-        _TOOL_RUNTIME = build_openai_tool_runtime()
-
     allowed_names = set(TRIM_TOOL_NAMES_BY_MODE[tool_mode])
     tools = []
-    for schema in _TOOL_RUNTIME.tools:
-        name = str(schema.get("name") or schema.get("function", {}).get("name"))
-        if name in allowed_names:
+    if allowed_names:
+        from trim.reasoning.agent_tools import build_openai_tool_runtime
+
+        if _TOOL_RUNTIME is None:
+            _TOOL_RUNTIME = build_openai_tool_runtime()
+
+        for schema in _TOOL_RUNTIME.tools:
+            name = str(schema.get("name") or schema.get("function", {}).get("name"))
+            if name in allowed_names:
+                if api_style == "responses":
+                    tools.append(to_responses_tool_schema(schema))
+                else:
+                    tools.append(to_chat_completion_tool_schema(schema))
+
+    if tool_mode in CHEMBL_TOOL_MODES:
+        from chembl_info import CHEMBL_INFO_OPENAI_TOOLS
+
+        for schema in CHEMBL_INFO_OPENAI_TOOLS:
             if api_style == "responses":
                 tools.append(to_responses_tool_schema(schema))
             else:
@@ -405,7 +520,7 @@ def init_worker(api_base, api_key, provider, tool_mode):
         max_retries=1,
         timeout=600.0 if provider == "openai" else 180.0,
     )
-    if tool_mode != "none":
+    if TRIM_TOOL_NAMES_BY_MODE[tool_mode]:
         from trim.reasoning.agent_tools import build_openai_tool_runtime
 
         _TOOL_RUNTIME = build_openai_tool_runtime()
@@ -449,6 +564,10 @@ def create_chat_completion(client, *, provider, model_name, messages, tools, arg
             extra_body["usage"] = {"include": True}
             if args.thinking:
                 extra_body["reasoning"] = {"enabled": True}
+        elif provider == "deepseek":
+            extra_body["thinking"] = {"type": "enabled" if args.thinking else "disabled"}
+            if args.thinking:
+                request_kwargs["reasoning_effort"] = args.deepseek_reasoning_effort
         if extra_body:
             request_kwargs["extra_body"] = extra_body
 
@@ -456,13 +575,24 @@ def create_chat_completion(client, *, provider, model_name, messages, tools, arg
 
 
 def create_openai_response(client, *, model_name, input_items, tools, args):
-    return client.responses.create(
-        model=model_name,
-        input=input_items,
-        tools=tools,
-        reasoning={"effort": args.openai_reasoning_effort},
-        max_output_tokens=args.max_tokens,
-    )
+    reasoning = {"effort": args.openai_reasoning_effort}
+    if args.openai_reasoning_summary != "none":
+        reasoning["summary"] = args.openai_reasoning_summary
+
+    request_kwargs = {
+        "model": model_name,
+        "input": input_items,
+        "tools": tools,
+        "reasoning": reasoning,
+        "max_output_tokens": args.max_tokens,
+    }
+    if (
+        tools is not None
+        and getattr(args, "first_turn_tool_choice", "auto") == "required"
+        and not any(item.get("type") == "function_call_output" for item in input_items if isinstance(item, Mapping))
+    ):
+        request_kwargs["tool_choice"] = "required"
+    return client.responses.create(**request_kwargs)
 
 
 def get_tool_call_name(tool_call) -> str | None:
@@ -480,6 +610,31 @@ def get_tool_call_name(tool_call) -> str | None:
             else getattr(tool_call, "name", None)
         )
     return str(name) if name else None
+
+
+def get_tool_call_arguments(tool_call) -> dict[str, Any]:
+    if isinstance(tool_call, Mapping):
+        function_payload = tool_call.get("function")
+        if isinstance(function_payload, Mapping):
+            raw_args = function_payload.get("arguments")
+        else:
+            raw_args = tool_call.get("arguments")
+    else:
+        function_payload = getattr(tool_call, "function", None)
+        raw_args = (
+            getattr(function_payload, "arguments", None)
+            if function_payload is not None
+            else getattr(tool_call, "arguments", None)
+        )
+    if raw_args is None:
+        return {}
+    if isinstance(raw_args, Mapping):
+        return dict(raw_args)
+    try:
+        parsed = json.loads(str(raw_args))
+    except json.JSONDecodeError:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
 
 
 def postprocess_compare_similar_mols_text(
@@ -546,7 +701,20 @@ def call_trim_tool(
     neighbors_per_label: int,
     similar_tool_feature_view: str = "all",
     similar_tool_property_lines: int | None = None,
+    chembl_include_activities: bool = True,
 ) -> str:
+    if get_tool_call_name(tool_call) == "chembl_info":
+        try:
+            from chembl_info import chembl_info
+
+            arguments = get_tool_call_arguments(tool_call)
+            return chembl_info(
+                str(arguments.get("smiles", "")),
+                include_activities=chembl_include_activities,
+            )
+        except Exception as exc:
+            return f"Error executing tool: {exc}"
+
     if _TOOL_RUNTIME is None:
         return "Error executing tool: TRIM tool runtime is not initialized."
 
@@ -625,6 +793,7 @@ def run_openai_responses_turn(
                 neighbors_per_label=neighbors_per_label,
                 similar_tool_feature_view=args.similar_tool_feature_view,
                 similar_tool_property_lines=args.similar_tool_property_lines,
+                chembl_include_activities=args.chembl_include_activities,
             )
             function_outputs.append(
                 {
@@ -719,15 +888,16 @@ def run_turn_base(
                 neighbors_per_label=neighbors_per_label,
                 similar_tool_feature_view=args.similar_tool_feature_view,
                 similar_tool_property_lines=args.similar_tool_property_lines,
+                chembl_include_activities=args.chembl_include_activities,
             )
-            messages.append(
-                {
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "name": tool_call.function.name,
-                    "content": tool_result,
-                }
-            )
+            tool_message = {
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": tool_result,
+            }
+            if provider != "deepseek":
+                tool_message["name"] = tool_call.function.name
+            messages.append(tool_message)
 
     return final_content, total_tool_calls, usage_cost, normalize_messages_for_trace(messages)
 
@@ -736,6 +906,12 @@ def render_user_text(task_name: str, smiles: str) -> str:
     from trim.reasoning.task_user_prompts import render_task_user_message
 
     return render_task_user_message(task=task_name, smiles=smiles)
+
+
+def maybe_append_smiles_identity_guard(user_text: str, enabled: bool) -> str:
+    if not enabled:
+        return user_text
+    return f"{user_text.rstrip()}\n\nAdditional instruction: {SMILES_IDENTITY_HEURISTIC_GUARD}"
 
 
 def get_smiles(item: Mapping[str, Any]) -> str:
@@ -757,7 +933,9 @@ def worker_process_sample(payload):
     args = argparse.Namespace(**args_dict)
     label = int(item["Y"])
     smiles = get_smiles(item)
-    user_text = render_user_text(task_name, smiles)
+    prompt_task = args.prompt_task or task_name
+    user_text = render_user_text(prompt_task, smiles)
+    user_text = maybe_append_smiles_identity_guard(user_text, args.disallow_smiles_identity_heuristics)
     messages = [{"role": "user", "content": user_text}]
     api_style = "responses" if args.provider == "openai" and args.tool_mode != "none" else "chat"
     tools = get_trim_tools_for_mode(args.tool_mode, api_style=api_style)
@@ -776,6 +954,7 @@ def worker_process_sample(payload):
     def build_trajectory_record(attempt: int, prediction: int | None) -> dict[str, Any]:
         return {
             "task": task_name,
+            "prompt_task": prompt_task,
             "index": index,
             "sample_id": sample_id,
             "attempt": attempt,
@@ -785,6 +964,7 @@ def worker_process_sample(payload):
             "tool_count": last_tool_count,
             "usage": last_usage_cost,
             "response_text": last_response_text,
+            "reasoning_summaries": extract_reasoning_summaries(last_trace_messages),
             "messages": last_trace_messages,
         }
 
@@ -796,7 +976,7 @@ def worker_process_sample(payload):
             provider=args.provider,
             model_name=args.model,
             tools=tools,
-            task_name=task_name,
+            task_name=prompt_task,
             neighbors_per_label=args.neighbors_per_label,
             args=args,
         )
@@ -926,9 +1106,20 @@ def main():
     logger.info(f"Provider: {args.provider}")
     logger.info(f"API base: {args.api_base}")
     logger.info(f"Model: {args.model}")
+    if args.provider == "openai":
+        logger.info(f"OpenAI reasoning effort: {args.openai_reasoning_effort}")
+        logger.info(f"OpenAI reasoning summary: {args.openai_reasoning_summary}")
+    elif args.provider == "deepseek":
+        logger.info(f"DeepSeek thinking: {args.thinking}")
+        if args.thinking:
+            logger.info(f"DeepSeek reasoning effort: {args.deepseek_reasoning_effort}")
     logger.info(f"Data dir: {args.data_dir}")
     logger.info(f"Tool mode: {args.tool_mode}")
-    if args.tool_mode in {"similar", "both"}:
+    logger.info(f"Disallow SMILES identity heuristics: {args.disallow_smiles_identity_heuristics}")
+    logger.info(f"Multiprocessing start method: {multiprocessing.get_start_method()}")
+    if args.tool_mode in CHEMBL_TOOL_MODES:
+        logger.info(f"chembl_info include activities: {args.chembl_include_activities}")
+    if "compare_similar_mols" in TRIM_TOOL_NAMES_BY_MODE[args.tool_mode]:
         logger.info(f"Similar tool feature view: {args.similar_tool_feature_view}")
         logger.info(f"Similar tool property lines: {args.similar_tool_property_lines or 'all'}")
     logger.info(f"Running groups: {groups_to_run}")
@@ -1090,5 +1281,6 @@ def main():
 
 
 if __name__ == "__main__":
-    multiprocessing.set_start_method("spawn", force=True)
+    start_method = "fork" if "fork" in multiprocessing.get_all_start_methods() else "spawn"
+    multiprocessing.set_start_method(start_method, force=True)
     main()

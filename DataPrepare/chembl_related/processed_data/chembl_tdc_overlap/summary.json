@@ -1,0 +1,141 @@
+{
+  "tdc_dir": "/data1/tianang/Projects/Intern-S1/DataPrepare/TDC_no_conflict_labels_salt_removed",
+  "chembl_db": "/data1/tianang/Projects/Intern-S1/DataPrepare/chembl_related/chembl_36/chembl_36_sqlite/chembl_36.db",
+  "methods": [
+    "rdkit",
+    "chembl_standardized",
+    "chembl_parent"
+  ],
+  "match_rule": "Method-specific InChIKeys matched against ChEMBL36 compound_structures.standard_inchi_key.",
+  "connectivity_rule": "First 14 characters of InChIKey matched as a lenient connectivity-only check.",
+  "chembl_structure_pipeline_version": "1.2.0",
+  "chembl_db_version_rows": [
+    [
+      "Bioassay Ontology 2.0",
+      "",
+      "BAO version used for assays (http://bioassayontology.org/)"
+    ],
+    [
+      "COCONUT 2025-07",
+      "",
+      "COCONUT version used for natural product flagging (https://coconut.naturalproducts.net/)"
+    ],
+    [
+      "ChEMBL_36",
+      "2025-07-28 00:00:00.000000",
+      "ChEMBL Release 36 (https://www.ebi.ac.uk/chembl)"
+    ],
+    [
+      "ChEMBL_Structure_Pipeline 1.2.0",
+      "",
+      "ChEMBL_Structure_Pipeline version used for chemical structure curation (https://github.com/chembl/ChEMBL_Structure_Pipeline)"
+    ],
+    [
+      "EFO 3.74.0",
+      "",
+      "EFO version used for indication and warning data (https://www.ebi.ac.uk/efo/)"
+    ],
+    [
+      "Gene Ontology 2024-02-22",
+      "",
+      "GO version used for genes (https://www.ebi.ac.uk/QuickGO/)"
+    ],
+    [
+      "InChI v1.06",
+      "",
+      "InChI version used for compound registration (https://github.com/IUPAC-InChI/InChI)"
+    ],
+    [
+      "MeSH 2025",
+      "",
+      "MeSH version used for indication data (https://www.nlm.nih.gov/mesh/meshhome.html)"
+    ],
+    [
+      "RDKit 2022.09.4",
+      "",
+      "RDKit version used for standardisation and salt stripping of chemical structures (https://www.rdkit.org/)"
+    ],
+    [
+      "Swiss-Prot 2025_03",
+      "",
+      "UniProtKB version used for component_sequences data (https://www.expasy.org/resources/uniprotkb)"
+    ],
+    [
+      "UBERON 2024-03-22",
+      "",
+      "UBERON version used for tissues (http://obophenotype.github.io/uberon/)"
+    ]
+  ],
+  "method_summaries": {
+    "rdkit": {
+      "rows": {
+        "rows": 160728,
+        "valid_rows": 160728,
+        "full_match_rows": 143569,
+        "connectivity_match_rows": 152601
+      },
+      "unique": {
+        "unique_smiles": 36268,
+        "valid_unique": 36268,
+        "full_match_unique": 27340,
+        "connectivity_match_unique": 30525
+      },
+      "full_match_unique_pct": 75.38325796845704,
+      "connectivity_match_unique_pct": 84.16510422410941,
+      "full_unmatched_unique_valid": 8928,
+      "full_unmatched_but_connectivity_matched_unique": 3185
+    },
+    "chembl_standardized": {
+      "rows": {
+        "rows": 160728,
+        "valid_rows": 160717,
+        "full_match_rows": 148660,
+        "connectivity_match_rows": 152846
+      },
+      "unique": {
+        "unique_smiles": 36268,
+        "valid_unique": 36267,
+        "full_match_unique": 28559,
+        "connectivity_match_unique": 30577
+      },
+      "full_match_unique_pct": 78.74434763427816,
+      "connectivity_match_unique_pct": 84.30848130583435,
+      "full_unmatched_unique_valid": 7708,
+      "full_unmatched_but_connectivity_matched_unique": 2018
+    },
+    "chembl_parent": {
+      "rows": {
+        "rows": 160728,
+        "valid_rows": 160717,
+        "full_match_rows": 148683,
+        "connectivity_match_rows": 152856
+      },
+      "unique": {
+        "unique_smiles": 36268,
+        "valid_unique": 36267,
+        "full_match_unique": 28564,
+        "connectivity_match_unique": 30578
+      },
+      "full_match_unique_pct": 78.75813389213631,
+      "connectivity_match_unique_pct": 84.31123855740597,
+      "full_unmatched_unique_valid": 7703,
+      "full_unmatched_but_connectivity_matched_unique": 2014
+    }
+  },
+  "rows": {
+    "rows": 160728,
+    "valid_rdkit_rows": 160728,
+    "full_match_rows": 143569,
+    "connectivity_match_rows": 152601
+  },
+  "unique": {
+    "unique_smiles": 36268,
+    "valid_rdkit_unique": 36268,
+    "full_match_unique": 27340,
+    "connectivity_match_unique": 30525
+  },
+  "full_match_unique_pct": 75.38325796845704,
+  "connectivity_match_unique_pct": 84.16510422410941,
+  "full_unmatched_unique_valid": 8928,
+  "full_unmatched_but_connectivity_matched_unique": 3185
+}

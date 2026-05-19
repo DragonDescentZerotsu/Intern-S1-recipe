@@ -19,7 +19,7 @@
 set -euo pipefail
 
 cd "$(dirname "$0")"
-PORT="${1:-8765}"
+PORT="${1:-8777}"
 
 echo "==============================================="
 echo " TDC Reasoning Trace Viewer"

@@ -61,6 +61,18 @@ Example:
 python DataPrepare/TDC_mol_fingerprints/compute_fingerprints_and_similarities.py
 ```
 
+### `compute_jsonl_fingerprints_and_similarities.py`
+
+Local JSONL entry point that reuses the same RDKit Morgan and similarity helpers as the TDC script, but reads existing `train.jsonl`, `valid.jsonl`, and `test.jsonl` files with `drug` and `Y` fields.
+
+It writes the same artifact layout under `DataPrepare/TDC_mol_fingerprints/*/by_task/<task_name>/`, so downstream KNN code can consume the outputs by task name.
+
+Example for the high-confidence B3DB-rescued BBB_Martins split:
+
+```bash
+/data1/tianang/anaconda3/condabin/conda run -n vllm python DataPrepare/TDC_mol_fingerprints/compute_jsonl_fingerprints_and_similarities.py --num-cpus 8
+```
+
 ### `verify_sims.py`
 
 Small sanity-check utility for one example task.

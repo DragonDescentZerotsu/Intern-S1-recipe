@@ -74,6 +74,7 @@ def choose_columns_by_level(feature_columns: list[str]) -> tuple[list[str], list
 def write_level_outputs(
     *,
     level_name: str,
+    input_csv: Path,
     output_root: Path,
     output_stem: str,
     source_frame: pd.DataFrame,
@@ -99,7 +100,7 @@ def write_level_outputs(
 
     metadata = {
         "level_name": level_name,
-        "input_csv": str(DEFAULT_INPUT_CSV.resolve()),
+        "input_csv": str(input_csv.resolve()),
         "output_csv": str(csv_path.resolve()),
         "smiles_column": smiles_column,
         "num_rows": int(len(output_frame)),
@@ -123,6 +124,7 @@ def main() -> None:
 
     metadata_lv1 = write_level_outputs(
         level_name="easy_to_NLP_Lv1",
+        input_csv=args.input_csv,
         output_root=args.output_root_lv1,
         output_stem=args.output_stem,
         source_frame=frame,
@@ -132,6 +134,7 @@ def main() -> None:
     )
     metadata_lv2 = write_level_outputs(
         level_name="easy_to_NLP_Lv2",
+        input_csv=args.input_csv,
         output_root=args.output_root_lv2,
         output_stem=args.output_stem,
         source_frame=frame,

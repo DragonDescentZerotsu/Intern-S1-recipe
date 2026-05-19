@@ -1,0 +1,26 @@
+{
+  "mapping_tsv": "/data1/tianang/Projects/Intern-S1/DataPrepare/chembl_related/processed_data/chembl_tdc_overlap/tdc_unique_molecule_chembl_matches.tsv",
+  "chembl_db": "/data1/tianang/Projects/Intern-S1/DataPrepare/chembl_related/chembl_36/chembl_36_sqlite/chembl_36.db",
+  "activity_threshold_rule": "tool includes activities only when n_activities < 25",
+  "unique_tdc_smiles": 36268,
+  "strict_matched_unique_smiles": 28572,
+  "eligible_for_activity_details_unique_smiles": 19892,
+  "eligible_pct_of_strict_matched": 69.62060758784824,
+  "strict_match_method_counts": {
+    "chembl_parent": 28564,
+    "rdkit": 8
+  },
+  "activity_count_buckets": {
+    "0": 2605,
+    "1": 952,
+    "2-4": 1886,
+    "5-9": 4542,
+    "10-24": 9907,
+    "25-49": 3335,
+    "50-99": 2221,
+    "100-249": 1218,
+    "250-499": 565,
+    "500-999": 591,
+    "1000+": 750
+  }
+}

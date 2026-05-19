@@ -113,7 +113,12 @@ __pycache__/
 train/tree/
 DataPrepare/cache_tdc_mol_fingerprints.tar.gz
 
-DataPrepare/chembl_related/
+DataPrepare/chembl_related/*
+!DataPrepare/chembl_related/AGENTS.md
+!DataPrepare/chembl_related/process_scripts/
+!DataPrepare/chembl_related/process_scripts/**
+!DataPrepare/chembl_related/processed_data/
+!DataPrepare/chembl_related/processed_data/**
 # reasoning-trajectory/**
 # !reasoning-trajectory/*.sh
 # !reasoning-trajectory/*.html

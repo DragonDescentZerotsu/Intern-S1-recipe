@@ -10,7 +10,7 @@ MODEL="openai/gpt-oss-20b"
 SERVED_NAME="gpt-oss-20b"
 
 BASE_PORT=8001
-NUM_GPUS=4
+NUM_GPUS=8
 
 mkdir -p logs
 
